@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconLogout, IconPlus } from "@/components/icons";
+import { IconEdit, IconLogout, IconPlus } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
@@ -17,6 +17,7 @@ export default function HouseholdPage() {
   const router = useRouter();
   const [editing, setEditing] = useState<Member | null>(null);
   const [adding, setAdding] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   const isAdmin = me.role === "admin";
 
   // Kochdienst-Zähler: letzte 4 Wochen
@@ -94,7 +95,7 @@ export default function HouseholdPage() {
           </div>
         </Section>
 
-        <Section title="Mitglieder" footer={isAdmin ? "Trage die E-Mail-Adresse ein – beim ersten Login wird die Person automatisch verknüpft." : undefined}>
+        <Section title="Mitglieder" footer={isAdmin ? "Tippe ein Mitglied an, um E-Mail und Passwort für den Login festzulegen." : undefined}>
           <ul className="group">
             {members.map((m) => (
               <li key={m.id}>
@@ -103,7 +104,7 @@ export default function HouseholdPage() {
                   <span className="min-w-0 flex-1">
                     <span className="t-sub block font-medium">{m.name}{m.id === me.id ? " (du)" : ""}</span>
                     <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>
-                      {m.user_id ? "angemeldet" : m.email ? `eingeladen: ${m.email}` : "noch keine E-Mail"}
+                      {m.user_id ? `Login: ${m.email ?? "aktiv"}` : m.email ? `${m.email} · noch kein Passwort` : "noch kein Login"}
                     </span>
                   </span>
                   {m.role === "admin" && <span className="badge" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Admin</span>}
@@ -112,6 +113,12 @@ export default function HouseholdPage() {
             ))}
           </ul>
           {isAdmin && <button className="btn btn-tinted btn-sm pressable mt-2" onClick={() => setAdding(true)}><IconPlus size={16} /> Mitglied</button>}
+        </Section>
+
+        <Section title="Mein Konto">
+          <button className="row card pressable" onClick={() => setPwOpen(true)}>
+            <IconEdit size={20} /> <span className="t-sub">Passwort ändern</span>
+          </button>
         </Section>
 
         <Section>
@@ -127,6 +134,9 @@ export default function HouseholdPage() {
         </Section>
       </div>
 
+      <Sheet open={pwOpen} onClose={() => setPwOpen(false)} title="Passwort ändern">
+        {pwOpen && <PasswordForm onDone={() => setPwOpen(false)} />}
+      </Sheet>
       <MemberSheet member={editing} open={!!editing || adding} onClose={() => { setEditing(null); setAdding(false); }} />
     </>
   );
@@ -146,15 +156,32 @@ function MemberForm({ member, onDone }: { member: Member | null; onDone: () => v
   const [name, setName] = useState(member?.name ?? "");
   const [email, setEmail] = useState(member?.email ?? "");
   const [admin, setAdmin] = useState(member?.role === "admin");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function save() {
+    if (password && password.length < 8) return toast({ text: "Das Passwort braucht mindestens 8 Zeichen", tone: "error" });
+    if (password && !email.trim()) return toast({ text: "Für ein Passwort braucht es eine E-Mail-Adresse", tone: "error" });
+    setBusy(true);
     const row = { name: name.trim(), email: email.trim().toLowerCase() || null, role: admin ? "admin" : "member" };
-    const { error } = member
-      ? await sb.from("ep_members").update(row).eq("id", member.id)
-      : await sb.from("ep_members").insert({ ...row, household_id: household.id, position: members.length });
-    if (error) return toast({ text: error.message, tone: "error" });
+    const res = member
+      ? await sb.from("ep_members").update(row).eq("id", member.id).select("id").single()
+      : await sb.from("ep_members").insert({ ...row, household_id: household.id, position: members.length }).select("id").single();
+    if (res.error) {
+      setBusy(false);
+      return toast({ text: res.error.message, tone: "error" });
+    }
+    if (password) {
+      const { error } = await sb.rpc("ep_admin_set_password", { p_member: (res.data as { id: string }).id, p_password: password });
+      if (error) {
+        setBusy(false);
+        await reloadMembers();
+        return toast({ text: error.message, tone: "error" });
+      }
+    }
     await reloadMembers();
-    toast({ text: email && !member?.user_id ? `Gespeichert – ${name} kann sich jetzt mit ${email} anmelden` : "Gespeichert" });
+    setBusy(false);
+    toast({ text: password ? `${name} kann sich jetzt mit ${email.trim()} und dem Passwort anmelden` : "Gespeichert" });
     onDone();
   }
 
@@ -163,8 +190,39 @@ function MemberForm({ member, onDone }: { member: Member | null; onDone: () => v
       <input className="input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
       <input className="input" type="email" placeholder="E-Mail für den Login" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="E-Mail" />
       <label className="t-sub mt-1 flex items-center gap-2 px-1"><input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Admin (darf Mitglieder verwalten)</label>
-      {member?.user_id && <p className="t-footnote px-1" style={{ color: "var(--label-2)" }}>Bereits angemeldet. Eine neue E-Mail greift erst nach erneuter Verknüpfung.</p>}
-      <button className="btn btn-primary pressable mt-3" disabled={!name.trim()} onClick={save}>Sichern</button>
+      <p className="t-section mt-3">{member?.user_id ? "Neues Passwort (optional)" : "Passwort für den Login"}</p>
+      <input className="input" type="text" autoComplete="new-password" placeholder="mind. 8 Zeichen" value={password} onChange={(e) => setPassword(e.target.value)} aria-label="Passwort" />
+      <p className="t-footnote px-1" style={{ color: "var(--label-2)" }}>
+        {member?.user_id ? "Leer lassen, um das Passwort nicht zu ändern." : "Gib das Passwort der Person weiter – sie kann es danach selbst ändern."}
+      </p>
+      <button className="btn btn-primary pressable mt-3" disabled={!name.trim() || busy} onClick={save}>{busy ? "Speichert …" : "Sichern"}</button>
+    </div>
+  );
+}
+
+function PasswordForm({ onDone }: { onDone: () => void }) {
+  const { sb } = useApp();
+  const toast = useToast();
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (pw.length < 8) return toast({ text: "Mindestens 8 Zeichen", tone: "error" });
+    if (pw !== pw2) return toast({ text: "Die Passwörter stimmen nicht überein", tone: "error" });
+    setBusy(true);
+    const { error } = await sb.auth.updateUser({ password: pw });
+    setBusy(false);
+    if (error) return toast({ text: error.message, tone: "error" });
+    toast({ text: "Passwort geändert" });
+    onDone();
+  }
+
+  return (
+    <div className="flex flex-col gap-2 pb-4">
+      <input className="input" type="password" autoComplete="new-password" placeholder="Neues Passwort" value={pw} onChange={(e) => setPw(e.target.value)} aria-label="Neues Passwort" />
+      <input className="input" type="password" autoComplete="new-password" placeholder="Wiederholen" value={pw2} onChange={(e) => setPw2(e.target.value)} aria-label="Passwort wiederholen" />
+      <button className="btn btn-primary pressable mt-3" disabled={busy || !pw} onClick={save}>{busy ? "Speichert …" : "Passwort ändern"}</button>
     </div>
   );
 }

@@ -117,7 +117,7 @@ export default function RecipesPage() {
         </div>
         <div className="mt-3 flex items-center justify-between">
           <span className="t-footnote" style={{ color: "var(--label-2)" }}>{list.length} Treffer</span>
-          <select className="t-footnote rounded-lg bg-transparent py-1 font-medium" style={{ color: "var(--accent)" }} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sortierung">
+          <select className="t-footnote w-auto appearance-none rounded-lg bg-transparent py-1 text-right font-medium" style={{ color: "var(--accent)" }} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sortierung">
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>

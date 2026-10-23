@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
@@ -14,27 +14,31 @@ export default function LoginPage() {
 
 function Login() {
   const params = useSearchParams();
+  const router = useRouter();
   const next = params.get("next") ?? "/woche";
-  const failed = params.get("fehler");
   const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(params.get("fehler") ? "Der Anmeldelink ist abgelaufen oder ungültig." : null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setState("sending");
+    setBusy(true);
     setError(null);
-    const redirect = `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`;
-    const { error } = await supabase().auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: redirect, shouldCreateUser: true },
-    });
+    const { error } = await supabase().auth.signInWithPassword({ email: email.trim(), password });
     if (error) {
-      setState("error");
-      setError(error.message.includes("rate") ? "Zu viele Anfragen – bitte in ein paar Minuten erneut versuchen." : error.message);
-    } else {
-      setState("sent");
+      setBusy(false);
+      setError(
+        error.message.toLowerCase().includes("invalid")
+          ? "E-Mail oder Passwort stimmt nicht."
+          : error.message.toLowerCase().includes("rate")
+            ? "Zu viele Versuche – bitte kurz warten."
+            : error.message,
+      );
+      return;
     }
+    router.replace(next.startsWith("/") && !next.startsWith("//") ? next : "/woche");
+    router.refresh();
   }
 
   return (
@@ -50,50 +54,44 @@ function Login() {
         </div>
       </div>
 
-      {state === "sent" ? (
-        <div className="card p-5 text-center">
-          <p className="t-headline">Schau in dein Postfach</p>
-          <p className="t-sub mt-2" style={{ color: "var(--label-2)" }}>
-            Wir haben einen Anmeldelink an <strong>{email}</strong> geschickt. Öffne ihn auf diesem Gerät.
-          </p>
-          <button className="btn btn-plain pressable mt-3" onClick={() => setState("idle")}>
-            Andere E-Mail verwenden
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          {failed && (
-            <p className="t-footnote rounded-xl px-3 py-2" style={{ background: "var(--red-soft)", color: "var(--red)" }}>
-              Der Anmeldelink ist abgelaufen oder ungültig. Fordere einfach einen neuen an.
-            </p>
-          )}
-          <label className="t-footnote px-1" style={{ color: "var(--label-2)" }} htmlFor="email">
-            E-Mail-Adresse
-          </label>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        <div className="group">
           <input
             id="email"
-            className="input"
+            className="input !rounded-none !bg-transparent"
             type="email"
             inputMode="email"
-            autoComplete="email"
+            autoComplete="username"
             required
-            placeholder="name@beispiel.de"
+            placeholder="E-Mail"
+            aria-label="E-Mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          {error && (
-            <p className="t-footnote px-1" style={{ color: "var(--red)" }}>
-              {error}
-            </p>
-          )}
-          <button className="btn btn-primary pressable mt-2 w-full" disabled={state === "sending" || !email}>
-            {state === "sending" ? "Sende Link …" : "Anmeldelink senden"}
-          </button>
-          <p className="t-footnote mt-2 text-center" style={{ color: "var(--label-3)" }}>
-            Kein Passwort nötig. Zugang haben nur eingetragene Familienmitglieder.
+          <input
+            id="password"
+            className="input !rounded-none !bg-transparent"
+            type="password"
+            autoComplete="current-password"
+            required
+            placeholder="Passwort"
+            aria-label="Passwort"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {error && (
+          <p className="t-footnote rounded-xl px-3 py-2" role="alert" style={{ background: "var(--red-soft)", color: "var(--red)" }}>
+            {error}
           </p>
-        </form>
-      )}
+        )}
+        <button className="btn btn-primary pressable mt-2 w-full" disabled={busy || !email || !password}>
+          {busy ? "Melde an …" : "Anmelden"}
+        </button>
+        <p className="t-footnote mt-2 text-center" style={{ color: "var(--label-3)" }}>
+          Zugang haben nur eingetragene Familienmitglieder. Passwort vergessen? Carl kann es unter „Haushalt“ neu setzen.
+        </p>
+      </form>
     </main>
   );
 }

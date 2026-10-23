@@ -9,7 +9,7 @@
 // - Reduce Motion: Überblenden statt Gleiten
 
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 const SPRING_SHEET = { type: "spring" as const, bounce: 0.15, duration: 0.35 };
@@ -45,6 +45,8 @@ export function Sheet(props: SheetProps) {
 
 function SheetBody({ onClose, title, children, action, maxHeight = 92 }: SheetProps) {
   const reduce = useReducedMotion();
+  // Pixel statt "100%": die Wischgeste rechnet mit dem aktuellen Zahlenwert weiter
+  const [offscreen] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
   const y = useMotionValue(0);
   const sheetRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -70,7 +72,7 @@ function SheetBody({ onClose, title, children, action, maxHeight = 92 }: SheetPr
     if (reduce) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     y.stop(); // Unterbrechen: vom aktuellen Wert weiter
-    drag.current = { startY: e.clientY, startValue: y.get(), samples: [{ t: e.timeStamp, y: e.clientY }] };
+    drag.current = { startY: e.clientY, startValue: Number(y.get()) || 0, samples: [{ t: e.timeStamp, y: e.clientY }] };
   }, [reduce, y]);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -92,7 +94,7 @@ function SheetBody({ onClose, title, children, action, maxHeight = 92 }: SheetPr
     const dt = Math.max(1, last.t - first.t);
     const velocity = ((last.y - first.y) / dt) * 1000; // px/s
     const h = sheetRef.current?.offsetHeight ?? 600;
-    const projected = y.get() + project(velocity);
+    const projected = (Number(y.get()) || 0) + project(velocity);
     if (projected > h * 0.5 && velocity > -200) {
       animate(y, h, { ...SPRING_SETTLE, velocity }).then(onClose);
     } else {
@@ -119,13 +121,13 @@ function SheetBody({ onClose, title, children, action, maxHeight = 92 }: SheetPr
         tabIndex={-1}
         className="sheet relative flex w-full max-w-xl flex-col outline-none"
         style={{ y, maxHeight: `${maxHeight}dvh` }}
-        initial={reduce ? { opacity: 0 } : { y: "100%" }}
+        initial={reduce ? { opacity: 0 } : { y: offscreen }}
         animate={reduce ? { opacity: 1 } : { y: 0 }}
-        exit={reduce ? { opacity: 0 } : { y: "100%" }}
+        exit={reduce ? { opacity: 0 } : { y: offscreen }}
         transition={reduce ? { duration: 0.2 } : SPRING_SHEET}
       >
         <div
-          className="flex shrink-0 cursor-grab touch-none flex-col items-center px-4 pt-2 pb-1 active:cursor-grabbing"
+          className="flex shrink-0 cursor-grab touch-none flex-col select-none items-center px-4 pt-2 pb-1 active:cursor-grabbing"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

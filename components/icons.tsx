@@ -49,7 +49,7 @@ export const IconFish = (p: P) => (
   <Svg {...p}><path d="M3 12c3-4.5 7-6 10.5-6 3 0 5.5 2.5 7.5 6-2 3.5-4.5 6-7.5 6C10 18 6 16.5 3 12Z" /><path d="M3 12 1 9M3 12l-2 3" /><circle cx="15.5" cy="10.5" r=".8" fill="currentColor" /></Svg>
 );
 export const IconMeat = (p: P) => (
-  <Svg {...p}><path d="M14.5 3.5c3.5 0 6 2.5 6 6 0 5-5.5 9-10 9-1.2 0-2-.3-2.6-.8l-3.4 3.4a1.4 1.4 0 0 1-2-2l3.4-3.4C5.3 14.6 5 13.8 5 12.6c0-4.5 4-9.1 9.5-9.1Z" /><circle cx="14" cy="9.5" r="1.8" /></Svg>
+  <Svg {...p}><path d="M14.5 3.5c3.5 0 6 2.5 6 6 0 5-5.5 9-10 9-1.2 0-2-.3-2.6-.8l-3.4 3.4a1.4 1.4 0 0 1-2-2l3.4-3.4C5.3 14.6 5 13.8 5 12.6c0-4.5 4-9.1 9.5-9.1Z" fill="currentColor" fillOpacity={0.28} /></Svg>
 );
 export const IconShare = (p: P) => (
   <Svg {...p}><path d="M12 15V3.5M8 7.5l4-4 4 4" /><path d="M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" /></Svg>

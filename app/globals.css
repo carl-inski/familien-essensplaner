@@ -130,6 +130,8 @@ body {
 
 .navbar-edge { box-shadow: 0 0.5px 0 var(--material-edge); }
 
+/* Bausteine in @layer components, damit Tailwind-Utilities (z. B. pl-9) sie überschreiben können */
+@layer components {
 /* ------------------------------------------------------------------
    Bausteine
    ------------------------------------------------------------------ */
@@ -272,6 +274,8 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 @media (prefers-reduced-motion: reduce) {
   .pressable, .pressable:active { transition: opacity 150ms ease; transform: none !important; }
   .skeleton { animation: none; }
+}
+
 }
 
 /* Platz unter der schwebenden Tableiste */

@@ -8,6 +8,14 @@ import type { CookStats, Diet } from "./types";
 
 export const BLOCK_DAYS = 14;
 
+// Snacks, Süßes und Gebäck sind keine Abendessen-Vorschläge
+const NOT_DINNER = ["snack", "süß", "dessert", "backen", "kuchen", "frühstück", "getränk"];
+
+export function isDinnerCandidate(r: { tags: string[]; categories: string[] }): boolean {
+  const words = [...r.tags, ...r.categories].map((t) => t.toLowerCase());
+  return !words.some((w) => NOT_DINNER.includes(w));
+}
+
 export interface SuggestRecipe {
   id: string;
   diet: Diet | null;

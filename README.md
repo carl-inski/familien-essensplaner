@@ -7,7 +7,7 @@ Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), d
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript, Tailwind v4) auf **Vercel**
-- **Supabase**: Postgres mit RLS, Auth per Magic Link, Realtime (Anwesenheit, Plan, Historie), Storage (`ep-images`)
+- **Supabase**: Postgres mit RLS, Auth per E-Mail + Passwort, Realtime (Anwesenheit, Plan, Historie), Storage (`ep-images`)
 - **Motion** für federnde, unterbrechbare Sheets (Apple-Interaktionsprinzipien: Feedback beim Antippen, 1:1-Ziehen, Momentum-Projektion, Reduce Motion/Transparency)
 - **Vitest** für Parser, Skalierung, Vorschlagsregeln und Kochhistorie
 
@@ -42,12 +42,12 @@ Alle Tabellen tragen das Präfix `ep_`, weil die App sich ein Supabase-Projekt m
 - Startdaten: `npx tsx scripts/seed.ts > supabase/seed.sql`, dann `supabase/seed.sql` im SQL-Editor ausführen und die Admin-E-Mail setzen:
   `update ep_members set email = '<mail>' where name = 'Carl';`
 
-Zugang: Mitglieder werden vorab angelegt. Wer sich mit einer eingetragenen E-Mail anmeldet, wird beim ersten Login automatisch verknüpft (`ep_link_member`). Andere sehen nichts.
+Zugang: Login mit E-Mail und Passwort, ohne Mailversand. Admins legen unter „Haushalt“ für jedes Mitglied E-Mail und Passwort fest (RPC `ep_admin_set_password`), jede Person kann ihr Passwort danach selbst ändern. Wer nicht eingetragen ist, sieht nichts.
 
-### Supabase-Einstellungen (einmalig im Dashboard)
+Den ersten Admin richtet man im SQL-Editor ein:
+`select ep_admin_set_password((select id from ep_members where name = 'Carl'), '<passwort>');`
 
-1. **Authentication → URL Configuration → Redirect URLs**: `https://<deine-domain>/**` (und `http://localhost:3000/**` für lokal) eintragen, sonst landet der Magic Link auf der Site-URL des Projekts.
-2. Optional **eigenes SMTP** (z. B. Resend), weil der eingebaute Mailversand stark rate-limitiert ist.
+Optional (Phase 2): Magic Link über `/auth/confirm` – dafür in Supabase unter Authentication → URL Configuration die Domain als Redirect-URL eintragen.
 
 ## Deployment (Vercel)
 

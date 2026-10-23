@@ -12,7 +12,7 @@ import { SlotSheet } from "@/components/week/slot-sheet";
 import { MEAL, useWeek } from "@/components/week/use-week";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
 import { eaters, effectiveStatus, servingsFor } from "@/lib/planning";
-import { meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
+import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
 import type { MealPlanEntry, Recipe } from "@/lib/types";
 
 export default function WeekPage() {
@@ -50,7 +50,7 @@ function Week() {
   }
 
   async function suggest(date: string, avoid: string[] = []) {
-    const pool = recipes.filter((r) => !avoid.includes(r.id));
+    const pool = recipes.filter((r) => !avoid.includes(r.id) && isDinnerCandidate(r));
     const pick = pickSuggestion(pool, stats, plannedDishes(date), date, today);
     if (!pick) {
       toast({ text: "Kein passender Vorschlag – alles kürzlich gekocht oder die Fleischregel greift." });

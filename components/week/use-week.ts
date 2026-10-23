@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { weekDates } from "@/lib/dates";
 import type { Attendance, AttendanceStatus, MealPlanEntry, Meal } from "@/lib/types";
@@ -34,11 +34,53 @@ export function useWeek(isoWeek: string) {
     [from],
   );
 
-  const load = useCallback(async () => apply(await fetchWeek()), [apply, fetchWeek]);
+  // Eigene Schreibvorgänge laufen nacheinander; solange einer unterwegs ist, wird kein
+  // (möglicherweise veralteter) Server-Stand über den optimistischen Zustand gelegt.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef(0);
+  const stale = useRef(false);
+  // Zählt eigene Schreibvorgänge: eine Antwort, deren Abfrage vor einem Schreiben startete, ist veraltet
+  const writeGen = useRef(0);
+
+  const load = useCallback(async () => {
+    for (;;) {
+      const gen = writeGen.current;
+      const data = await fetchWeek();
+      if (pending.current > 0) {
+        stale.current = true;
+        return;
+      }
+      if (gen === writeGen.current) {
+        apply(data);
+        return;
+      }
+      // während der Abfrage wurde geschrieben → neu abfragen
+    }
+  }, [apply, fetchWeek]);
+
+  const enqueue = useCallback(
+    <T,>(fn: () => PromiseLike<T>): Promise<T> => {
+      pending.current += 1;
+      writeGen.current += 1;
+      const run = queue.current.then(() => fn());
+      queue.current = run
+        .catch(() => undefined)
+        .then(() => {
+          pending.current -= 1;
+          if (pending.current === 0 && stale.current) {
+            stale.current = false;
+            void load();
+          }
+        });
+      return run;
+    },
+    [load],
+  );
 
   useEffect(() => {
     let cancelled = false;
-    fetchWeek().then((data) => !cancelled && apply(data));
+    const gen = writeGen.current;
+    fetchWeek().then((data) => !cancelled && pending.current === 0 && gen === writeGen.current && apply(data));
     return () => {
       cancelled = true;
     };
@@ -66,13 +108,13 @@ export function useWeek(isoWeek: string) {
         const rest = cur.filter((a) => !(a.member_id === memberId && a.date === date && a.meal === MEAL));
         return [...rest, { id: `tmp-${memberId}-${date}`, member_id: memberId, date, meal: MEAL, status, guests }];
       });
-      const { error } = await sb
-        .from("ep_attendance")
-        .upsert({ member_id: memberId, date, meal: MEAL, status, guests: status === "weg" ? 0 : guests }, { onConflict: "member_id,date,meal" });
-      if (error) await load();
+      stale.current = true; // nach dem Schreiben einmal frisch laden
+      const { error } = await enqueue(() =>
+        sb.from("ep_attendance").upsert({ member_id: memberId, date, meal: MEAL, status, guests: status === "weg" ? 0 : guests }, { onConflict: "member_id,date,meal" }),
+      );
       return error;
     },
-    [sb, load],
+    [sb, enqueue],
   );
 
   const upsertSlot = useCallback(
@@ -85,19 +127,19 @@ export function useWeek(isoWeek: string) {
           { id: `tmp-${date}`, household_id: household.id, date, meal: MEAL, recipe_id: null, leftover_of: null, cook_id: null, cook2_id: null, servings_override: null, status: "geplant", note: null, ...patch },
         ];
       });
-      const { data, error } = await sb
-        .from("ep_meal_plan")
-        .upsert({ household_id: household.id, date, meal: MEAL, ...stripLocal(patch) }, { onConflict: "household_id,date,meal" })
-        .select()
-        .single();
-      if (error) {
-        await load();
-        return { error, entry: null };
-      }
-      setPlan((cur) => [...cur.filter((p) => !(p.date === date && p.meal === MEAL)), data as MealPlanEntry]);
+      stale.current = true;
+      const { data, error } = await enqueue(() =>
+        sb
+          .from("ep_meal_plan")
+          .upsert({ household_id: household.id, date, meal: MEAL, ...stripLocal(patch) }, { onConflict: "household_id,date,meal" })
+          .select()
+          .single(),
+      );
+      if (error) return { error, entry: null };
+      if (pending.current === 0) setPlan((cur) => [...cur.filter((p) => !(p.date === date && p.meal === MEAL)), data as MealPlanEntry]);
       return { error: null, entry: data as MealPlanEntry };
     },
-    [sb, plan, household.id, load],
+    [sb, plan, household.id, enqueue],
   );
 
   return { dates, attendance, plan, loaded: loadedFor === from, setStatus, upsertSlot, reload: load };

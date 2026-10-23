@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addingViolatesMeatRule, meatRuleHint, pickSuggestion, suggestionCandidates, violatesMeatRule } from "../lib/suggest";
+import { addingViolatesMeatRule, isDinnerCandidate, meatRuleHint, pickSuggestion, suggestionCandidates, violatesMeatRule } from "../lib/suggest";
 import type { CookStats, Diet } from "../lib/types";
 import { cookStatsFromHistory } from "../lib/history";
 
@@ -73,5 +73,12 @@ describe("Kochhistorie", () => {
 
     const undone = cooked.slice(0, 1);
     expect(cookStatsFromHistory(undone, today).get("a")).toEqual(before);
+  });
+});
+
+describe("Abendessen-Kandidaten", () => {
+  it("schließt Snacks und Süßes aus", () => {
+    expect(isDinnerCandidate({ tags: ["snack", "fitness"], categories: ["Snack", "Fitness"] })).toBe(false);
+    expect(isDinnerCandidate({ tags: ["pasta", "fisch"], categories: ["Pasta", "Fisch"] })).toBe(true);
   });
 });
