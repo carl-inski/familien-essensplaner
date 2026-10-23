@@ -51,6 +51,8 @@ Zugang: Mitglieder werden vorab angelegt. Wer sich mit einer eingetragenen E-Mai
 
 ## Deployment (Vercel)
 
+Live: https://familien-essensplaner-umber.vercel.app (Vercel-Projekt `familien-essensplaner`, Region fra1).
+
 Projekt mit dem GitHub-Repo verbinden, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und `NEXT_PUBLIC_SITE_URL` setzen. Die Bring!-Seiten müssen ohne Vercel-Login erreichbar sein; die Produktions-Domain ist das bei Standard-Schutz.
 
 ## Bring!
