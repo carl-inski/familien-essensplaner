@@ -1,0 +1,19 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Familien-Essensplaner",
+    short_name: "Essen",
+    description: "Wochenplan, Rezepte, Kochdienst und Einkauf für die Familie",
+    lang: "de",
+    start_url: "/woche",
+    display: "standalone",
+    background_color: "#f2f2f7",
+    theme_color: "#e8590c",
+    icons: [
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}

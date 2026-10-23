@@ -1,8 +1,62 @@
 # Familien-Essensplaner
 
-Web-App für die Familie (Paul, Anton, Carl, Vroni, Christian): Wochenübersicht, wer zuhause ist, Essensplan, Kochdienst, Rezeptsammlung, Kochbücher, Kochhistorie, KI-Funktionen und Wocheneinkauf mit Übergabe an Bring!.
+Web-App (PWA) für die Familie (Paul, Anton, Carl, Vroni, Christian): Wochenübersicht, wer zuhause ist, Essensplan, Kochdienst, Rezeptsammlung, Kochbücher, Kochhistorie und Wocheneinkauf mit Übergabe an Bring!.
 
-## Für die KI, die das hier baut
-1. Lies zuerst `docs/BRIEFING.md` – das ist der vollständige Bau-Auftrag mit MVP, Akzeptanzkriterien, Datenmodell und Tech-Stack (Next.js auf Vercel, Supabase).
-2. `data/rezeptsammlung.md` sind die Startdaten (Rezepte im Markdown-Format), die per Seed/Import geladen werden.
-3. Offene Fragen stehen am Ende des Briefings – bei Unklarheiten Carl fragen.
+Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), die Startdaten in [`data/rezeptsammlung.md`](data/rezeptsammlung.md).
+
+## Stack
+
+- **Next.js 16** (App Router, TypeScript, Tailwind v4) auf **Vercel**
+- **Supabase**: Postgres mit RLS, Auth per Magic Link, Realtime (Anwesenheit, Plan, Historie), Storage (`ep-images`)
+- **Motion** für federnde, unterbrechbare Sheets (Apple-Interaktionsprinzipien: Feedback beim Antippen, 1:1-Ziehen, Momentum-Projektion, Reduce Motion/Transparency)
+- **Vitest** für Parser, Skalierung, Vorschlagsregeln und Kochhistorie
+
+## Funktionen (MVP)
+
+| Bereich | Was geht |
+| --- | --- |
+| Woche | Tag × Abendessen, Anwesenheit mit einem Tipp, Gäste, Standardwoche, Esserzahl, Rezept einplanen (2 Tipps), „Vorschlag“ (regelbasiert), Reste-Slots, Kochdienst (nur Anwesende, sonst „Koch fehlt“), gekocht ✓ / Rückgängig, Realtime |
+| Rezepte | Karten, Suche (deutscher Volltext + Trigramm + Zutaten), kombinierbare Filter und Sortierung, Detail mit Portionswähler, Bring!-Export, Historie, Anlegen/Bearbeiten mit Foto, Markdown-Import mit Duplikat-Erkennung und Export |
+| Lange nicht gegessen | sortiert nach Tagen seit dem letzten Kochen, darunter „Noch nie gekocht“, direkt einplanbar |
+| Regal | Kochbücher als Cover-Raster, ISBN-Abfrage (Open Library → Google Books), Rezept-Verknüpfungen mit Seite, „zu bestätigen“, reine Verweis-Rezepte |
+| Einkauf | Wochenliste skaliert und summiert, nach Supermarkt-Bereich gruppiert, abhakbar, „In Bring übernehmen“, als Text kopieren |
+| Haushalt | Mitglieder und Einladungen per E-Mail, Standardwoche, Kochdienst-Zähler (4 Wochen) |
+| Öffentlich | `/r/<slug>` und `/einkauf/<slug>` mit schema.org/Recipe-JSON-LD für den Bring!-Import, `noindex` |
+
+KI-Funktionen (Briefing Abschnitt 6) sind Phase 2 und noch nicht gebaut; die Env-Variablen stehen schon in `.env.example`.
+
+## Lokales Setup
+
+```bash
+npm install
+cp .env.example .env.local   # Supabase-URL und Publishable Key eintragen
+npm run dev                  # http://localhost:3000
+npm test                     # Unit-Tests
+```
+
+## Datenbank
+
+Alle Tabellen tragen das Präfix `ep_`, weil die App sich ein Supabase-Projekt mit anderen Apps teilt.
+
+- Schema, RLS, Trigger, View und RPCs: `supabase/migrations/*.sql` (in Reihenfolge ausführen)
+- Startdaten: `npx tsx scripts/seed.ts > supabase/seed.sql`, dann `supabase/seed.sql` im SQL-Editor ausführen und die Admin-E-Mail setzen:
+  `update ep_members set email = '<mail>' where name = 'Carl';`
+
+Zugang: Mitglieder werden vorab angelegt. Wer sich mit einer eingetragenen E-Mail anmeldet, wird beim ersten Login automatisch verknüpft (`ep_link_member`). Andere sehen nichts.
+
+### Supabase-Einstellungen (einmalig im Dashboard)
+
+1. **Authentication → URL Configuration → Redirect URLs**: `https://<deine-domain>/**` (und `http://localhost:3000/**` für lokal) eintragen, sonst landet der Magic Link auf der Site-URL des Projekts.
+2. Optional **eigenes SMTP** (z. B. Resend), weil der eingebaute Mailversand stark rate-limitiert ist.
+
+## Deployment (Vercel)
+
+Projekt mit dem GitHub-Repo verbinden, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und `NEXT_PUBLIC_SITE_URL` setzen. Die Bring!-Seiten müssen ohne Vercel-Login erreichbar sein; die Produktions-Domain ist das bei Standard-Schutz.
+
+## Bring!
+
+Kein inoffizieller Client: Die App öffnet `https://api.getbring.com/rest/bringrecipes/deeplink?url=<öffentliche Seite>&source=web`. Bring! liest dort das JSON-LD (`recipeIngredient` mit bereits skalierten Mengen, beim Wocheneinkauf `recipeYield = "1"`).
+
+## KI-Anbieter wechseln (Phase 2)
+
+Geplant über `LLM_PROVIDER`, `LLM_MODEL`, `LLM_VISION_MODEL`, `LLM_API_KEY` – Aufrufe nur serverseitig in `/api/ai/*`.
