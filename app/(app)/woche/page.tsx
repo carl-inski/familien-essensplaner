@@ -210,7 +210,7 @@ function Week() {
         style={{ opacity: isPast && !isToday ? 0.86 : 1, boxShadow: isToday ? "0 0 0 2px var(--accent)" : undefined }}
         aria-label={`${WEEKDAY_LONG[idx]}, ${formatDateDE(date)}`}
       >
-        <header className="day-head flex items-center gap-2 px-4 pt-3">
+        <header className="flex items-center gap-2 px-4 pt-3">
           <h2 className="t-headline">
             {WEEKDAY_SHORT[idx]} <span style={{ color: "var(--label-2)", fontWeight: 500 }}>{formatDateDE(date, { day: "numeric", month: "numeric" })}</span>
           </h2>

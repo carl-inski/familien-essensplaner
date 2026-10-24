@@ -35,6 +35,10 @@
   --lane: var(--surface-2);
   --card-edge: none;
   --icon-tint: var(--accent);
+  /* Farbe der KI; ein Theme kann ihr eine eigene Stimme geben */
+  --ai: var(--accent);
+  --ai-soft: var(--accent-soft);
+  --on-ai: var(--on-accent);
   color-scheme: light;
 }
 
@@ -689,190 +693,224 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 }
 
 /* ==================================================================
-   Theme „Küche“ – Vorschau. Übertragen aus einer Küche mit
-   zinnoberroten Fronten, weißen Quadratfliesen mit blaugrauen Fugen,
-   warmem Wandweiß, Eichenboden, Edelstahl und einem kobaltblauen Poster.
-   Formensprache: glatte, fast eckige Fronten mit schmalen Griffleisten
-   in derselben Farbe, geriffeltes Paneel, strenges Fliesenraster.
+   Theme „Küche“ – die Farben einer Küche, modern umgesetzt:
+   Zinnoberrot der Fronten als Akzent, warmes Wandweiß als Grund,
+   Kobaltblau vom Poster als eigene Stimme der KI.
+   Formensprache nach Apple: Glas statt Flächen, weiche große Ecken,
+   Kapseln für Knöpfe, leichte mehrlagige Schatten statt Rahmen.
    Aktiv über <html data-theme="kueche">, gilt für Handy und Computer.
    ================================================================== */
 :root[data-theme="kueche"] {
-  --k-red: #d2452b;          /* Fronten */
-  --k-red-deep: #a9351f;     /* Fuge zwischen den Fronten, Schatten */
-  --k-wall: #f1ede7;         /* Wand im Tageslicht */
-  --k-tile: #fbfaf7;         /* Fliese */
-  --k-grout: rgba(104, 136, 152, 0.2);  /* Fugen */
-  --k-oak: #a46c40;          /* Boden */
-  --k-steel: #b8bcbf;        /* Armatur, Kannen */
-  --k-cobalt: #2b78d4;       /* Poster */
-  --k-ink: #2a2521;          /* Gläser, dunkle Deckel */
+  --k-red: #d2452b;
+  --k-red-strong: #b93a22;
+  --k-cobalt: #2b78d4;
+  --k-sky: #7db4f2;
+  --k-ink: #1f1b18;
 
-  --bg: var(--k-wall);
-  --surface: var(--k-tile);
-  --surface-2: #ebe6df;
-  --lane: #f6f4f0;
-  --fill: rgba(42, 37, 33, 0.06);
-  --fill-strong: rgba(42, 37, 33, 0.11);
+  --bg: #f4f1ec;
+  --surface: #fffdfa;
+  --surface-2: #efebe5;
+  --lane: rgba(255, 253, 250, 0.55);
+  --fill: rgba(60, 45, 30, 0.06);
+  --fill-strong: rgba(60, 45, 30, 0.1);
   --label: var(--k-ink);
-  --label-2: rgba(42, 37, 33, 0.64);
-  --label-3: rgba(42, 37, 33, 0.42);
-  --separator: rgba(42, 37, 33, 0.12);
+  --label-2: rgba(31, 27, 24, 0.6);
+  --label-3: rgba(31, 27, 24, 0.38);
+  --separator: rgba(60, 45, 30, 0.1);
   --accent: var(--k-red);
-  --accent-soft: rgba(210, 69, 43, 0.12);
-  --on-accent: #fff7f2;
+  --accent-soft: rgba(210, 69, 43, 0.1);
+  --on-accent: #ffffff;
   --blue: var(--k-cobalt);
-  --material: rgba(241, 237, 231, 0.86);
-  --material-edge: rgba(42, 37, 33, 0.1);
-  --sidebar-bg: #ebe6df;
-  --panel-bg: #f6f3ee;
-  --radius: 6px;
-  --radius-lg: 10px;
-  --card-edge: 0 0 0 1px rgba(42, 37, 33, 0.08), 0 1px 2px rgba(42, 37, 33, 0.06);
-  --tag-green-bg: #dfe4d3; --tag-green-fg: #36452a;
-  --tag-blue-bg: #d6e4f3; --tag-blue-fg: #1c4677;
-  --tag-orange-bg: #f6d6cc; --tag-orange-fg: #7a2414;
-  --tag-gray-bg: #e6e1da; --tag-gray-fg: #3b342e;
+  --ai: var(--k-cobalt);
+  --ai-soft: rgba(43, 120, 212, 0.1);
+  --on-ai: #ffffff;
+  --material: rgba(250, 247, 242, 0.72);
+  --material-edge: rgba(60, 45, 30, 0.08);
+  --sidebar-bg: rgba(248, 245, 240, 0.66);
+  --panel-bg: rgba(252, 250, 247, 0.8);
+  --radius: 14px;
+  --radius-lg: 22px;
+  --card-edge: 0 0 0 0.5px rgba(60, 45, 30, 0.08), 0 1px 2px rgba(60, 45, 30, 0.04), 0 6px 18px rgba(60, 45, 30, 0.06);
+  --lift: 0 0 0 0.5px rgba(60, 45, 30, 0.08), 0 4px 10px rgba(60, 45, 30, 0.06), 0 16px 36px rgba(60, 45, 30, 0.1);
+  --tag-green-bg: rgba(88, 140, 70, 0.14); --tag-green-fg: #3d6630;
+  --tag-blue-bg: rgba(43, 120, 212, 0.12); --tag-blue-fg: #1f5fae;
+  --tag-orange-bg: rgba(210, 69, 43, 0.12); --tag-orange-fg: #a8361f;
+  --tag-gray-bg: rgba(60, 45, 30, 0.07); --tag-gray-fg: #4a423b;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  /* Dieselbe Küche am Abend: Licht aus den Spots, Fronten glühen warm */
   :root[data-theme="kueche"] {
-    --k-red: #e35a3f;
-    --k-red-deep: #b9432c;
-    --k-wall: #1d1916;
-    --k-tile: #27221e;
-    --k-grout: rgba(150, 175, 188, 0.12);
-    --k-cobalt: #5b9bec;
-    --k-ink: #f3ede6;
-    --surface-2: #2e2823;
-    --lane: #221e1a;
-    --fill: rgba(243, 237, 230, 0.07);
-    --fill-strong: rgba(243, 237, 230, 0.12);
-    --label-2: rgba(243, 237, 230, 0.62);
-    --label-3: rgba(243, 237, 230, 0.4);
-    --separator: rgba(243, 237, 230, 0.1);
-    --accent-soft: rgba(227, 90, 63, 0.18);
-    --on-accent: #fff7f2;
-    --material: rgba(29, 25, 22, 0.88);
-    --material-edge: rgba(243, 237, 230, 0.08);
-    --sidebar-bg: #24201c;
-    --panel-bg: #211d19;
-    --card-edge: 0 0 0 1px rgba(243, 237, 230, 0.07), 0 1px 3px rgba(0, 0, 0, 0.35);
-    --tag-green-bg: #3a4630; --tag-green-fg: #e4ecd6;
-    --tag-blue-bg: #243c5c; --tag-blue-fg: #d9e7f8;
-    --tag-orange-bg: #5e2a1d; --tag-orange-fg: #fbdcd2;
-    --tag-gray-bg: #38312b; --tag-gray-fg: #ece6df;
+    --k-red: #ee6448;
+    --k-red-strong: #ff7a5e;
+    --k-cobalt: #5d9df0;
+    --k-sky: #9cc8ff;
+    --k-ink: #f5f0ea;
+    --bg: #15120f;
+    --surface: #221e1a;
+    --surface-2: #2b2621;
+    --lane: rgba(255, 245, 235, 0.035);
+    --fill: rgba(255, 245, 235, 0.07);
+    --fill-strong: rgba(255, 245, 235, 0.12);
+    --label-2: rgba(245, 240, 234, 0.62);
+    --label-3: rgba(245, 240, 234, 0.38);
+    --separator: rgba(255, 245, 235, 0.09);
+    --accent-soft: rgba(238, 100, 72, 0.16);
+    --ai: var(--k-cobalt);
+    --ai-soft: rgba(93, 157, 240, 0.16);
+    --material: rgba(30, 26, 23, 0.7);
+    --material-edge: rgba(255, 245, 235, 0.08);
+    --sidebar-bg: rgba(28, 24, 21, 0.6);
+    --panel-bg: rgba(30, 26, 23, 0.82);
+    --card-edge: 0 0 0 0.5px rgba(255, 245, 235, 0.08), 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --lift: 0 0 0 0.5px rgba(255, 245, 235, 0.1), 0 6px 14px rgba(0, 0, 0, 0.35), 0 20px 44px rgba(0, 0, 0, 0.4);
+    --tag-green-bg: rgba(120, 180, 100, 0.18); --tag-green-fg: #b8dca8;
+    --tag-blue-bg: rgba(93, 157, 240, 0.18); --tag-blue-fg: #b9d6fb;
+    --tag-orange-bg: rgba(238, 100, 72, 0.18); --tag-orange-fg: #ffbcab;
+    --tag-gray-bg: rgba(255, 245, 235, 0.08); --tag-gray-fg: #e6dfd8;
     color-scheme: dark;
   }
 }
 @media (min-width: 64rem) {
-  :root[data-theme="kueche"] { --icon-tint: var(--label-2); --radius: 4px; --radius-lg: 8px; }
+  :root[data-theme="kueche"] { --icon-tint: var(--label-2); }
 }
 
-/* Titel kräftig wie die Schrift auf dem Poster, kleine Überschriften gesperrt in Versalien */
-[data-theme="kueche"] .t-large-title { font-weight: 800; letter-spacing: -0.03em; }
-[data-theme="kueche"] .t-section,
-[data-theme="kueche"] .sidebar-heading { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.6875rem; font-weight: 700; }
-
-/* Hochschrank: das geriffelte Paneel wird zur Seitenleiste */
-[data-theme="kueche"] .sidebar {
+/* Ein kaum sichtbares Licht im Raum: warm oben rechts, kühl unten links.
+   Es steht still (kein Schweben), und das Glas der Leisten hat etwas zum Brechen. */
+[data-theme="kueche"] body {
   background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0 2px, rgba(42, 37, 33, 0.035) 2px 3px, transparent 3px 9px),
-    var(--sidebar-bg);
+    radial-gradient(60rem 40rem at 100% -10%, rgba(210, 69, 43, 0.07), transparent 60%),
+    radial-gradient(50rem 40rem at -10% 110%, rgba(43, 120, 212, 0.06), transparent 60%),
+    var(--bg) fixed;
+  background-attachment: fixed;
 }
-@media (prefers-color-scheme: dark) {
-  [data-theme="kueche"] .sidebar {
-    background:
-      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 2px, rgba(0, 0, 0, 0.18) 2px 3px, transparent 3px 9px),
-      var(--sidebar-bg);
+
+/* Typografie: Laufweite je nach Größe, keine Versalien */
+[data-theme="kueche"] .t-large-title { font-weight: 700; letter-spacing: -0.03em; }
+[data-theme="kueche"] .t-section { text-transform: none; font-size: 0.8125rem; font-weight: 600; letter-spacing: -0.003em; color: var(--label-2); }
+[data-theme="kueche"] .sidebar-heading { font-size: 0.75rem; letter-spacing: 0; }
+
+/* Glas: Seitenleiste, Kopfzeile beim Scrollen, Tableiste */
+[data-theme="kueche"] .sidebar {
+  background: var(--sidebar-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+  box-shadow: inset -0.5px 0 0 var(--material-edge);
+}
+[data-theme="kueche"] .sidebar-item { border-radius: 10px; }
+[data-theme="kueche"] .sidebar-marker { border-radius: 10px; background: var(--surface); box-shadow: var(--card-edge); }
+[data-theme="kueche"] .sidebar-item[aria-current="page"] { color: var(--label); }
+[data-theme="kueche"] .sidebar-item[aria-current="page"] svg { color: var(--k-red); }
+@media (min-width: 64rem) {
+  [data-theme="kueche"] .topbar { background: transparent; }
+  [data-theme="kueche"] .topbar.material {
+    background: var(--material);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    backdrop-filter: blur(24px) saturate(170%);
   }
 }
-[data-theme="kueche"] .sidebar-marker { background: var(--k-tile); box-shadow: var(--card-edge); }
-[data-theme="kueche"] .sidebar-item[aria-current="page"] { color: var(--k-red); }
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="kueche"] .sidebar, [data-theme="kueche"] .topbar.material, [data-theme="kueche"] .ai-panel { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 
-/* Fliesenspiegel: die Tagesspalten tragen das Fugenraster, Karten stehen darauf wie Dinge auf der Arbeitsplatte */
+/* Woche: ruhige Spalten aus hellem Glas, Karten mit weichem Schatten */
 [data-theme="kueche"] .board-lane {
-  border-radius: 4px;
-  background:
-    linear-gradient(var(--k-grout) 1px, transparent 1px) 0 0 / 22px 22px,
-    linear-gradient(90deg, var(--k-grout) 1px, transparent 1px) 0 0 / 22px 22px,
-    var(--lane);
-  box-shadow: inset 0 0 0 1px var(--separator);
+  border-radius: 18px;
+  padding: 0.375rem;
+  background: var(--lane);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
 }
-/* Die Tagesköpfe sind eine Reihe roter Fronten mit Griffleiste – wie die Unterschränke.
-   Heute: heller Datumskreis und ein roter Rahmen um die ganze Spalte. */
-[data-theme="kueche"] .board-lane[data-today="true"] { box-shadow: inset 0 0 0 2px var(--k-red); }
-[data-theme="kueche"] .board-lane > header {
-  position: relative;
-  margin: -0.25rem -0.25rem 0.25rem;
-  padding: 0.75rem 0.75rem 0.9375rem;
-  border-radius: 4px 4px 0 0;
-  background: var(--k-red);
-  color: var(--on-accent);
-  box-shadow: inset 0 -2px 0 var(--k-red-deep);
+[data-theme="kueche"] .board-lane > header { padding: 0.5rem 0.5rem 0.25rem; }
+[data-theme="kueche"] .board-lane[data-today="true"] {
+  background: linear-gradient(180deg, rgba(210, 69, 43, 0.08), rgba(210, 69, 43, 0.02) 40%, var(--lane));
+  box-shadow: inset 0 0 0 1px rgba(210, 69, 43, 0.35);
 }
-[data-theme="kueche"] .board-lane > header::after {
-  content: "";
-  position: absolute; left: 50%; bottom: 7px; translate: -50% 0;
-  width: 46%; height: 3px; border-radius: 2px;
-  background: var(--k-red-deep);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
+[data-theme="kueche"] .board-date {
+  min-width: 28px; height: 28px; font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.02em; color: var(--label-3);
 }
-[data-theme="kueche"] .board-lane[data-past="true"] > header { opacity: 0.85; }
-/* Handy: jede Tageskarte beginnt mit derselben roten Front */
-[data-theme="kueche"] .day-head {
-  position: relative;
-  padding: 0.75rem 1rem 1rem;
-  background: var(--k-red);
-  color: var(--on-accent);
-  box-shadow: inset 0 -2px 0 var(--k-red-deep);
-}
-[data-theme="kueche"] .day-head::after {
-  content: "";
-  position: absolute; left: 50%; bottom: 7px; translate: -50% 0;
-  width: 30%; height: 3px; border-radius: 2px;
-  background: var(--k-red-deep);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-[data-theme="kueche"] .day-head span { color: rgba(255, 247, 242, 0.82) !important; }
-[data-theme="kueche"] .day-head .badge { background: var(--on-accent) !important; color: var(--k-red) !important; }
-[data-theme="kueche"] .board-date { color: rgba(255, 247, 242, 0.85); }
-[data-theme="kueche"] .board-date[data-today="true"] { background: var(--on-accent); color: var(--k-red); }
-[data-theme="kueche"] .board-card { border-radius: 4px; }
-[data-theme="kueche"] .board-add-ai { color: var(--k-cobalt); }
+[data-theme="kueche"] .board-date[data-today="true"] { background: var(--k-red); color: #fff; box-shadow: 0 2px 8px rgba(210, 69, 43, 0.35); }
+[data-theme="kueche"] .board-card { border-radius: 12px; box-shadow: var(--card-edge); transition: box-shadow 200ms ease, transform 200ms cubic-bezier(0.2, 0, 0, 1); }
 @media (hover: hover) {
-  [data-theme="kueche"] .board-add-ai:hover { background: color-mix(in srgb, var(--k-cobalt) 12%, transparent); color: var(--k-cobalt); }
+  [data-theme="kueche"] .board-card:hover { box-shadow: var(--lift); transform: translateY(-1px); }
+}
+[data-theme="kueche"] .board-prop { border-radius: 999px; padding: 0 0.5rem; }
+[data-theme="kueche"] .board-add { border-radius: 10px; }
+[data-theme="kueche"] .board-add-ai { color: var(--ai); }
+@media (hover: hover) {
+  [data-theme="kueche"] .board-add-ai:hover { background: var(--ai-soft); color: var(--ai); }
+}
+[data-theme="kueche"] .tag { height: 18px; padding: 0 0.4375rem; border-radius: 999px; }
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="kueche"] .board-card:hover { transform: none; }
 }
 
-/* KI trägt das Kobaltblau des Posters – eigene Stimme neben dem Rot */
-[data-theme="kueche"] .ai-orb { background: var(--k-cobalt); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14); }
-[data-theme="kueche"] .ai-button { color: var(--k-cobalt); background: color-mix(in srgb, var(--k-cobalt) 11%, transparent); border-radius: 4px; }
-[data-theme="kueche"] .ai-button[aria-pressed="true"] { color: #fff; background: var(--k-cobalt); }
-[data-theme="kueche"] .ai-chip { color: var(--k-cobalt); background: color-mix(in srgb, var(--k-cobalt) 10%, transparent); border-radius: 4px; }
+/* KI: Kobalt mit eigenem Licht – Kugel, Kapsel, leuchtender Rand im Fokus */
+[data-theme="kueche"] .ai-orb {
+  color: #fff;
+  background: radial-gradient(circle at 32% 26%, var(--k-sky), var(--k-cobalt) 58%, #1d58a6);
+  box-shadow: 0 2px 8px rgba(43, 120, 212, 0.35), inset 0 0.5px 0 rgba(255, 255, 255, 0.5);
+}
+[data-theme="kueche"] .ai-button { height: 30px; padding: 0 0.75rem; border-radius: 999px; color: var(--ai); background: var(--ai-soft); }
+[data-theme="kueche"] .ai-button[aria-pressed="true"] { color: #fff; background: var(--ai); box-shadow: 0 2px 10px rgba(43, 120, 212, 0.35); }
+[data-theme="kueche"] .ai-chip { border-radius: 999px; color: var(--ai); background: var(--ai-soft); }
+[data-theme="kueche"] .ai-bar-field {
+  min-height: 46px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(120deg, rgba(43, 120, 212, 0.28), rgba(125, 180, 242, 0.18), rgba(43, 120, 212, 0.28)) border-box;
+  box-shadow: 0 1px 2px rgba(60, 45, 30, 0.04), 0 6px 18px rgba(43, 120, 212, 0.08);
+}
+[data-theme="kueche"] .ai-bar-field:focus-within {
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(120deg, var(--k-cobalt), var(--k-sky), var(--k-cobalt)) border-box;
+  box-shadow: 0 0 0 4px rgba(43, 120, 212, 0.12), 0 10px 30px rgba(43, 120, 212, 0.16);
+}
+[data-theme="kueche"] .ai-bar-field button[type="submit"] { background: var(--ai) !important; }
 @media (min-width: 64rem) {
-  [data-theme="kueche"] .ai-suggestions .ai-chip { background: transparent; color: var(--label); }
-  [data-theme="kueche"] .ai-suggestions .ai-chip svg { color: var(--k-cobalt); }
+  [data-theme="kueche"] .ai-suggestions { border-radius: 16px; box-shadow: var(--lift); background: var(--surface); }
+  [data-theme="kueche"] .ai-suggestions .ai-chip { border-radius: 10px; background: transparent; color: var(--label); }
+  [data-theme="kueche"] .ai-suggestions .ai-chip svg { color: var(--ai); }
 }
-[data-theme="kueche"] .ai-bar-field { border-radius: 6px; box-shadow: 0 0 0 1px var(--separator), 0 2px 8px rgba(43, 120, 212, 0.06); }
-[data-theme="kueche"] .ai-bar-field:focus-within { box-shadow: 0 0 0 1.5px var(--k-cobalt), 0 4px 16px rgba(43, 120, 212, 0.14); }
-[data-theme="kueche"] .ai-bar-field button[type="submit"] { background: var(--k-cobalt) !important; border-radius: 4px; }
 @media (hover: hover) {
-  [data-theme="kueche"] .ai-button:not([aria-pressed="true"]):hover, [data-theme="kueche"] .ai-chip:hover { background: color-mix(in srgb, var(--k-cobalt) 18%, transparent); }
+  [data-theme="kueche"] .ai-button:not([aria-pressed="true"]):hover, [data-theme="kueche"] .ai-chip:hover { background: rgba(43, 120, 212, 0.16); }
 }
+
+/* KI-Panel: schwebt als eigene Glasfläche über dem Rand – parallel zur Arbeit, ohne abzudunkeln */
+@media (min-width: 64rem) {
+  [data-theme="kueche"] .ai-panel {
+    top: 0.5rem; bottom: 0.5rem; right: 0.5rem;
+    width: calc(400px - 1rem);
+    border-radius: 20px;
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(30px) saturate(170%);
+    backdrop-filter: blur(30px) saturate(170%);
+    box-shadow: var(--lift), inset 0 0 0 0.5px rgba(43, 120, 212, 0.18);
+    transform: translateX(calc(100% + 1rem));
+  }
+  [data-theme="kueche"] .ai-panel[data-open="true"] { transform: none; }
+}
+[data-theme="kueche"] .ai-composer textarea { border-radius: 18px; }
+[data-theme="kueche"] .ai-composer textarea:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--ai), 0 0 0 4px var(--ai-soft); }
 
 @layer components {
-  /* Fronten: glatt, fast eckig, mit einer feinen Fuge unten */
-  [data-theme="kueche"] .btn { border-radius: 4px; }
-  [data-theme="kueche"] .btn-primary { box-shadow: inset 0 -2px 0 var(--k-red-deep); }
-  [data-theme="kueche"] .btn-tinted { color: var(--k-red-deep); }
-  [data-theme="kueche"] .chip { border-radius: 4px; }
-  [data-theme="kueche"] .input { border-radius: 4px; }
-  [data-theme="kueche"] .segmented, [data-theme="kueche"] .segmented button { border-radius: 4px; }
-  [data-theme="kueche"] .card, [data-theme="kueche"] .group { border-radius: var(--radius); }
-  [data-theme="kueche"] .sheet { border-radius: 10px 10px 0 0; }
-  [data-theme="kueche"] .sheet.sheet-dialog { border-radius: 8px; }
-  @media (prefers-color-scheme: dark) {
-    [data-theme="kueche"] .btn-tinted { color: var(--k-red); }
+  /* Kapseln für Knöpfe und Chips, weiche Ecken für Flächen */
+  [data-theme="kueche"] .btn { border-radius: 999px; font-weight: 600; }
+  [data-theme="kueche"] .btn-primary { box-shadow: 0 1px 2px rgba(185, 58, 34, 0.3), 0 4px 12px rgba(210, 69, 43, 0.22); }
+  [data-theme="kueche"] .chip { border-radius: 999px; }
+  [data-theme="kueche"] .input { border-radius: 12px; }
+  [data-theme="kueche"] .segmented { border-radius: 10px; }
+  [data-theme="kueche"] .segmented button { border-radius: 8px; }
+  [data-theme="kueche"] .card, [data-theme="kueche"] .group { border-radius: var(--radius); box-shadow: var(--card-edge); }
+  [data-theme="kueche"] .badge { border-radius: 999px; }
+  [data-theme="kueche"] .sheet { border-radius: 22px 22px 0 0; }
+  [data-theme="kueche"] .sheet.sheet-dialog { border-radius: 22px; box-shadow: var(--lift); }
+  @media (min-width: 64rem) {
+    [data-theme="kueche"] .btn { min-height: 34px; padding: 0 0.875rem; }
+    [data-theme="kueche"] .chip { box-shadow: inset 0 0 0 0.5px var(--separator); background: var(--surface); }
+    [data-theme="kueche"] .chip[data-on="true"] { background: var(--k-red); color: #fff; box-shadow: none; }
+    [data-theme="kueche"] .btn-gray { background: var(--surface); box-shadow: inset 0 0 0 0.5px var(--separator), 0 1px 2px rgba(60, 45, 30, 0.04); }
   }
 }
 @media (prefers-color-scheme: dark) {
