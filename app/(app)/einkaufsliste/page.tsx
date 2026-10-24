@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconCart, IconCheck, IconChevronLeft, IconChevronRight, IconCopy } from "@/components/icons";
+import { AccountButton } from "@/components/account-button";
 import { IconButton, PageHeader } from "@/components/nav";
 import { useToast } from "@/components/toast";
 import { Empty, Section } from "@/components/ui";
@@ -94,6 +95,7 @@ function Shopping() {
           <>
             <IconButton label="Vorige Woche" onClick={() => go(shiftWeek(isoWeek, -1))}><IconChevronLeft /></IconButton>
             <IconButton label="Nächste Woche" onClick={() => go(shiftWeek(isoWeek, 1))}><IconChevronRight /></IconButton>
+            <AccountButton />
           </>
         }
       >

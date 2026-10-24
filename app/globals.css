@@ -347,3 +347,15 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 /* Toasts über der Tableiste, am Computer unten in der Inhaltsfläche */
 .toast-dock { left: 0; bottom: calc(92px + env(safe-area-inset-bottom)); }
 @media (min-width: 64rem) { .toast-dock { left: var(--sidebar-w); bottom: 1.5rem; } }
+
+/* Eingabe des Assistenten: über der Tableiste, am Computer am unteren Rand neben der Seitenleiste */
+.composer-dock { left: 0; bottom: calc(56px + env(safe-area-inset-bottom)); }
+@media (min-width: 64rem) { .composer-dock { left: var(--sidebar-w); bottom: 0; padding-bottom: 0.5rem; } }
+
+/* „denkt nach …“ – drei pulsierende Punkte */
+.typing { display: inline-flex; gap: 3px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--label-3); animation: typing 1.2s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: 0.15s; }
+.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: 0.6; } }

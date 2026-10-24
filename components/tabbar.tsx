@@ -5,14 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useApp } from "./app-data";
 import { Avatar } from "./ui";
-import { IconBook, IconCalendar, IconCart, IconPeople, IconShelf } from "./icons";
+import { IconBook, IconCalendar, IconCart, IconShelf, IconSparkles } from "./icons";
 
 const TABS = [
   { href: "/woche", label: "Woche", Icon: IconCalendar },
   { href: "/rezepte", label: "Rezepte", Icon: IconBook },
-  { href: "/regal", label: "Regal", Icon: IconShelf },
+  { href: "/assistent", label: "KI", Icon: IconSparkles },
   { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart },
-  { href: "/haushalt", label: "Haushalt", Icon: IconPeople },
+  { href: "/regal", label: "Regal", Icon: IconShelf },
 ];
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
@@ -49,6 +49,10 @@ export function Sidebar() {
   const path = usePathname();
   const { me, household } = useApp();
   const reduce = useReducedMotion();
+  const spring = reduce ? { duration: 0 } : { type: "spring" as const, bounce: 0, duration: 0.35 };
+  // Die Markierung gleitet zum neuen Eintrag, statt zu springen
+  const marker = <motion.span layoutId="sidebar-active" className="absolute inset-0 rounded-xl" style={{ background: "var(--accent-soft)" }} transition={spring} aria-hidden />;
+  const householdActive = isActive(path, "/haushalt");
   return (
     <nav className="sidebar fixed inset-y-0 left-0 z-40 hidden flex-col lg:flex" aria-label="Hauptnavigation">
       <Link href="/woche" className="pressable flex h-16 shrink-0 items-center justify-center gap-2.5 xl:justify-start xl:px-5" aria-label="Essensplaner – zur Woche">
@@ -66,16 +70,7 @@ export function Sidebar() {
                 aria-current={active ? "page" : undefined}
                 className="sidebar-item pressable relative flex flex-col items-center gap-1 rounded-xl py-2 xl:flex-row xl:gap-3 xl:px-3"
               >
-                {/* Die Markierung gleitet zum neuen Eintrag, statt zu springen */}
-                {active && (
-                  <motion.span
-                    layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-xl"
-                    style={{ background: "var(--accent-soft)" }}
-                    transition={reduce ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.35 }}
-                    aria-hidden
-                  />
-                )}
+                {active && marker}
                 <Icon size={22} strokeWidth={active ? 2.1 : 1.8} className="relative" />
                 <span className="relative text-[11px] font-medium tracking-[0.01em] xl:text-[0.9375rem] xl:tracking-[-0.008em]">{label}</span>
               </Link>
@@ -83,13 +78,17 @@ export function Sidebar() {
           );
         })}
       </ul>
+      {/* Haushalt und Konto: unten, wie das Konto in den Seitenleisten von macOS */}
       <Link
         href="/haushalt"
-        className="sidebar-item pressable mx-2 mt-auto mb-3 flex items-center justify-center gap-2.5 rounded-xl py-2 xl:mx-3 xl:justify-start xl:px-3"
+        aria-current={householdActive ? "page" : undefined}
+        aria-label={`Haushalt und Konto – angemeldet als ${me.name}`}
+        className="sidebar-item pressable relative mx-2 mt-auto mb-3 flex items-center justify-center gap-2.5 rounded-xl py-2 xl:mx-3 xl:justify-start xl:px-3"
         title={`Angemeldet als ${me.name} · ${household.name}`}
       >
-        <Avatar member={me} size={30} />
-        <span className="hidden min-w-0 leading-tight xl:block">
+        {householdActive && marker}
+        <span className="relative"><Avatar member={me} size={30} /></span>
+        <span className="relative hidden min-w-0 leading-tight xl:block">
           <span className="t-footnote block truncate font-semibold" style={{ color: "var(--label)" }}>{me.name}</span>
           <span className="t-caption block truncate">{household.name}</span>
         </span>

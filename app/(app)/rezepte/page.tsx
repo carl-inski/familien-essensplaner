@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconClock, IconHistory, IconNote, IconPlus, IconSearch, IconUpload } from "@/components/icons";
+import { AccountButton } from "@/components/account-button";
 import { IconButton, PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
@@ -93,6 +94,7 @@ export default function RecipesPage() {
             <IconButton label="Lange nicht gegessen" href="/rezepte/lange-nicht"><IconHistory /></IconButton>
             <IconButton label="Import und Export" href="/rezepte/import"><IconUpload /></IconButton>
             <IconButton label="Neues Rezept" href="/rezepte/neu"><IconPlus /></IconButton>
+            <AccountButton />
           </>
         }
       >
