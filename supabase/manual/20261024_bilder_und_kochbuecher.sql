@@ -1,0 +1,159 @@
+-- NICHT automatisch ausführen. Keine Migration.
+-- Im Supabase-SQL-Editor manuell ausführen, nachdem das Schema schon steht
+-- und die 19 Rezepte sowie 15 Kochbücher vorhanden sind.
+--
+-- Setzt Beispielbilder und geprüfte Buchangaben. Vorhandene eigene Fotos,
+-- ISBN und Notizen bleiben erhalten. Schema, Policies und Grants bleiben unberührt.
+-- Werte entsprechen lib/medien.ts.
+-- Ein zweites Ausführen ersetzt nur noch die alten Open-Library-Cover und die
+-- Hinweistexte aus der ersten Fassung dieser Datei.
+
+begin;
+
+-- Beispielbilder (nur wo noch kein Foto hinterlegt ist)
+update public.ep_recipes set image_url = '/images/rezepte/spinatquiche.jpg' where title = 'Spinatquiche mit Feta' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/pasta-raeucherlachs.jpg' where title = 'Pasta Räucherlachs' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/teriyaki-haehnchen.jpg' where title = 'Teriyaki Hähnchen' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/shakshuka.jpg' where title = 'Shakshuka mit Kichererbsen & Kokosmilch' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/pizza-rucola-schinken.jpg' where title = 'Pizza (Rucola & Schinken)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/sommernudeln.jpg' where title = 'Sommernudeln (Caprese-Style)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/cajun-chicken-pasta.jpg' where title = 'Cajun Chicken Pasta' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/buffalo-chicken-wraps.jpg' where title = 'Buffalo Chicken Wraps mit Ranch-Sauce' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/kartoffelknoedel.jpg' where title = 'Kartoffelknödel mit Schweinegeschnetzeltem' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/one-pot-raeucherlachs.jpg' where title = 'One-Pot Räucherlachs-Pasta (Jamie Oliver)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/ananascurry.jpg' where title = 'Ananascurry (nach Leon: Fast Vegetarian)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/reisbandnudel-suppe.jpg' where title = 'Asiatische Reisbandnudel-Suppe' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/sommerrollen.jpg' where title = 'Sommerrollen (Vietnamesisch)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/wraps-louisa.jpg' where title = 'Wraps Louisa' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/tomaten-gnocchi.jpg' where title = 'Tomaten-Gnocchi' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/brathaehnchen-miso.jpg' where title = 'Brathähnchen mit Miso' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/chili-con-carne.jpg' where title = 'Chili con Carne' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/fitness-reisriegel.jpg' where title = 'Fitness-Reisriegel (PB&J & Banane-Schoko)' and image_url is null;
+update public.ep_recipes set image_url = '/images/rezepte/honighaehnchen.jpg' where title = 'Honighähnchen' and image_url is null;
+
+-- Kochbücher. Leere Felder werden gefüllt, gesetzte Werte nicht überschrieben.
+-- Die Platzhalter-Notiz aus dem ersten Seed und die Hinweise der ersten Fassung
+-- dieser Datei werden ersetzt. Eigene Notizen bleiben.
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Franco Benussi', 'Reinhardt Hess', 'Sabine Sälzer']::text[] else authors end,
+  publisher = case when publisher is null or publisher = 'GU' then 'Gräfe und Unzer' else publisher end,
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/die-echte-italienische-kueche.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Mehrere Ausgaben (unter anderem 2012 und 2025). ISBN deshalb leer gelassen.')
+    then 'Cover: Gräfe und Unzer, Ausgabe 2025. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Die echte italienische Küche';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-8310-2333-2'),
+  publisher = coalesce(publisher, 'Dorling Kindersley'),
+  year = coalesce(year, 2013),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/jerusalem.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Jerusalem';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-86528-608-6'),
+  authors = case when cardinality(authors) = 0 then array['Sigrid Krekel', 'Angela Francisca Endress']::text[] else authors end,
+  publisher = coalesce(publisher, 'Umschau'),
+  year = coalesce(year, 2009),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/schlau-kochen.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Schlau kochen';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Alfons Schuhbeck']::text[] else authors end,
+  publisher = coalesce(publisher, 'Zabert Sandmann'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/das-neue-bayrische-kochbuch.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Mehrere Auflagen (unter anderem 1989, 1995, 2001). ISBN deshalb leer gelassen.')
+    then 'Cover: Zabert Sandmann, jüngste Ausgabe 2001. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Das neue bayrische Kochbuch';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-8321-9476-5'),
+  authors = case when cardinality(authors) = 0 or authors = array['Leon']::text[] then array['Jane Baxter', 'Henry Dimbleby']::text[] else authors end,
+  publisher = coalesce(publisher, 'DuMont'),
+  year = coalesce(year, 2014),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/leon-fast-food-vegetarisch.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Leon Fast Food Vegetarisch';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Ruth Kreider-Stempfle', 'Bettina Frensemeier']::text[] else authors end,
+  publisher = coalesce(publisher, 'Gerstenberg'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/backen-und-bauen.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Zwei Ausgaben (2013 und 2022). ISBN deshalb leer gelassen.')
+    then 'Cover: Gerstenberg, Ausgabe 2022. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Das große Buch vom Backen und Bauen';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-89910-010-5'),
+  publisher = coalesce(publisher, 'Collection Rolf Heyne'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/harrys-bar.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Harry''s Bar Kochbuch';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-8338-2126-4'),
+  publisher = coalesce(publisher, 'Gräfe und Unzer'),
+  year = coalesce(year, 2010),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/meine-klassiker.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Meine Klassiker';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Maria Hofmann', 'Helmut Lydtin']::text[] else authors end,
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/bayerisches-kochbuch.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Das Bayerische Kochbuch hat viele Auflagen mit eigenen ISBN. Deshalb leer gelassen.')
+    then 'Cover der langen Standardausgabe (Verlagsseite). DNB nennt 2026 den Verlag Friedrich Pustet. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Bayrisches Kochbuch';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Sam Stern', 'Susan Stern']::text[] else authors end,
+  publisher = coalesce(publisher, 'Oetinger'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/licence-to-cook.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Zwei Ausgaben (2007 und 2014). ISBN deshalb leer gelassen.')
+    then 'Cover: Oetinger, Ausgabe 2014. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Licence to Cook';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-8310-1965-6'),
+  authors = case when cardinality(authors) = 0 then array['Annik Wecker']::text[] else authors end,
+  publisher = coalesce(publisher, 'Dorling Kindersley'),
+  year = coalesce(year, 2011),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/anniks-goettliche-desserts.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Anniks göttliche Desserts';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Yotam Ottolenghi', 'Noor Murad']::text[] else authors end,
+  publisher = coalesce(publisher, 'Dorling Kindersley'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/ottolenghi-test-kitchen.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Zwei verschiedene Bände (Shelf Love und Extra Good Things). ISBN deshalb leer gelassen.')
+    then 'Cover: deutsche Ausgabe „OTK – Extra Good Things“, DK 2022, nicht Shelf Love von 2021. ISBN bleibt leer, bis der Band bestätigt ist.' else notes end
+where title = 'Ottolenghi Test Kitchen';
+
+update public.ep_cookbooks set
+  authors = case when cardinality(authors) = 0 then array['Yotam Ottolenghi']::text[] else authors end,
+  publisher = coalesce(publisher, 'Dorling Kindersley'),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/ottolenghi-simple.jpg' else cover_url end,
+  notes = case when notes is null or notes in ('Autor/Verlag per ISBN ergänzen', 'Englische Ausgabe und deutsche Ausgabe „Simple“ haben verschiedene ISBN. Deshalb leer gelassen.')
+    then 'Cover: deutsche Ausgabe „Ottolenghi Simple“, DK 2023, nicht „Simple Too“ von 2026. ISBN bleibt leer, bis die Ausgabe bestätigt ist.' else notes end
+where title = 'Ottolenghi Simple';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-8310-4579-2'),
+  publisher = coalesce(publisher, 'Dorling Kindersley'),
+  year = coalesce(year, 2022),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/jamie-oliver-one.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'ONE';
+
+update public.ep_cookbooks set
+  isbn = coalesce(isbn, '978-3-95726-080-2'),
+  publisher = coalesce(publisher, 'Covadonga'),
+  year = coalesce(year, 2023),
+  cover_url = case when cover_url is null or cover_url like '%openlibrary.org%' then '/images/kochbuecher/grand-tour.jpg' else cover_url end,
+  notes = case when notes = 'Autor/Verlag per ISBN ergänzen' then null else notes end
+where title = 'Das neue Grand Tour Kochbuch';
+
+commit;

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { formatDateDE } from "@/lib/dates";
+import { dishPhoto } from "@/lib/medien";
 import type { CookStats, Diet, Member, Recipe } from "@/lib/types";
 import { IconFish, IconLeaf, IconMeat, IconMinus, IconPlus } from "./icons";
 
@@ -41,25 +42,29 @@ export function DietIcon({ diet, size = 16 }: { diet: Diet | null; size?: number
 
 const PLACEHOLDER_HUES: Record<string, number> = { fleisch: 18, fisch: 205, vegetarisch: 120 };
 
-/** Foto oder ruhiger Farbverlauf mit Initiale als Platzhalter */
+/** Foto, Beispielbild aus dem Katalog oder ein Teller als Platzhalter */
 export function RecipeImage({ recipe, className = "", rounded = 12 }: { recipe: Pick<Recipe, "title" | "image_url" | "diet">; className?: string; rounded?: number }) {
-  if (recipe.image_url) {
+  const src = recipe.image_url || dishPhoto(recipe.title)?.src;
+  if (src) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={recipe.image_url} alt="" className={`object-cover ${className}`} style={{ borderRadius: rounded }} loading="lazy" />;
+    return <img src={src} alt="" className={`object-cover ${className}`} style={{ borderRadius: rounded }} loading="lazy" />;
   }
-  const hue = PLACEHOLDER_HUES[recipe.diet ?? ""] ?? 30;
+  const hue = PLACEHOLDER_HUES[recipe.diet ?? ""] ?? 28;
   return (
     <div
-      className={`flex items-center justify-center ${className}`}
+      className={`relative overflow-hidden ${className}`}
       style={{
         borderRadius: rounded,
-        background: `linear-gradient(140deg, hsl(${hue} 70% 62%), hsl(${hue + 25} 65% 45%))`,
+        background: `linear-gradient(155deg, hsl(${hue} 46% 72%), hsl(${hue + 16} 38% 48%))`,
       }}
       aria-hidden
     >
-      <span className="font-semibold text-white/90" style={{ fontSize: "1.75em", letterSpacing: "-0.02em" }}>
-        {recipe.title.slice(0, 1)}
-      </span>
+      <svg viewBox="0 0 80 80" className="absolute inset-0 m-auto h-[58%] w-[58%]" aria-hidden>
+        <ellipse cx="40" cy="58" rx="22" ry="5" fill="rgba(0,0,0,.12)" />
+        <ellipse cx="40" cy="40" rx="24" ry="24" fill="rgba(255,255,255,.22)" />
+        <circle cx="40" cy="40" r="16" fill="none" stroke="rgba(255,255,255,.92)" strokeWidth="2.4" />
+        <circle cx="40" cy="40" r="7.5" fill="rgba(255,255,255,.78)" />
+      </svg>
     </div>
   );
 }
