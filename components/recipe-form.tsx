@@ -131,6 +131,7 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
     <>
       <PageHeader
         title={recipe ? "Bearbeiten" : "Neues Rezept"}
+        icon={recipe ? "✏️" : "📝"}
         back={{ href: recipe ? `/rezepte/${recipe.id}` : "/rezepte", label: recipe ? "Rezept" : "Rezepte" }}
         trailing={<button className="btn-plain t-sub pressable font-semibold" disabled={saving} onClick={save}>{saving ? "Speichert …" : "Sichern"}</button>}
       />
