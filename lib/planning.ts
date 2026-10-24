@@ -72,10 +72,13 @@ export function buildShoppingList(
   members: Member[],
   attendance: Attendance[],
   pantrySet: Set<string> = new Set(),
+  /** Nur diese Gerichte einkaufen; Portionen rechnen trotzdem mit dem ganzen Plan (Reste) */
+  include?: (entry: MealPlanEntry) => boolean,
 ): ShoppingItem[] {
   const byKey = new Map<string, ShoppingItem>();
   for (const entry of plan) {
     if (!entry.recipe_id || entry.leftover_of || entry.status === "ausgefallen") continue;
+    if (include && !include(entry)) continue;
     const recipe = recipes.get(entry.recipe_id);
     if (!recipe?.ep_recipe_ingredients?.length) continue;
     const servings = servingsFor(entry, plan, members, attendance);
@@ -140,4 +143,12 @@ export function groupByAisle(items: ShoppingItem[]): [string, ShoppingItem[]][] 
     groups.set(item.aisle, list);
   }
   return [...groups.entries()];
+}
+
+/**
+ * Gerichte, für die noch eingekauft werden muss: ab heute, mit Rezept,
+ * kein Rest, nicht ausgefallen oder schon gekocht, noch nicht eingekauft.
+ */
+export function needsShopping(entry: MealPlanEntry, today: string): boolean {
+  return !!entry.recipe_id && !entry.leftover_of && entry.status === "geplant" && entry.date >= today && !entry.shopped_at;
 }

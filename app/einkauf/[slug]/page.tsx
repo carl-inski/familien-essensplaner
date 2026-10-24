@@ -5,7 +5,7 @@ import { groupByAisle } from "@/lib/planning";
 import { anonClient, jsonLd, requestOrigin } from "@/lib/public/data";
 import type { ShoppingItem } from "@/lib/types";
 
-// Wocheneinkauf als ein kombiniertes Pseudo-Rezept für den Bring!-Import
+// Einkaufsliste als ein kombiniertes Pseudo-Rezept für den Bring!-Import
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -15,7 +15,7 @@ export default async function PublicShoppingPage({ params }: PageProps<"/einkauf
   const list = data as { iso_week: string; items: ShoppingItem[] } | null;
   if (!list) notFound();
 
-  const name = `Wocheneinkauf ${weekNumberLabel(list.iso_week)}`;
+  const name = `Einkauf ${weekNumberLabel(list.iso_week)}`;
   const origin = await requestOrigin();
   const ld = {
     "@context": "https://schema.org",

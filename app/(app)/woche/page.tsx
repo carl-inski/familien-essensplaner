@@ -224,13 +224,15 @@ function Week() {
     const hasMeal = !!recipe || !!source;
     const cancelled = entry?.status === "ausgefallen";
     const nobody = count === 0;
-    const detail = cancelled
+    const baseDetail = cancelled
       ? "ausgefallen"
       : source
         ? `von ${WEEKDAY_LONG[weekdayIndex(source.date)]} ${MEAL_LABEL[source.meal]}`
         : book
           ? `aus deinem Regal · ${book.title}${recipe?.cookbook_page ? `, S. ${recipe.cookbook_page}` : ""}`
           : recipe?.time_text ?? (recipe?.servings ? `Rezept für ${recipe.servings}` : "");
+    // Zutaten schon gekauft (Einkauf erledigt) – sieht man auch im Plan
+    const detail = entry?.shopped_at && entry.status === "geplant" && !cancelled ? `eingekauft ✓${baseDetail ? ` · ${baseDetail}` : ""}` : baseDetail;
     return { slot, entry, count, recipe, source, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail };
   }
 
