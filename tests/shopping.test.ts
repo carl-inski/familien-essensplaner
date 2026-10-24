@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { aisleFor } from "../lib/aisles";
 import { matchByIngredients } from "../lib/leftovers";
 import { pantryEntriesFor, pantryParts, withoutPantry } from "../lib/pantry";
-import { buildShoppingList } from "../lib/planning";
+import { buildShoppingList, needsShopping } from "../lib/planning";
 import { parseAmount, scaledAmountText } from "../lib/quantity";
 import { checkBatch, rankedCandidates } from "../lib/suggest";
 import type { CookStats, Ingredient, MealPlanEntry, Member, Recipe } from "../lib/types";
@@ -100,5 +100,27 @@ describe("Was koche ich damit?", () => {
     const hits = matchByIngredients([a, b, c], ["Zucchini", "Feta"]);
     expect(hits.map((h) => h.recipe.id)).toEqual(["a", "b"]);
     expect(hits[0].matched).toEqual(["Zucchini", "Feta"]);
+  });
+});
+
+describe("Einkauf über Wochengrenzen", () => {
+  const r1 = recipe("r1", "Pasta", [ing("Penne", "500 g")]);
+  const r2 = recipe("r2", "Curry", [ing("Kokosmilch", "400 ml")]);
+  const r3 = recipe("r3", "Suppe", [ing("Linsen", "250 g")]);
+  const recipes = new Map([["r1", r1], ["r2", r2], ["r3", r3]]);
+  const today = "2026-10-29";
+  const plan: MealPlanEntry[] = [
+    entry("alt", "2026-10-27", "r1"), // schon gegessen
+    { ...entry("eingekauft", "2026-10-30", "r2"), shopped_at: "2026-10-26T10:00:00Z" },
+    entry("offen", "2026-11-02", "r3"), // nächste Woche
+    { ...entry("gekocht", "2026-10-29", "r1"), status: "gekocht" },
+  ];
+
+  it("nimmt nur kommende, noch nicht eingekaufte Gerichte", () => {
+    expect(plan.filter((p) => needsShopping(p, today)).map((p) => p.id)).toEqual(["offen"]);
+  });
+  it("kauft nur die ausgewählten Gerichte ein", () => {
+    const list = buildShoppingList(plan, recipes, four, [], new Set(), (e) => needsShopping(e, today));
+    expect(list.map((i) => i.name)).toEqual(["Linsen"]);
   });
 });

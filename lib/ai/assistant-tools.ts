@@ -1,11 +1,11 @@
 import "server-only";
 import { tool } from "ai";
 import { z } from "zod";
-import { WEEKDAY_LONG, addDays, isoWeekString, weekDates, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_LONG, addDays, weekdayIndex } from "@/lib/dates";
 import { cookStatsFromHistory } from "@/lib/history";
 import { matchByIngredients } from "@/lib/leftovers";
 import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
-import { buildShoppingList, effectiveStatus, presentMembers } from "@/lib/planning";
+import { buildShoppingList, effectiveStatus, needsShopping, presentMembers } from "@/lib/planning";
 import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
 import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
 import { AnwesenheitInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
@@ -172,20 +172,26 @@ export function assistantTools(ctx: AiContext, today: string) {
     }),
 
     einkaufsliste: tool({
-      description: "Einkaufsliste einer Woche aus dem Plan (Mengen nach Anwesenheit skaliert, Vorräte wie Salz ausgelassen).",
-      inputSchema: z.object({ woche: z.string().regex(/^\d{4}-W\d{2}$/).nullable().describe("ISO-Woche wie 2026-W44, Standard aktuelle Woche") }),
-      execute: async ({ woche }) => {
-        const dates = weekDates(woche ?? isoWeekString(today));
+      description:
+        "Aktuelle Einkaufsliste: Zutaten aller kommenden Gerichte ab heute, für die noch nicht eingekauft wurde (Mengen nach Anwesenheit, Vorrat wie Salz ausgelassen), plus Posten unter „Noch offen“.",
+      inputSchema: z.object({ bis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("nur Gerichte bis zu diesem Datum, sonst alle") }),
+      execute: async ({ bis }) => {
+        const to = bis ?? addDays(today, 42);
         const { members, recipes } = await load();
-        const [p, a, v] = await Promise.all([
-          ctx.sb.from("ep_meal_plan").select("*").gte("date", dates[0]).lte("date", dates[6]),
-          ctx.sb.from("ep_attendance").select("*").gte("date", dates[0]).lte("date", dates[6]).in("member_id", members.map((m) => m.id)),
+        const [p, a, v, x] = await Promise.all([
+          ctx.sb.from("ep_meal_plan").select("*").gte("date", today).lte("date", addDays(today, 42)),
+          ctx.sb.from("ep_attendance").select("*").gte("date", today).lte("date", addDays(today, 42)).in("member_id", members.map((m) => m.id)),
           ctx.sb.from("ep_pantry").select("name"),
+          ctx.sb.from("ep_shopping_extra").select("text"),
         ]);
+        const plan = (p.data ?? []) as MealPlanEntry[];
         const pantry = new Set(((v.data ?? []) as { name: string }[]).map((r) => r.name));
-        const items = buildShoppingList((p.data ?? []) as MealPlanEntry[], new Map(recipes.map((r) => [r.id, r])), members, (a.data ?? []) as Attendance[], pantry);
+        const include = (e: MealPlanEntry) => needsShopping(e, today) && e.date <= to;
+        const items = buildShoppingList(plan, new Map(recipes.map((r) => [r.id, r])), members, (a.data ?? []) as Attendance[], pantry, include);
         return {
-          woche: woche ?? isoWeekString(today),
+          gerichte: plan.filter(include).map((e) => ({ tag: dayLabel(e.date), mahlzeit: MEAL_LABEL[e.meal], gericht: recipes.find((r) => r.id === e.recipe_id)?.title ?? null })),
+          schon_eingekauft: plan.filter((e) => e.shopped_at && e.recipe_id).map((e) => ({ tag: dayLabel(e.date), gericht: recipes.find((r) => r.id === e.recipe_id)?.title ?? null })),
+          noch_offen: ((x.data ?? []) as { text: string }[]).map((r) => r.text),
           zutaten: items.filter((i) => !i.pantry).map((i) => ({ text: i.text, bereich: i.aisle })),
           immer_zu_hause: items.filter((i) => i.pantry).map((i) => i.name),
         };

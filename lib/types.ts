@@ -109,6 +109,8 @@ export interface MealPlanEntry {
   servings_override: number | null;
   status: PlanStatus;
   note: string | null;
+  /** Zutaten schon eingekauft (Einkauf erledigt) */
+  shopped_at?: string | null;
 }
 
 export interface CookingHistoryEntry {
