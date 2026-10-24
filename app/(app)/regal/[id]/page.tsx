@@ -76,7 +76,7 @@ export default function BookDetailPage() {
 
   return (
     <>
-      <PageHeader title={book.title} back={{ href: "/regal", label: "Regal" }} trailing={<IconButton label="Bearbeiten" onClick={() => setEditing(true)}><IconEdit /></IconButton>} />
+      <PageHeader title={book.title} icon="📖" back={{ href: "/regal", label: "Regal" }} trailing={<IconButton label="Bearbeiten" onClick={() => setEditing(true)}><IconEdit /></IconButton>} />
       <div className="mx-auto max-w-2xl px-4">
         <div className="mt-4 flex gap-4">
           <BookCover book={book} className="h-44 w-30 shrink-0" />

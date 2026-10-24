@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
+import { AiPromptBar } from "@/components/assistant/ai-panel";
+import { useAssistant } from "@/components/assistant/assistant-provider";
 import { BookCover } from "@/components/book";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconSparkles, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
@@ -24,6 +26,7 @@ export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const app = useApp();
+  const { ask } = useAssistant();
   const { recipesById, cookbooksById, stats, history, members, sb, today, household, reloadHistory, reloadRecipes } = app;
   const toast = useToast();
   const recipe = recipesById.get(id);
@@ -49,6 +52,7 @@ export default function RecipeDetailPage() {
   const linkedBook = recipe.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
   const book = linkedBook ? presentCookbook(linkedBook) : null;
   const credit = dishCredit(recipe.title, recipe.image_url);
+  const kontext = { rezept_id: recipe.id, rezept_titel: recipe.title };
   const myHistory = history.filter((h) => h.recipe_id === recipe.id);
   const hasIngredients = (recipe.ep_recipe_ingredients ?? []).length > 0;
   const scalable = hasIngredients && recipe.servings !== null;
@@ -84,18 +88,29 @@ export default function RecipeDetailPage() {
         width="medium"
         trailing={
           <>
-            <IconButton label="KI zu diesem Rezept fragen" href={`/assistent?rezept=${recipe.id}`}><IconSparkles /></IconButton>
+            <IconButton label="KI zu diesem Rezept fragen" className="lg:hidden" onClick={() => ask(undefined, kontext)}><IconSparkles /></IconButton>
             <IconButton label="Bearbeiten" href={`/rezepte/${recipe.id}/bearbeiten`}><IconEdit /></IconButton>
           </>
         }
         subtitle={recipe.subtitle ?? undefined}
+        aiKontext={kontext}
+        cover={
+          <>
+            <RecipeImage recipe={recipe} className="text-6xl" rounded={0} />
+            {credit && (
+              <span className="cover-credit">
+                Foto: {credit.author} · <a href={credit.sourceUrl ?? "/bildnachweise"} target="_blank" rel="noopener">Quelle</a> · <a href="/bildnachweise">Nachweise</a>
+              </span>
+            )}
+          </>
+        }
       />
 
       <div className="page-medium lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-x-10">
         <div className="min-w-0">
-        <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl" rounded={16} />
+        <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl lg:hidden" rounded={16} />
         {credit && (
-          <p className="t-caption mt-1.5 px-1" style={{ color: "var(--label-3)" }}>
+          <p className="t-caption mt-1.5 px-1 lg:hidden" style={{ color: "var(--label-3)" }}>
             Foto: {credit.author} ·{" "}
             <a href={credit.sourceUrl ?? "/bildnachweise"} className="underline" target="_blank" rel="noopener">Quelle</a>
             {credit.licenseUrl && (
@@ -137,6 +152,13 @@ export default function RecipeDetailPage() {
             <button className="btn btn-tinted" disabled title="Erst Zutaten ergänzen"><IconCart size={18} /> In Bring</button>
           )}
         </div>
+
+        <AiPromptBar
+          className="mt-4"
+          kontext={kontext}
+          placeholder="Frag die KI zu diesem Rezept …"
+          suggestions={["Was passt als Beilage?", "Wie wird das vegetarisch?", "Kann ich das vorbereiten?"]}
+        />
 
         <Section
           title="Zutaten"

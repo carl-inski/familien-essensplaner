@@ -1,9 +1,13 @@
 "use client";
 
-// Großer Titel, der beim Scrollen in eine schwebende, transluzente Navigationsleiste übergeht.
+// Handy: großer Titel, der beim Scrollen in eine schwebende, transluzente Navigationsleiste übergeht.
+// Computer: ruhige Kopfzeile im Stil von Notion – Breadcrumbs links, Aktionen und „KI fragen“ rechts,
+// darunter Seitensymbol, großer Titel und optional ein Titelbild.
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { AssistantContext } from "@/lib/ai/assistant-schemas";
+import { AiButton } from "./assistant/ai-panel";
 import { IconChevronLeft } from "./icons";
 
 interface Props {
@@ -14,11 +18,17 @@ interface Props {
   children?: ReactNode; // z. B. Suchfeld unter dem Titel
   /** Breite wie der Seiteninhalt: schmal (Standard), mittel oder breit (Computer) */
   width?: "narrow" | "medium" | "wide";
+  /** Seitensymbol (Emoji) vor dem Titel, nur am Computer */
+  icon?: string;
+  /** Titelbild über dem Titel, nur am Computer */
+  cover?: ReactNode;
+  /** Bezug für „KI fragen“ oben rechts, z. B. das offene Rezept */
+  aiKontext?: AssistantContext;
 }
 
 const PAGE_CLASS = { narrow: "page", medium: "page-medium", wide: "page-wide" } as const;
 
-export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow" }: Props) {
+export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", icon, cover, aiKontext }: Props) {
   const page = PAGE_CLASS[width];
   const sentinel = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -34,11 +44,13 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
   return (
     <>
       <div
-        className={`app-fixed fixed right-0 top-0 z-40 transition-[background-color,box-shadow] duration-200 ${compact ? "material navbar-edge" : ""}`}
+        className={`topbar app-fixed fixed top-0 z-30 transition-[background-color,box-shadow] duration-200 ${compact ? "material navbar-edge" : ""}`}
+        data-compact={compact}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className={`${page} flex h-11 items-center gap-2 px-2 lg:px-6`}>
-          <div className="flex min-w-20 items-center">
+        <div className={`topbar-row ${page} flex h-11 items-center gap-2 px-2`}>
+          {/* Handy: Zurück-Link links, Titel erscheint beim Scrollen in der Mitte */}
+          <div className="flex min-w-20 items-center lg:hidden">
             {back && (
               <Link href={back.href} className="pressable t-sub flex items-center gap-0.5 py-2 pr-2" style={{ color: "var(--accent)" }}>
                 <IconChevronLeft size={22} />
@@ -47,17 +59,37 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
             )}
           </div>
           <div
-            className="t-headline flex-1 truncate text-center transition-opacity duration-200"
+            className="t-headline flex-1 truncate text-center transition-opacity duration-200 lg:hidden"
             style={{ opacity: compact ? 1 : 0 }}
             aria-hidden={!compact}
           >
             {title}
           </div>
-          <div className="flex min-w-20 items-center justify-end gap-1 pr-1">{trailing}</div>
+          {/* Computer: Breadcrumbs */}
+          <nav className="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Pfad">
+            {back && (
+              <>
+                <Link href={back.href} className="crumb pressable">{back.label}</Link>
+                <span className="crumb-sep" aria-hidden>/</span>
+              </>
+            )}
+            <span className="crumb" aria-current="page">
+              {icon && <span aria-hidden>{icon}</span>}
+              <span className="truncate">{title}</span>
+            </span>
+          </nav>
+          <div className="flex min-w-20 items-center justify-end gap-1 pr-1 lg:min-w-0">
+            {trailing}
+            <span className="hidden lg:contents"><AiButton kontext={aiKontext} /></span>
+          </div>
         </div>
       </div>
-      <header className={page} style={{ paddingTop: "calc(env(safe-area-inset-top) + 48px)" }}>
-        <h1 className="t-large-title">{title}</h1>
+      {cover && <div className="page-cover hidden lg:block">{cover}</div>}
+      <header className={`page-header ${page}`} data-cover={!!cover}>
+        <h1 className="t-large-title">
+          {icon && <span className="page-icon hidden lg:inline" aria-hidden>{icon}</span>}
+          {title}
+        </h1>
         {subtitle && <div className="t-sub mt-1" style={{ color: "var(--label-2)" }}>{subtitle}</div>}
         <div ref={sentinel} aria-hidden className="h-px" />
         {children}
@@ -66,17 +98,16 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
   );
 }
 
-export function IconButton({ label, onClick, children, href }: { label: string; onClick?: () => void; children: ReactNode; href?: string }) {
-  const cls = "icon-button pressable flex h-9 w-9 items-center justify-center rounded-full";
-  const style = { color: "var(--accent)" };
+export function IconButton({ label, onClick, children, href, className = "" }: { label: string; onClick?: () => void; children: ReactNode; href?: string; className?: string }) {
+  const cls = `icon-button pressable flex h-9 w-9 items-center justify-center rounded-full ${className}`;
   if (href)
     return (
-      <Link href={href} aria-label={label} title={label} className={cls} style={style}>
+      <Link href={href} aria-label={label} title={label} className={cls}>
         {children}
       </Link>
     );
   return (
-    <button aria-label={label} title={label} className={cls} style={style} onClick={onClick}>
+    <button aria-label={label} title={label} className={cls} onClick={onClick}>
       {children}
     </button>
   );
