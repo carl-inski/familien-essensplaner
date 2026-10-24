@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { BookCover } from "@/components/book";
-import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconTrash } from "@/components/icons";
+import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconSparkles, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
 import { PlanSheet } from "@/components/plan-sheet";
 import { RecipeNotes } from "@/components/recipe-notes";
@@ -81,7 +81,12 @@ export default function RecipeDetailPage() {
       <PageHeader
         title={recipe.title}
         back={{ href: "/rezepte", label: "Rezepte" }}
-        trailing={<IconButton label="Bearbeiten" href={`/rezepte/${recipe.id}/bearbeiten`}><IconEdit /></IconButton>}
+        trailing={
+          <>
+            <IconButton label="KI zu diesem Rezept fragen" href={`/assistent?rezept=${recipe.id}`}><IconSparkles /></IconButton>
+            <IconButton label="Bearbeiten" href={`/rezepte/${recipe.id}/bearbeiten`}><IconEdit /></IconButton>
+          </>
+        }
         subtitle={recipe.subtitle ?? undefined}
       />
 

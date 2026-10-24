@@ -1,0 +1,212 @@
+import "server-only";
+import { tool } from "ai";
+import { z } from "zod";
+import { WEEKDAY_LONG, addDays, isoWeekString, weekDates, weekdayIndex } from "@/lib/dates";
+import { cookStatsFromHistory } from "@/lib/history";
+import { MEALS, MEAL_LABEL } from "@/lib/meals";
+import { buildShoppingList, effectiveStatus } from "@/lib/planning";
+import type { Attendance, Cookbook, CookingHistoryEntry, MealPlanEntry, Member, Recipe } from "@/lib/types";
+import { AnwesenheitInput, EinplanenInput, EntwurfInput, NotizInput } from "./assistant-schemas";
+import type { AiContext } from "./guard";
+
+// Werkzeuge des Assistenten. Lesen läuft hier auf dem Server mit der Session
+// des Nutzers (RLS); Schreiben hat kein execute und wird im Browser bestätigt.
+
+interface HouseholdData {
+  members: Member[];
+  recipes: Recipe[];
+  cookbooks: Cookbook[];
+  history: CookingHistoryEntry[];
+}
+
+function loader(ctx: AiContext, today: string) {
+  let cached: Promise<HouseholdData> | null = null;
+  const load = () =>
+    (cached ??= (async () => {
+      const [m, r, c, h] = await Promise.all([
+        ctx.sb.from("ep_members").select("*").order("position"),
+        ctx.sb.from("ep_recipes").select("*, ep_recipe_ingredients(*)").order("title"),
+        ctx.sb.from("ep_cookbooks").select("*").order("title"),
+        ctx.sb.from("ep_cooking_history").select("*").order("cooked_on", { ascending: false }),
+      ]);
+      return {
+        members: (m.data ?? []) as Member[],
+        recipes: (r.data ?? []) as Recipe[],
+        cookbooks: (c.data ?? []) as Cookbook[],
+        history: (h.data ?? []) as CookingHistoryEntry[],
+      };
+    })());
+  const stats = async () => cookStatsFromHistory((await load()).history, today);
+  return { load, stats };
+}
+
+const dayLabel = (d: string) => `${WEEKDAY_LONG[weekdayIndex(d)]}, ${d}`;
+
+export function assistantTools(ctx: AiContext, today: string) {
+  const { load, stats } = loader(ctx, today);
+
+  const summary = async (r: Recipe) => {
+    const s = (await stats()).get(r.id);
+    const { cookbooks } = await load();
+    return {
+      id: r.id,
+      titel: r.title,
+      ernaehrung: r.diet,
+      minuten: r.time_min,
+      kategorien: r.categories,
+      zuletzt_gekocht_vor_tagen: s ? s.days_since : null,
+      kochbuch: r.cookbook_id ? cookbooks.find((c) => c.id === r.cookbook_id)?.title ?? null : null,
+    };
+  };
+
+  return {
+    rezepte_suchen: tool({
+      description: "Sucht in der Rezeptsammlung der Familie. Ohne Suchbegriff: alle Rezepte, gefiltert. Liefert ids für rezept_lesen und einplanen.",
+      inputSchema: z.object({
+        suche: z.string().nullable().describe("Titel, Zutat oder Stichwort, sonst null"),
+        ernaehrung: z.enum(["vegetarisch", "fisch", "fleisch"]).nullable(),
+        max_minuten: z.number().int().nullable(),
+        nicht_gekocht_seit_tagen: z.number().int().nullable().describe("nur Rezepte, die mindestens so lange nicht gekocht wurden"),
+        anzahl: z.number().int().min(1).max(30).nullable().describe("Standard 12"),
+      }),
+      execute: async (q) => {
+        const { recipes } = await load();
+        let list = recipes;
+        if (q.suche?.trim()) {
+          const { data } = await ctx.sb.rpc("ep_search_recipes", { q: q.suche.trim() });
+          const ids = new Set(((data ?? []) as { id: string }[]).map((d) => d.id));
+          const term = q.suche.trim().toLowerCase();
+          list = list.filter((r) => ids.has(r.id) || r.title.toLowerCase().includes(term));
+        }
+        if (q.ernaehrung) list = list.filter((r) => r.diet === q.ernaehrung);
+        if (q.max_minuten) list = list.filter((r) => r.time_min !== null && r.time_min <= q.max_minuten!);
+        const st = await stats();
+        if (q.nicht_gekocht_seit_tagen) list = list.filter((r) => (st.get(r.id)?.days_since ?? Infinity) >= q.nicht_gekocht_seit_tagen!);
+        const rows = await Promise.all(list.slice(0, q.anzahl ?? 12).map(summary));
+        return { treffer: list.length, rezepte: rows };
+      },
+    }),
+
+    rezept_lesen: tool({
+      description: "Liest ein Rezept vollständig: Zutaten, Zubereitung, Tipp, Notizen der Familie, Kochhistorie.",
+      inputSchema: z.object({ id: z.string() }),
+      execute: async ({ id }) => {
+        const { recipes, members, history } = await load();
+        const r = recipes.find((x) => x.id === id);
+        if (!r) return { fehler: "Rezept nicht gefunden" };
+        const { data: notes } = await ctx.sb.from("ep_recipe_notes").select("body, member_id, created_at").eq("recipe_id", id).order("created_at", { ascending: false }).limit(20);
+        return {
+          ...(await summary(r)),
+          portionen: r.servings,
+          zeit: r.time_text,
+          zutaten: (r.ep_recipe_ingredients ?? []).sort((a, b) => a.position - b.position).map((i) => `${i.group_name ? `[${i.group_name}] ` : ""}${i.amount_text ?? ""} ${i.name}`.trim()),
+          zubereitung: r.steps,
+          tipp: r.tip,
+          seite: r.cookbook_page,
+          naehrwerte: r.nutrition?.text ?? null,
+          notizen: (notes ?? []).map((n) => ({ von: members.find((m) => m.id === n.member_id)?.name ?? "?", text: n.body, am: String(n.created_at).slice(0, 10) })),
+          gekocht_am: history.filter((h) => h.recipe_id === id).slice(0, 5).map((h) => h.cooked_on),
+        };
+      },
+    }),
+
+    woche_lesen: tool({
+      description: "Liest Plan und Anwesenheit für mehrere Tage (Mittag und Abend): Gericht, Koch, wer da ist und wer nicht.",
+      inputSchema: z.object({
+        von: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Startdatum, Standard heute"),
+        tage: z.number().int().min(1).max(14).nullable().describe("Standard 7"),
+      }),
+      execute: async ({ von, tage }) => {
+        const from = von ?? today;
+        const to = addDays(from, (tage ?? 7) - 1);
+        const { members, recipes } = await load();
+        const [p, a] = await Promise.all([
+          ctx.sb.from("ep_meal_plan").select("*").gte("date", from).lte("date", to),
+          ctx.sb.from("ep_attendance").select("*").gte("date", from).lte("date", to).in("member_id", members.map((m) => m.id)),
+        ]);
+        const plan = (p.data ?? []) as MealPlanEntry[];
+        const attendance = (a.data ?? []) as Attendance[];
+        const days: unknown[] = [];
+        for (let d = from; d <= to; d = addDays(d, 1)) {
+          for (const meal of MEALS) {
+            const e = plan.find((x) => x.date === d && x.meal === meal);
+            const r = e?.recipe_id ? recipes.find((x) => x.id === e.recipe_id) : null;
+            const present = members.filter((m) => effectiveStatus(m, d, meal, attendance).status === "da");
+            days.push({
+              tag: dayLabel(d),
+              mahlzeit: MEAL_LABEL[meal],
+              gericht: r ? { id: r.id, titel: r.title, ernaehrung: r.diet } : e?.leftover_of ? "Reste" : null,
+              status: e?.status ?? null,
+              koch: e?.cook_id ? members.find((m) => m.id === e.cook_id)?.name ?? null : null,
+              da: present.map((m) => m.name),
+              weg: members.filter((m) => !present.includes(m)).map((m) => m.name),
+            });
+          }
+        }
+        return { tage: days };
+      },
+    }),
+
+    lange_nicht_gegessen: tool({
+      description: "Rezepte, die am längsten nicht gekocht wurden, plus noch nie gekochte.",
+      inputSchema: z.object({ anzahl: z.number().int().min(1).max(30).nullable() }),
+      execute: async ({ anzahl }) => {
+        const { recipes } = await load();
+        const st = await stats();
+        const sorted = [...recipes].sort((a, b) => (st.get(b.id)?.days_since ?? 1e6) - (st.get(a.id)?.days_since ?? 1e6));
+        return { rezepte: await Promise.all(sorted.slice(0, anzahl ?? 12).map(summary)) };
+      },
+    }),
+
+    regal: tool({
+      description: "Die Kochbücher im Regal der Familie mit Anzahl verknüpfter Rezepte.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const { cookbooks, recipes } = await load();
+        return {
+          buecher: cookbooks.map((c) => ({ id: c.id, titel: c.title, autoren: c.authors, rezepte: recipes.filter((r) => r.cookbook_id === c.id).length })),
+        };
+      },
+    }),
+
+    einkaufsliste: tool({
+      description: "Einkaufsliste einer Woche aus dem Plan (Mengen nach Anwesenheit skaliert, Vorräte wie Salz ausgelassen).",
+      inputSchema: z.object({ woche: z.string().regex(/^\d{4}-W\d{2}$/).nullable().describe("ISO-Woche wie 2026-W44, Standard aktuelle Woche") }),
+      execute: async ({ woche }) => {
+        const dates = weekDates(woche ?? isoWeekString(today));
+        const { members, recipes } = await load();
+        const [p, a] = await Promise.all([
+          ctx.sb.from("ep_meal_plan").select("*").gte("date", dates[0]).lte("date", dates[6]),
+          ctx.sb.from("ep_attendance").select("*").gte("date", dates[0]).lte("date", dates[6]).in("member_id", members.map((m) => m.id)),
+        ]);
+        const items = buildShoppingList((p.data ?? []) as MealPlanEntry[], new Map(recipes.map((r) => [r.id, r])), members, (a.data ?? []) as Attendance[]);
+        return { woche: woche ?? isoWeekString(today), zutaten: items.map((i) => ({ text: i.text, bereich: i.aisle })) };
+      },
+    }),
+
+    // ---- Schreiben: nur mit Bestätigung im Browser (kein execute) ----
+    einplanen: tool({
+      description: "Schlägt vor, ein Rezept an einem Tag einzuplanen. Der Nutzer bestätigt mit „Übernehmen“. Vorher mit woche_lesen prüfen, was dort schon steht.",
+      inputSchema: EinplanenInput,
+    }),
+    anwesenheit_setzen: tool({
+      description: "Schlägt vor, jemanden für eine Mahlzeit als da oder weg einzutragen. Der Nutzer bestätigt.",
+      inputSchema: AnwesenheitInput,
+    }),
+    notiz_hinzufuegen: tool({
+      description: "Schlägt eine Notiz zu einem Rezept vor (z. B. 'Kinder mochten es'). Der Nutzer bestätigt.",
+      inputSchema: NotizInput,
+    }),
+    rezept_entwurf_oeffnen: tool({
+      description: "Öffnet ein neues Rezept vorbefüllt im Formular, z. B. eine Idee oder ein Rezept aus einem Foto im Chat. Der Nutzer prüft und sichert dort.",
+      inputSchema: EntwurfInput,
+    }),
+  };
+}
+
+/** Tage der nächsten zwei Wochen für die Datumsauflösung im System-Prompt */
+export function calendarHint(today: string): string {
+  return Array.from({ length: 14 }, (_, i) => addDays(today, i))
+    .map((d, i) => `${i === 0 ? "heute " : i === 1 ? "morgen " : ""}${WEEKDAY_LONG[weekdayIndex(d)]} = ${d}`)
+    .join("; ");
+}

@@ -68,3 +68,5 @@ Alle Aufrufe laufen serverseitig in `/api/ai/*` über das Vercel AI SDK (`lib/ai
 - **Cache:** `ep_ai_cache` pro Haushalt und Eingabe-Hash – gleiche URL oder gleiches Bild kostet nichts.
 - **Anzeige und Test:** Haushalt → „KI“ zeigt Modell, Verbrauch im Monat und einen Verbindungstest.
 - Inhalte von Webseiten und Fotos gehen nur als markierte Daten an das Modell (`lib/ai/prompts.ts`).
+- **Rezept aus Link/Foto** (`/rezepte/neu`): Links zuerst über schema.org-JSON-LD ohne KI, fremdsprachige Rezepte übersetzt die KI; Fotos (1–3) liest die KI ab. Immer als Entwurf zum Prüfen.
+- **KI-Tab** (`/assistent`, Route `/api/ai/chat`): liest Rezepte, Woche, Regal und Einkaufsliste selbst; Einplanen, Anwesenheit, Notizen und neue Rezepte schlägt sie als Karte vor – geschrieben wird erst nach „Übernehmen“ im Browser (`components/assistant/confirm-card.tsx`). Haushalt liegt jetzt hinter dem Avatar oben rechts.

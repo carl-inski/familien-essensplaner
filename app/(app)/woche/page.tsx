@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
+import { AccountButton } from "@/components/account-button";
 import { IconButton, PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
 import { useToast } from "@/components/toast";
@@ -100,6 +101,7 @@ function Week() {
           <>
             <IconButton label="Vorige Woche" onClick={() => go(shiftWeek(isoWeek, -1))}><IconChevronLeft /></IconButton>
             <IconButton label="Nächste Woche" onClick={() => go(shiftWeek(isoWeek, 1))}><IconChevronRight /></IconButton>
+            <AccountButton />
           </>
         }
       >

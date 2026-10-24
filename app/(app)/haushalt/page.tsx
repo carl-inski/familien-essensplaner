@@ -46,7 +46,7 @@ export default function HouseholdPage() {
 
   return (
     <>
-      <PageHeader title="Haushalt" subtitle={household.name} />
+      <PageHeader title="Haushalt" subtitle={household.name} back={{ href: "/woche", label: "Woche" }} />
       <div className="mx-auto max-w-2xl px-4">
         <Section title="Kochdienst · letzte 4 Wochen">
           <div className="card flex flex-col gap-2.5 px-4 py-3">

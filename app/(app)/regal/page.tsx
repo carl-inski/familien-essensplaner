@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useApp } from "@/components/app-data";
 import { BookCover, BookSheet } from "@/components/book";
 import { IconPlus } from "@/components/icons";
+import { AccountButton } from "@/components/account-button";
 import { IconButton, PageHeader } from "@/components/nav";
 import { presentCookbook } from "@/lib/medien";
 
@@ -21,7 +22,12 @@ export default function ShelfPage() {
       <PageHeader
         title="Regal"
         subtitle={`${cookbooks.length} Kochbücher`}
-        trailing={<IconButton label="Buch hinzufügen" onClick={() => setAdding(true)}><IconPlus /></IconButton>}
+        trailing={
+          <>
+            <IconButton label="Buch hinzufügen" onClick={() => setAdding(true)}><IconPlus /></IconButton>
+            <AccountButton />
+          </>
+        }
       />
       <div className="mx-auto mt-5 grid max-w-2xl grid-cols-3 gap-x-4 gap-y-6 px-4 sm:grid-cols-4">
         {shelf.map((b) => (

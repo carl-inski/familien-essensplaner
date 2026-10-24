@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconBook, IconCalendar, IconCart, IconPeople, IconShelf } from "./icons";
+import { IconBook, IconCalendar, IconCart, IconShelf, IconSparkles } from "./icons";
 
 const TABS = [
   { href: "/woche", label: "Woche", Icon: IconCalendar },
   { href: "/rezepte", label: "Rezepte", Icon: IconBook },
-  { href: "/regal", label: "Regal", Icon: IconShelf },
+  { href: "/assistent", label: "KI", Icon: IconSparkles },
   { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart },
-  { href: "/haushalt", label: "Haushalt", Icon: IconPeople },
+  { href: "/regal", label: "Regal", Icon: IconShelf },
 ];
 
 export function TabBar() {

@@ -9,25 +9,13 @@ import { IconCamera, IconLink } from "./icons";
 import { Sheet } from "./sheet";
 import { useToast } from "./toast";
 import type { PendingDraft } from "@/lib/draft-handoff";
+import { shrinkImage } from "@/lib/image";
 import type { RecipeDraft } from "@/lib/markdown";
 
 interface ImportResponse {
   draft?: RecipeDraft;
   via?: "jsonld" | "jsonld-ki" | "ki";
   error?: string;
-}
-
-/** Verkleinert ein Foto auf höchstens 1600 px (JPEG) – spart Upload und Tokens */
-async function shrink(file: File): Promise<{ data: string; mediaType: string }> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const url = canvas.toDataURL("image/jpeg", 0.85);
-  return { data: url.slice(url.indexOf(",") + 1), mediaType: "image/jpeg" };
 }
 
 export function RecipeImport({ onDraft }: { onDraft: (p: PendingDraft) => void }) {
@@ -71,7 +59,7 @@ export function RecipeImport({ onDraft }: { onDraft: (p: PendingDraft) => void }
     setBusy("foto");
     let images;
     try {
-      images = await Promise.all([...files].map(shrink));
+      images = (await Promise.all([...files].map((f) => shrinkImage(f)))).map(({ data, mediaType }) => ({ data, mediaType }));
     } catch {
       setBusy(null);
       return toast({ text: "Das Foto konnte nicht gelesen werden.", tone: "error" });
