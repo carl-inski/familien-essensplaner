@@ -5,6 +5,8 @@ export const AISLES = ["Obst & Gemüse", "Kühlregal", "Frischetheke", "Trockenw
 export type Aisle = (typeof AISLES)[number];
 
 const RULES: [Aisle, string[]][] = [
+  // Vorrang vor „butter“ (Butterlatich) und „(dose“ (frische Ananas, oder aus der Dose)
+  ["Obst & Gemüse", ["salat", "latich", "frische ananas"]],
   ["Tiefkühl", ["(tk", "tk-", "tk ", "tiefkühl"]],
   ["Trockenware", ["kokosmilch", "passierte", "tomatenmark", "(dose", "dose)", ", dose", "brühe", "öl", "essig", "sojasauce", "mirin", "hot sauce", "süß-sauer", "milchreis", "reispapier", "erdnussbutter", "marmelade", "honig", "sirup", "schoko", "pistazie", "haselnuss", "cashew", "kerne", "kapern", "oliven"]],
   ["Gewürze", ["salz", "pfeffer", "pulver", "zimt", "kreuzkümmel", "muskat", "getrocknet", "dill", "sesam", "currypaste", "misopaste", "chili", "thymian", "räucherpaprika"]],
@@ -33,4 +35,10 @@ export function aisleFor(name: string): Aisle {
 /** Leitungswasser u. Ä. gehört nicht auf die Einkaufsliste */
 export function isPantryBasic(name: string): boolean {
   return /^wasser\b/i.test(name.trim());
+}
+
+/** Reihenfolge der Bereiche wie ein typischer Gang durch den Supermarkt */
+export function aisleRank(aisle: string): number {
+  const i = (AISLES as readonly string[]).indexOf(aisle);
+  return i < 0 ? AISLES.length : i;
 }

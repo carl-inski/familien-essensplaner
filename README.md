@@ -19,7 +19,7 @@ Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), d
 | Rezepte | Karten, Suche (deutscher Volltext + Trigramm + Zutaten), kombinierbare Filter und Sortierung, Detail mit Portionswähler, Bring!-Export, Historie, Anlegen/Bearbeiten mit Foto, Markdown-Import mit Duplikat-Erkennung und Export |
 | Lange nicht gegessen | sortiert nach Tagen seit dem letzten Kochen, darunter „Noch nie gekocht“, direkt einplanbar |
 | Regal | Kochbücher als Cover-Raster, ISBN-Abfrage (Open Library → Google Books), Rezept-Verknüpfungen mit Seite, „zu bestätigen“, reine Verweis-Rezepte |
-| Einkauf | Wochenliste skaliert und summiert, nach Supermarkt-Bereich gruppiert, abhakbar, „In Bring übernehmen“, als Text kopieren |
+| Einkauf | Wochenliste skaliert und summiert, in Gang-Reihenfolge des Supermarkts, abhakbar, „In Bring übernehmen“, als Text kopieren; „Immer zu Hause“ (Häuschen) blendet Vorrat wie Salz und Pfeffer aus (`ep_pantry`, Pflege auch im Haushalt); US-Maße (cup, oz, lb, tbsp) werden fest in g/ml/EL umgerechnet, EL und TL derselben Zutat zusammengefasst – alles ohne KI |
 | Haushalt | Mitglieder und Einladungen per E-Mail, Standardwoche, Kochdienst-Zähler (4 Wochen) |
 | Öffentlich | `/r/<slug>` und `/einkauf/<slug>` mit schema.org/Recipe-JSON-LD für den Bring!-Import, `noindex` |
 
@@ -70,3 +70,4 @@ Alle Aufrufe laufen serverseitig in `/api/ai/*` über das Vercel AI SDK (`lib/ai
 - Inhalte von Webseiten und Fotos gehen nur als markierte Daten an das Modell (`lib/ai/prompts.ts`).
 - **Rezept aus Link/Foto** (`/rezepte/neu`): Links zuerst über schema.org-JSON-LD ohne KI, fremdsprachige Rezepte übersetzt die KI; Fotos (1–3) liest die KI ab. Immer als Entwurf zum Prüfen.
 - **KI-Tab** (`/assistent`, Route `/api/ai/chat`): liest Rezepte, Woche, Regal und Einkaufsliste selbst; Einplanen, Anwesenheit, Notizen und neue Rezepte schlägt sie als Karte vor – geschrieben wird erst nach „Übernehmen“ im Browser (`components/assistant/confirm-card.tsx`). Haushalt liegt jetzt hinter dem Avatar oben rechts.
+- **Wochenvorschläge und „Was koche ich damit?“ nur im Chat:** `vorschlaege_finden` liefert pro offener Mahlzeit Kandidaten aus der Regel-Engine (Fleischregel, 14-Tage-Sperre, abends keine Snacks, kürzlich Abgelehntes raus); die KI wählt aus und schlägt alles auf einer Karte vor (`mehrere_einplanen`), die den Stapel noch einmal gegen die Regeln prüft. `rezepte_mit_zutaten` bewertet die Sammlung nach vorhandenen Zutaten (`lib/leftovers.ts`).

@@ -24,7 +24,36 @@ const UNIT_ALIASES: Record<string, string> = {
   becher: "Becher",
   glas: "Glas",
   tasse: "Tasse", tassen: "Tasse",
+  "esslöffel": "EL", "essl.": "EL", "teelöffel": "TL", "teel.": "TL",
+  msp: "Msp.", "msp.": "Msp.", messerspitze: "Msp.",
+  // Englische Angaben – werden beim Einlesen metrisch umgerechnet (siehe IMPERIAL)
+  tbsp: "EL", tbs: "EL", tablespoon: "EL", tablespoons: "EL",
+  tsp: "TL", teaspoon: "TL", teaspoons: "TL",
+  cup: "cup", cups: "cup",
+  oz: "oz", ounce: "oz", ounces: "oz",
+  lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
+  pint: "pint", pints: "pint",
+  quart: "quart", quarts: "quart",
 };
+
+/** Feste Umrechnung angloamerikanischer Einheiten (US-Maße) */
+const IMPERIAL: Record<string, { factor: number; unit: string }> = {
+  cup: { factor: 240, unit: "ml" },
+  oz: { factor: 28.35, unit: "g" },
+  lb: { factor: 453.6, unit: "g" },
+  pint: { factor: 473, unit: "ml" },
+  quart: { factor: 946, unit: "ml" },
+};
+
+/** Krumme Umrechnungsergebnisse auf alltagstaugliche Werte runden (5er unter 100, sonst 10er) */
+function metricRound(v: number): number {
+  return v < 100 ? Math.max(5, Math.round(v / 5) * 5) : Math.round(v / 10) * 10;
+}
+
+export function isImperialUnit(word: string | null | undefined): boolean {
+  const u = word ? UNIT_ALIASES[word.toLowerCase()] : undefined;
+  return !!u && u in IMPERIAL;
+}
 
 const PIECE_UNITS = new Set([null, "Stück", "Kugeln", "Zehen", "Dose", "Pck.", "Bund", "Kopf", "Glas", "Becher", "Scheiben"]);
 
@@ -61,6 +90,8 @@ export function parseAmount(text: string | null | undefined): ParsedAmount {
   if (amount === null) return { amount: null, unit: null };
   const rawUnit = m[3]?.toLowerCase();
   const unit = rawUnit ? UNIT_ALIASES[rawUnit] ?? null : null;
+  const imp = unit ? IMPERIAL[unit] : undefined;
+  if (imp) return { amount: metricRound(amount * imp.factor), unit: imp.unit };
   return { amount, unit };
 }
 
@@ -122,6 +153,12 @@ export function displayName(name: string): string {
 /** Mengenspalte nach Skalierung; behält Zusätze wie "mittelgroße" oder "(à 125 g)" bei */
 export function scaledAmountText(amountText: string | null, amount: number | null, unit: string | null, original: { amount: number | null; unit: string | null }): string {
   if (amount === null || !amountText) return amountText ?? "";
+  // „1 cup“ steht im Text, gespeichert sind 240 ml → immer metrisch anzeigen
+  const textUnit = amountText.replace(/^[\d.,/½¼¾⅓⅔⅛]+(\s*[–-]\s*[\d.,/½¼¾⅓⅔⅛]+)?\s*/, "").match(/^[A-Za-zÄÖÜäöüß.]+/)?.[0];
+  if (isImperialUnit(textUnit)) {
+    const after = amountText.replace(/^[\d.,/½¼¾⅓⅔⅛]+(\s*[–-]\s*[\d.,/½¼¾⅓⅔⅛]+)?\s*[A-Za-zÄÖÜäöüß.]+\s*/, "");
+    return `${formatAmount(amount, unit)} ${after}`.trim();
+  }
   if (original.amount === amount && original.unit === unit) return amountText;
   const formatted = formatAmount(amount, unit);
   const rest = amountText.replace(/^[\d.,/½¼¾⅓⅔⅛]+(\s*[–-]\s*[\d.,/½¼¾⅓⅔⅛]+)?\s*/, "");

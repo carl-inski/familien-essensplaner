@@ -129,4 +129,6 @@ export interface ShoppingItem {
   text: string;
   aisle: string;
   recipes: string[];
+  /** Vorrats-Schlüssel, wenn die Zutat immer zu Hause ist (dann nicht einkaufen) */
+  pantry?: string;
 }

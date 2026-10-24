@@ -16,10 +16,10 @@ import { ConfirmCard, type ToolPart } from "./confirm-card";
 import { RichText } from "./rich-text";
 
 export const SUGGESTIONS = [
+  "Füll die offenen Abende dieser Woche",
   "Was steht diese Woche an?",
-  "Plan mir für morgen Abend etwas Schnelles",
-  "Was haben wir lange nicht gegessen?",
   "Was koche ich mit Zucchini und Feta?",
+  "Was haben wir lange nicht gegessen?",
 ];
 
 const READ_LABEL: Record<string, [string, string]> = {
@@ -29,6 +29,8 @@ const READ_LABEL: Record<string, [string, string]> = {
   lange_nicht_gegessen: ["Sucht lange nicht Gegessenes …", "Kochhistorie angesehen"],
   regal: ["Schaut ins Regal …", "Regal angesehen"],
   einkaufsliste: ["Stellt die Einkaufsliste zusammen …", "Einkaufsliste angesehen"],
+  vorschlaege_finden: ["Sucht passende Gerichte …", "Passende Gerichte gesucht"],
+  rezepte_mit_zutaten: ["Sucht Rezepte mit deinen Zutaten …", "Rezepte mit deinen Zutaten gesucht"],
 };
 
 function errorText(e: Error | undefined): string | null {

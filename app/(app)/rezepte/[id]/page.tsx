@@ -113,6 +113,12 @@ export default function RecipeDetailPage() {
           <p className="t-caption mt-1.5 px-1 lg:hidden" style={{ color: "var(--label-3)" }}>
             Foto: {credit.author} ·{" "}
             <a href={credit.sourceUrl ?? "/bildnachweise"} className="underline" target="_blank" rel="noopener">Quelle</a>
+            {credit.licenseUrl && (
+              <>
+                {" · "}
+                <a href={credit.licenseUrl} className="underline" target="_blank" rel="noopener license">{credit.license}</a>
+              </>
+            )}
             {" · "}
             <a href="/bildnachweise" className="underline">Nachweise</a>
           </p>

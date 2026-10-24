@@ -151,7 +151,7 @@ function Week() {
         <AiPromptBar
           className="lg:ml-auto lg:w-full lg:max-w-xl"
           placeholder="Frag die KI zur Woche …"
-          suggestions={["Freie Mahlzeiten füllen", "Was steht diese Woche an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"]}
+          suggestions={["Füll die offenen Abende dieser Woche", "Was steht diese Woche an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"]}
         />
         </div>
       </PageHeader>

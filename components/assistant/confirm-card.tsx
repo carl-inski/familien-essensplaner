@@ -5,16 +5,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useApp } from "@/components/app-data";
 import { IconCalendar, IconCheck, IconEdit, IconNote, IconPeople } from "@/components/icons";
 import { DietIcon } from "@/components/ui";
-import { AnwesenheitInput, EinplanenInput, EntwurfInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
+import { AnwesenheitInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
 import { extractToDraft } from "@/lib/ai/schemas";
-import { WEEKDAY_LONG, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { stashDraft } from "@/lib/draft-handoff";
-import { MEAL_LABEL } from "@/lib/meals";
-import { meatRuleHint } from "@/lib/suggest";
+import { MEAL_LABEL, slotKey } from "@/lib/meals";
+import { checkBatch, meatRuleHint, type PlannedDish } from "@/lib/suggest";
 import type { MealPlanEntry } from "@/lib/types";
 
 export interface ToolPart {
@@ -46,6 +46,8 @@ export function ConfirmCard({ tool, part, respond }: { tool: WriteTool; part: To
   switch (tool) {
     case "einplanen":
       return <PlanCard input={part.input} respond={respond} />;
+    case "mehrere_einplanen":
+      return <BatchPlanCard input={part.input} respond={respond} />;
     case "anwesenheit_setzen":
       return <AttendanceCard input={part.input} respond={respond} />;
     case "notiz_hinzufuegen":
@@ -126,9 +128,9 @@ function PlanCard({ input, respond }: { input: unknown; respond: Respond }) {
   const current = around?.find((p) => p.date === data.datum && p.meal === data.mahlzeit);
   const currentTitle = current?.recipe_id && current.recipe_id !== recipe.id ? recipesById.get(current.recipe_id)?.title : null;
   const planned = (around ?? [])
-    .filter((p) => p.recipe_id && !(p.date === data.datum && p.meal === data.mahlzeit))
-    .map((p) => ({ date: p.date, recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null }));
-  const hint = around ? meatRuleHint(planned, data.datum, recipe.diet) : null;
+    .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !(p.date === data.datum && p.meal === data.mahlzeit))
+    .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null }));
+  const hint = around ? meatRuleHint(planned, slotKey(data.datum, data.mahlzeit), recipe.diet) : null;
 
   return (
     <Shell
@@ -156,6 +158,144 @@ function PlanCard({ input, respond }: { input: unknown; respond: Respond }) {
       {data.begruendung && <p className="t-footnote mt-1" style={{ color: "var(--label-2)" }}>{data.begruendung}</p>}
       {currentTitle && <p className="t-footnote mt-1" style={{ color: "var(--orange, var(--accent))" }}>Ersetzt „{currentTitle}“</p>}
       {hint && <p className="t-footnote mt-1" style={{ color: "var(--red)" }}>⚠︎ {hint}</p>}
+    </Shell>
+  );
+}
+
+function BatchPlanCard({ input, respond }: { input: unknown; respond: Respond }) {
+  const { sb, household, recipesById, stats, today } = useApp();
+  const parsed = useMemo(() => MehrereEinplanenInput.safeParse(input), [input]);
+  const rows = useMemo(
+    () =>
+      parsed.success
+        ? parsed.data.eintraege
+            .map((e) => ({ ...e, slot: slotKey(e.datum, e.mahlzeit), recipe: recipesById.get(e.rezept_id) }))
+            .sort((a, b) => a.slot.localeCompare(b.slot))
+        : [],
+    [parsed, recipesById],
+  );
+  const valid = useMemo(() => rows.filter((r) => r.recipe), [rows]);
+  const [around, setAround] = useState<MealPlanEntry[] | null>(null);
+  const [selected, setSelected] = useState<Set<string> | null>(null);
+  const { busy, run } = useAction(respond);
+  const first = rows[0]?.datum;
+  const last = rows[rows.length - 1]?.datum;
+
+  useEffect(() => {
+    if (!first || !last) return;
+    let alive = true;
+    sb.from("ep_meal_plan")
+      .select("*")
+      .gte("date", addDays(first, -3))
+      .lte("date", addDays(last, 3))
+      .then(({ data }) => alive && setAround((data ?? []) as MealPlanEntry[]));
+    return () => {
+      alive = false;
+    };
+  }, [sb, first, last]);
+
+  // Bestehender Plan ohne die Slots, die der Stapel neu belegt
+  const planned: PlannedDish[] = useMemo(
+    () =>
+      (around ?? [])
+        .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !rows.some((r) => r.datum === p.date && r.mahlzeit === p.meal))
+        .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null })),
+    [around, rows, recipesById],
+  );
+  const check = (list: typeof valid) => checkBatch(list.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id, diet: r.recipe!.diet })), planned, stats, today);
+  const initial = useMemo(() => checkBatch(valid.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id, diet: r.recipe!.diet })), planned, stats, today), [valid, planned, stats, today]);
+  // Vorauswahl: alles ohne Problem; danach entscheidet der Nutzer
+  const chosen = useMemo(() => selected ?? new Set(initial.filter((p) => !p.problem).map((p) => p.slot)), [selected, initial]);
+  const live = check(valid.filter((r) => chosen.has(r.slot)));
+  const problemOf = (slot: string) => (chosen.has(slot) ? live.find((p) => p.slot === slot)?.problem : initial.find((p) => p.slot === slot)?.problem) ?? null;
+
+  if (!parsed.success || !rows.length) return <Invalid text="Der Vorschlag war unvollständig." respond={respond} />;
+
+  const toggle = (slot: string) => {
+    const next = new Set(chosen);
+    if (next.has(slot)) next.delete(slot);
+    else next.add(slot);
+    setSelected(next);
+  };
+  const label = (r: (typeof rows)[number]) => `${WEEKDAY_SHORT[weekdayIndex(r.datum)]} ${formatDateDE(r.datum, { day: "numeric", month: "numeric" })} ${MEAL_LABEL[r.mahlzeit]}`;
+
+  async function save(take: typeof valid) {
+    if (take.length) {
+      const { error } = await sb
+        .from("ep_meal_plan")
+        .upsert(take.map((r) => ({ household_id: household.id, date: r.datum, meal: r.mahlzeit, recipe_id: r.rezept_id, leftover_of: null, status: "geplant" })), { onConflict: "household_id,date,meal" });
+      if (error) throw error;
+    }
+    // Für spätere Vorschläge: was angenommen und was abgewählt wurde
+    void sb.from("ep_suggestions").insert(
+      valid.map((r) => ({
+        household_id: household.id,
+        iso_week: isoWeekString(r.datum),
+        recipe_id: r.rezept_id,
+        origin: r.recipe!.cookbook_id ? "regal" : "sammlung",
+        generated_by: "ki",
+        reason_shown: r.begruendung,
+        status: take.includes(r) ? "angenommen" : "abgelehnt",
+      })),
+    );
+    const skipped = valid.filter((r) => !take.includes(r));
+    return {
+      ok: take.length > 0,
+      meldung: take.length
+        ? `${take.length} ${take.length === 1 ? "Gericht" : "Gerichte"} eingeplant: ${take.map((r) => `${label(r)} ${r.recipe!.title}`).join("; ")}${skipped.length ? ` · nicht übernommen: ${skipped.map((r) => r.recipe!.title).join(", ")}` : ""}`
+        : "Keine Vorschläge übernommen",
+    } as Result;
+  }
+
+  const take = valid.filter((r) => chosen.has(r.slot));
+  return (
+    <Shell
+      icon={<IconCalendar size={16} />}
+      title="Vorschläge einplanen"
+      actions={
+        <>
+          <button className="btn btn-gray btn-sm pressable" disabled={busy} onClick={() => run(() => save([]))}>Nein danke</button>
+          <button className="btn btn-primary btn-sm pressable" disabled={busy || !take.length} onClick={() => run(() => save(take))}>
+            {busy ? "Speichert …" : take.length === valid.length ? "Alle übernehmen" : `${take.length} übernehmen`}
+          </button>
+        </>
+      }
+    >
+      <ul className="-mx-1 mt-1 flex flex-col">
+        {rows.map((r) => {
+          const on = chosen.has(r.slot);
+          const problem = r.recipe ? problemOf(r.slot) : "Nicht in der Sammlung.";
+          const current = around?.find((p) => p.date === r.datum && p.meal === r.mahlzeit && p.recipe_id && p.recipe_id !== r.rezept_id);
+          const currentTitle = current ? recipesById.get(current.recipe_id!)?.title : null;
+          return (
+            <li key={r.slot}>
+              <button
+                className="pressable flex w-full items-start gap-2.5 rounded-xl px-1 py-2 text-left"
+                disabled={!r.recipe}
+                aria-pressed={on}
+                aria-label={`${label(r)}: ${r.rezept_titel}`}
+                onClick={() => toggle(r.slot)}
+              >
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: on ? "var(--accent)" : "transparent", boxShadow: on ? undefined : "inset 0 0 0 1.5px var(--label-3)", color: "var(--on-accent)" }}
+                >
+                  {on && <IconCheck size={13} strokeWidth={2.8} />}
+                </span>
+                <span className="min-w-0 flex-1" style={{ opacity: on ? 1 : 0.55 }}>
+                  <span className="t-caption block font-semibold" style={{ color: "var(--label-2)" }}>{label(r)}</span>
+                  <span className="t-sub flex items-center gap-1.5 font-medium">
+                    {r.recipe && <DietIcon diet={r.recipe.diet} size={14} />} {r.recipe?.title ?? r.rezept_titel}
+                  </span>
+                  {r.begruendung && <span className="t-caption block" style={{ color: "var(--label-2)" }}>{r.begruendung}</span>}
+                  {currentTitle && <span className="t-caption block" style={{ color: "var(--accent)" }}>Ersetzt „{currentTitle}“</span>}
+                  {problem && <span className="t-caption block" style={{ color: "var(--red)" }}>⚠︎ {problem}</span>}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
     </Shell>
   );
 }

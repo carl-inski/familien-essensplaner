@@ -3,10 +3,12 @@ import { tool } from "ai";
 import { z } from "zod";
 import { WEEKDAY_LONG, addDays, isoWeekString, weekDates, weekdayIndex } from "@/lib/dates";
 import { cookStatsFromHistory } from "@/lib/history";
-import { MEALS, MEAL_LABEL } from "@/lib/meals";
-import { buildShoppingList, effectiveStatus } from "@/lib/planning";
-import type { Attendance, Cookbook, CookingHistoryEntry, MealPlanEntry, Member, Recipe } from "@/lib/types";
-import { AnwesenheitInput, EinplanenInput, EntwurfInput, NotizInput } from "./assistant-schemas";
+import { matchByIngredients } from "@/lib/leftovers";
+import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
+import { buildShoppingList, effectiveStatus, presentMembers } from "@/lib/planning";
+import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
+import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
+import { AnwesenheitInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
 import type { AiContext } from "./guard";
 
 // Werkzeuge des Assistenten. Lesen läuft hier auf dem Server mit der Session
@@ -175,16 +177,96 @@ export function assistantTools(ctx: AiContext, today: string) {
       execute: async ({ woche }) => {
         const dates = weekDates(woche ?? isoWeekString(today));
         const { members, recipes } = await load();
-        const [p, a] = await Promise.all([
+        const [p, a, v] = await Promise.all([
           ctx.sb.from("ep_meal_plan").select("*").gte("date", dates[0]).lte("date", dates[6]),
           ctx.sb.from("ep_attendance").select("*").gte("date", dates[0]).lte("date", dates[6]).in("member_id", members.map((m) => m.id)),
+          ctx.sb.from("ep_pantry").select("name"),
         ]);
-        const items = buildShoppingList((p.data ?? []) as MealPlanEntry[], new Map(recipes.map((r) => [r.id, r])), members, (a.data ?? []) as Attendance[]);
-        return { woche: woche ?? isoWeekString(today), zutaten: items.map((i) => ({ text: i.text, bereich: i.aisle })) };
+        const pantry = new Set(((v.data ?? []) as { name: string }[]).map((r) => r.name));
+        const items = buildShoppingList((p.data ?? []) as MealPlanEntry[], new Map(recipes.map((r) => [r.id, r])), members, (a.data ?? []) as Attendance[], pantry);
+        return {
+          woche: woche ?? isoWeekString(today),
+          zutaten: items.filter((i) => !i.pantry).map((i) => ({ text: i.text, bereich: i.aisle })),
+          immer_zu_hause: items.filter((i) => i.pantry).map((i) => i.name),
+        };
+      },
+    }),
+
+    vorschlaege_finden: tool({
+      description:
+        "Findet für offene Mahlzeiten eines Zeitraums passende Rezepte aus der Sammlung. Die Hausregeln (Fleischregel, 14-Tage-Sperre, keine Snacks am Abend) sind schon angewendet. Danach mit mehrere_einplanen vorschlagen.",
+      inputSchema: z.object({
+        von: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Standard heute"),
+        bis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Standard Sonntag dieser Woche bzw. 6 Tage nach von"),
+        mahlzeiten: z.array(z.enum(["mittag", "abend"])).nullable().describe("Standard beide"),
+        max_minuten: z.number().int().nullable(),
+        ernaehrung: z.enum(["vegetarisch", "fisch", "fleisch"]).nullable(),
+      }),
+      execute: async (q) => {
+        const from = q.von ?? today;
+        const to = q.bis ?? addDays(from, 6);
+        const meals = (q.mahlzeiten?.length ? q.mahlzeiten : MEALS) as Meal[];
+        const { members, recipes } = await load();
+        const st = await stats();
+        const [p, a, rej] = await Promise.all([
+          ctx.sb.from("ep_meal_plan").select("*").gte("date", addDays(from, -3)).lte("date", addDays(to, 3)),
+          ctx.sb.from("ep_attendance").select("*").gte("date", from).lte("date", to).in("member_id", members.map((m) => m.id)),
+          ctx.sb.from("ep_suggestions").select("recipe_id, reject_reason, created_at").eq("status", "abgelehnt").gte("created_at", new Date(Date.now() - 14 * 86400000).toISOString()),
+        ]);
+        const plan = (p.data ?? []) as MealPlanEntry[];
+        const attendance = (a.data ?? []) as Attendance[];
+        const rejected = (rej.data ?? []) as { recipe_id: string | null; reject_reason: string | null }[];
+        const exclude = new Set(rejected.map((r) => r.recipe_id).filter((x): x is string => !!x));
+        const planned: PlannedDish[] = plan
+          .filter((e) => e.recipe_id && e.status !== "ausgefallen")
+          .map((e) => ({ date: slotKey(e.date, e.meal), recipe_id: e.recipe_id, diet: recipes.find((r) => r.id === e.recipe_id)?.diet ?? null }));
+        let pool = recipes.filter((r) => (r.ep_recipe_ingredients?.length ?? 0) > 0 || r.cookbook_id);
+        if (q.max_minuten) pool = pool.filter((r) => r.time_min !== null && r.time_min <= q.max_minuten!);
+        if (q.ernaehrung) pool = pool.filter((r) => r.diet === q.ernaehrung);
+
+        const slots = [];
+        for (let d = from; d <= to; d = addDays(d, 1)) {
+          for (const meal of meals) {
+            const entry = plan.find((e) => e.date === d && e.meal === meal);
+            if (entry?.recipe_id || entry?.leftover_of || entry?.status === "ausgefallen") continue;
+            const present = presentMembers(members, attendance, d, meal);
+            if (!present.length) continue;
+            const candidates = rankedCandidates(pool, st, planned, slotKey(d, meal), today, { dinner: meal === "abend", exclude });
+            slots.push({
+              tag: dayLabel(d),
+              datum: d,
+              mahlzeit: meal,
+              esser: present.map((m) => m.name),
+              kandidaten: await Promise.all(candidates.slice(0, 6).map(summary)),
+            });
+          }
+        }
+        return {
+          offene_mahlzeiten: slots,
+          kuerzlich_abgelehnt: rejected.filter((r) => r.reject_reason).map((r) => ({ rezept: recipes.find((x) => x.id === r.recipe_id)?.title ?? null, grund: r.reject_reason })),
+          hinweis: "Wähle pro Mahlzeit einen Kandidaten, abwechslungsreich (nicht zweimal dasselbe, nicht zwei Fleischgerichte direkt hintereinander). Der Nutzer bestätigt auf der Karte.",
+        };
+      },
+    }),
+
+    rezepte_mit_zutaten: tool({
+      description: "„Was koche ich damit?“: Rezepte aus der Sammlung (inkl. Kochbüchern im Regal), die möglichst viele der genannten Zutaten verwenden.",
+      inputSchema: z.object({ zutaten: z.array(z.string()).min(1).max(12).describe("vorhandene Zutaten oder Reste, z. B. ['Zucchini', 'Feta']") }),
+      execute: async ({ zutaten }) => {
+        const { recipes } = await load();
+        const hits = matchByIngredients(recipes, zutaten);
+        return {
+          treffer: await Promise.all(hits.map(async (h) => ({ ...(await summary(h.recipe)), passende_zutaten: h.matched, weitere_zutaten: h.missing }))),
+          hinweis: hits.length ? undefined : "Nichts in der Sammlung passt – schlage eine eigene Idee vor und biete rezept_entwurf_oeffnen an.",
+        };
       },
     }),
 
     // ---- Schreiben: nur mit Bestätigung im Browser (kein execute) ----
+    mehrere_einplanen: tool({
+      description: "Schlägt mehrere Gerichte auf einmal vor (z. B. die Woche füllen). Der Nutzer wählt auf einer Karte aus und übernimmt.",
+      inputSchema: MehrereEinplanenInput,
+    }),
     einplanen: tool({
       description: "Schlägt vor, ein Rezept an einem Tag einzuplanen. Der Nutzer bestätigt mit „Übernehmen“. Vorher mit woche_lesen prüfen, was dort schon steht.",
       inputSchema: EinplanenInput,

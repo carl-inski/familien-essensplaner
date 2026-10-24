@@ -8,8 +8,8 @@ const source = readFileSync(join(__dirname, "..", "data", "rezeptsammlung.md"), 
 describe("Markdown-Import", () => {
   const recipes = parseRecipeCollection(source);
 
-  it("liest alle 19 Rezepte", () => {
-    expect(recipes).toHaveLength(19);
+  it("liest alle 20 Rezepte", () => {
+    expect(recipes).toHaveLength(20);
     expect(recipes[0].title).toBe("Spinatquiche mit Feta");
     expect(recipes[18].title).toBe("Honighähnchen");
   });

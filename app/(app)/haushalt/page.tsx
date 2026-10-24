@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AiUsageSection } from "@/components/ai-status";
 import { useApp } from "@/components/app-data";
+import { PantrySection } from "@/components/pantry";
 import { IconEdit, IconLogout, IconPlus } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { Sheet } from "@/components/sheet";
@@ -122,6 +123,8 @@ export default function HouseholdPage() {
           </ul>
           {isAdmin && <button className="btn btn-tinted btn-sm pressable mt-2" onClick={() => setAdding(true)}><IconPlus size={16} /> Mitglied</button>}
         </Section>
+
+        <PantrySection />
 
         <AiUsageSection />
 
