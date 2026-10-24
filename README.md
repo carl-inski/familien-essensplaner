@@ -15,7 +15,7 @@ Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), d
 
 | Bereich | Was geht |
 | --- | --- |
-| Woche | Tag × Abendessen, Anwesenheit mit einem Tipp, Gäste, Standardwoche, Esserzahl, Rezept einplanen (2 Tipps), „Vorschlag“ (regelbasiert), Reste-Slots, Kochdienst (nur Anwesende, sonst „Koch fehlt“), gekocht ✓ / Rückgängig, Realtime |
+| Woche | Tag × Mittag + Abend, Anwesenheit pro Mahlzeit mit einem Tipp, Gäste, Standardwoche (je Mahlzeit), Esserzahl, Rezept einplanen (2 Tipps), „Vorschlag“ (regelbasiert), Reste-Slots, Kochdienst (nur Anwesende, sonst „Koch fehlt“), gekocht ✓ / Rückgängig, Realtime |
 | Rezepte | Karten, Suche (deutscher Volltext + Trigramm + Zutaten), kombinierbare Filter und Sortierung, Detail mit Portionswähler, Bring!-Export, Historie, Anlegen/Bearbeiten mit Foto, Markdown-Import mit Duplikat-Erkennung und Export |
 | Lange nicht gegessen | sortiert nach Tagen seit dem letzten Kochen, darunter „Noch nie gekocht“, direkt einplanbar |
 | Regal | Kochbücher als Cover-Raster, ISBN-Abfrage (Open Library → Google Books), Rezept-Verknüpfungen mit Seite, „zu bestätigen“, reine Verweis-Rezepte |

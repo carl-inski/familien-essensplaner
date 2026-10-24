@@ -10,6 +10,7 @@ import { Empty, Section } from "@/components/ui";
 import { useWeek } from "@/components/week/use-week";
 import { bringDeeplink, shoppingPublicUrl } from "@/lib/bring";
 import { WEEKDAY_SHORT, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
+import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { buildShoppingList, groupByAisle, servingsFor } from "@/lib/planning";
 
 export default function ShoppingPage() {
@@ -50,7 +51,7 @@ function Shopping() {
   const groups = useMemo(() => groupByAisle(items), [items]);
   const dishes = plan
     .filter((p) => p.recipe_id && !p.leftover_of && p.status !== "ausgefallen")
-    .sort((a, b) => a.date.localeCompare(b.date))
+    .sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal)))
     .map((p) => ({ p, r: recipesById.get(p.recipe_id!)!, servings: servingsFor(p, plan, members, attendance) }))
     .filter((d) => d.r);
   const missingIngredients = dishes.filter((d) => !(d.r.ep_recipe_ingredients ?? []).length);
@@ -133,7 +134,7 @@ function Shopping() {
               <ul className="group">
                 {dishes.map(({ p, r, servings }) => (
                   <li key={p.id} className="row">
-                    <span className="t-footnote w-7 font-semibold" style={{ color: "var(--label-2)" }}>{WEEKDAY_SHORT[weekdayIndex(p.date)]}</span>
+                    <span className="t-footnote w-16 shrink-0 font-semibold" style={{ color: "var(--label-2)" }}>{WEEKDAY_SHORT[weekdayIndex(p.date)]} {MEAL_LABEL[p.meal]}</span>
                     <span className="t-sub flex-1 truncate">{r.title}</span>
                     <span className="t-footnote tabular-nums" style={{ color: "var(--label-2)" }}>{servings} Port.</span>
                   </li>

@@ -82,3 +82,21 @@ describe("Abendessen-Kandidaten", () => {
     expect(isDinnerCandidate({ tags: ["pasta", "fisch"], categories: ["Pasta", "Fisch"] })).toBe(true);
   });
 });
+
+describe("Mittag und Abend", () => {
+  it("ordnet Slots als Mo mittag < Mo abend < Di mittag", async () => {
+    const { slotKey } = await import("../lib/meals");
+    expect(slotKey("2026-10-26", "mittag") < slotKey("2026-10-26", "abend")).toBe(true);
+    expect(slotKey("2026-10-26", "abend") < slotKey("2026-10-27", "mittag")).toBe(true);
+  });
+
+  it("Fleischregel gilt über Mittag und Abend hinweg", async () => {
+    const { slotKey } = await import("../lib/meals");
+    const planned = [{ date: slotKey("2026-10-26", "mittag"), diet: "fleisch" as Diet, recipe_id: "x" }];
+    // Mo abend liegt direkt nach Mo mittag → kein zweites Fleischgericht
+    expect(addingViolatesMeatRule(planned, { date: slotKey("2026-10-26", "abend"), diet: "fleisch" })).toBe(true);
+    // Di abend: dazwischen ein vegetarisches Mo abend + Di mittag → Fenster Mo abend, Di mittag, Di abend ok
+    const more = [...planned, { date: slotKey("2026-10-26", "abend"), diet: "vegetarisch" as Diet, recipe_id: "y" }, { date: slotKey("2026-10-27", "mittag"), diet: "fisch" as Diet, recipe_id: "z" }];
+    expect(addingViolatesMeatRule(more, { date: slotKey("2026-10-27", "abend"), diet: "fleisch" })).toBe(false);
+  });
+});

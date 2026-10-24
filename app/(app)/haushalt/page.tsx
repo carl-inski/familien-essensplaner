@@ -7,9 +7,10 @@ import { IconEdit, IconLogout, IconPlus } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
-import { Avatar, Section } from "@/components/ui";
+import { Avatar, Section, Segmented } from "@/components/ui";
+import { MEALS, MEAL_LABEL } from "@/lib/meals";
 import { WEEKDAY_KEYS, WEEKDAY_SHORT, addDays } from "@/lib/dates";
-import type { DefaultWeek, Member } from "@/lib/types";
+import type { DefaultWeek, Meal, Member } from "@/lib/types";
 
 export default function HouseholdPage() {
   const { members, me, household, history, today, sb, reloadMembers } = useApp();
@@ -18,6 +19,7 @@ export default function HouseholdPage() {
   const [editing, setEditing] = useState<Member | null>(null);
   const [adding, setAdding] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const [defaultMeal, setDefaultMeal] = useState<Meal>("abend");
   const isAdmin = me.role === "admin";
 
   // Kochdienst-Zähler: letzte 4 Wochen
@@ -31,9 +33,11 @@ export default function HouseholdPage() {
 
   async function toggleDefault(m: Member, dayIdx: number) {
     const key = WEEKDAY_KEYS[dayIdx];
-    const current = m.default_week?.[key]?.abend ?? "da";
-    const next: DefaultWeek = { ...m.default_week, [key]: { ...(m.default_week?.[key] ?? {}), abend: current === "da" ? "weg" : "da" } };
-    if (next[key]?.abend === "da") delete next[key];
+    const current = m.default_week?.[key]?.[defaultMeal] ?? "da";
+    const day = { ...(m.default_week?.[key] ?? {}), [defaultMeal]: current === "da" ? "weg" : "da" };
+    if (day[defaultMeal] === "da") delete day[defaultMeal];
+    const next: DefaultWeek = { ...m.default_week, [key]: day };
+    if (!Object.keys(day).length) delete next[key];
     const { error } = await sb.from("ep_members").update({ default_week: next }).eq("id", m.id);
     if (error) toast({ text: error.message, tone: "error" });
     await reloadMembers();
@@ -60,7 +64,10 @@ export default function HouseholdPage() {
           </div>
         </Section>
 
-        <Section title="Standardwoche (Abendessen)" footer="Tippe einen Tag an, an dem jemand normalerweise nicht da ist. Neue Wochen werden damit vorbefüllt.">
+        <Section title="Standardwoche" footer="Tippe einen Tag an, an dem jemand normalerweise nicht da ist. Neue Wochen werden damit vorbefüllt.">
+          <div className="mb-2">
+            <Segmented<Meal> label="Mahlzeit" value={defaultMeal} onChange={setDefaultMeal} options={MEALS.map((m) => ({ value: m, label: MEAL_LABEL[m] }))} />
+          </div>
           <div className="card overflow-x-auto px-3 py-2">
             <table className="w-full border-separate" style={{ borderSpacing: "0 6px" }}>
               <thead>
@@ -74,13 +81,13 @@ export default function HouseholdPage() {
                   <tr key={m.id}>
                     <th scope="row" className="t-footnote pr-2 text-left font-medium">{m.name}</th>
                     {WEEKDAY_KEYS.map((k, i) => {
-                      const away = m.default_week?.[k]?.abend === "weg";
+                      const away = m.default_week?.[k]?.[defaultMeal] === "weg";
                       return (
                         <td key={k} className="text-center">
                           <button
                             className="pressable t-caption h-8 w-8 rounded-full font-semibold"
                             style={{ background: away ? "transparent" : "var(--accent-soft)", color: away ? "var(--label-3)" : "var(--accent)", boxShadow: away ? "inset 0 0 0 1px var(--separator)" : undefined }}
-                            aria-label={`${m.name} ${WEEKDAY_SHORT[i]}: ${away ? "weg" : "da"}`}
+                            aria-label={`${m.name} ${WEEKDAY_SHORT[i]} ${MEAL_LABEL[defaultMeal]}: ${away ? "weg" : "da"}`}
                             onClick={() => toggleDefault(m, i)}
                           >
                             {away ? "–" : "✓"}

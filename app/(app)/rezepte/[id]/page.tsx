@@ -7,17 +7,17 @@ import { useApp } from "@/components/app-data";
 import { BookCover } from "@/components/book";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
+import { PlanSheet } from "@/components/plan-sheet";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, Section, Stepper, downloadText, lastCookedLabel } from "@/components/ui";
 import { bringDeeplink, recipePublicUrl } from "@/lib/bring";
+import { addDays, formatDateDE } from "@/lib/dates";
 import { dishCredit, presentCookbook } from "@/lib/medien";
-import { WEEKDAY_LONG, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
 import { recipeToMarkdown } from "@/lib/markdown";
 import { scaleIngredients } from "@/lib/planning";
 import { scaledAmountText } from "@/lib/quantity";
 import { recipeToDraft } from "@/lib/recipe-draft";
-import type { MealPlanEntry } from "@/lib/types";
 
 export default function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +30,6 @@ export default function RecipeDetailPage() {
   const [planOpen, setPlanOpen] = useState(false);
   const [pastOpen, setPastOpen] = useState(false);
   const [pastDate, setPastDate] = useState(addDays(today, -7));
-  const [upcoming, setUpcoming] = useState<MealPlanEntry[]>([]);
 
   const target = servings ?? recipe?.servings ?? 4;
   const scaled = useMemo(() => (recipe ? scaleIngredients(recipe.ep_recipe_ingredients ?? [], recipe.servings, target) : []), [recipe, target]);
@@ -52,21 +51,6 @@ export default function RecipeDetailPage() {
   const myHistory = history.filter((h) => h.recipe_id === recipe.id);
   const hasIngredients = (recipe.ep_recipe_ingredients ?? []).length > 0;
   const scalable = hasIngredients && recipe.servings !== null;
-
-  async function openPlanner() {
-    const { data } = await sb.from("ep_meal_plan").select("*").gte("date", today).lte("date", addDays(today, 13)).eq("meal", "abend");
-    setUpcoming((data ?? []) as MealPlanEntry[]);
-    setPlanOpen(true);
-  }
-
-  async function planOn(date: string) {
-    const { error } = await sb.from("ep_meal_plan").upsert(
-      { household_id: household.id, date, meal: "abend", recipe_id: recipe!.id, leftover_of: null, status: "geplant" },
-      { onConflict: "household_id,date,meal" },
-    );
-    setPlanOpen(false);
-    toast(error ? { text: error.message, tone: "error" } : { text: `Für ${WEEKDAY_LONG[weekdayIndex(date)]}, ${formatDateDE(date, { day: "numeric", month: "numeric" })} eingeplant` });
-  }
 
   async function addHistory(cooked_on: string, source: "manuell" | "nachgetragen") {
     const { error } = await sb.from("ep_cooking_history").insert({ household_id: household.id, recipe_id: recipe!.id, cooked_on, source, servings: target, cook_id: app.me.id });
@@ -132,7 +116,7 @@ export default function RecipeDetailPage() {
         <p className="t-footnote mt-3 px-1" style={{ color: "var(--label-2)" }}>{lastCookedLabel(stats.get(recipe.id))}</p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className="btn btn-primary pressable" onClick={openPlanner}><IconCalendar size={18} /> Einplanen</button>
+          <button className="btn btn-primary pressable" onClick={() => setPlanOpen(true)}><IconCalendar size={18} /> Einplanen</button>
           {hasIngredients ? (
             <a className="btn btn-tinted pressable" href={bringHref} target="_blank" rel="noopener"><IconCart size={18} /> In Bring</a>
           ) : (
@@ -234,22 +218,7 @@ export default function RecipeDetailPage() {
         </Section>
       </div>
 
-      <Sheet open={planOpen} onClose={() => setPlanOpen(false)} title="Einplanen">
-        <ul className="group">
-          {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d) => {
-            const e = upcoming.find((u) => u.date === d);
-            const current = e?.recipe_id ? recipesById.get(e.recipe_id)?.title : e?.leftover_of ? "Reste" : null;
-            return (
-              <li key={d}>
-                <button className="row pressable" onClick={() => planOn(d)}>
-                  <span className="t-sub w-28 font-medium">{WEEKDAY_LONG[weekdayIndex(d)].slice(0, 2)}, {formatDateDE(d, { day: "numeric", month: "numeric" })}</span>
-                  <span className="t-footnote flex-1 truncate text-right" style={{ color: current ? "var(--label-2)" : "var(--label-3)" }}>{current ? `ersetzt: ${current}` : "frei"}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </Sheet>
+      <PlanSheet recipe={planOpen ? recipe : null} onClose={() => setPlanOpen(false)} />
 
       <Sheet open={pastOpen} onClose={() => setPastOpen(false)} title="Früher gekocht">
         <p className="t-sub mb-3" style={{ color: "var(--label-2)" }}>Ungefähres Datum reicht – es zählt für „Lange nicht gegessen“ und die Vorschläge.</p>
