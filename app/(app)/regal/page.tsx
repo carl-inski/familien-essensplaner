@@ -20,10 +20,11 @@ export default function ShelfPage() {
     <>
       <PageHeader
         title="Regal"
+        width="wide"
         subtitle={`${cookbooks.length} Kochbücher`}
         trailing={<IconButton label="Buch hinzufügen" onClick={() => setAdding(true)}><IconPlus /></IconButton>}
       />
-      <div className="mx-auto mt-5 grid max-w-2xl grid-cols-3 gap-x-4 gap-y-6 px-4 sm:grid-cols-4">
+      <div className="page-wide mt-5 grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-6 lg:gap-x-6 lg:gap-y-8 xl:grid-cols-8 2xl:grid-cols-10">
         {shelf.map((b) => (
           <Link key={b.id} href={`/regal/${b.id}`} className="pressable flex flex-col gap-1.5">
             <BookCover book={b} className="aspect-[2/3] w-full" />

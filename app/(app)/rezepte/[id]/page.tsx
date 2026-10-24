@@ -81,11 +81,13 @@ export default function RecipeDetailPage() {
       <PageHeader
         title={recipe.title}
         back={{ href: "/rezepte", label: "Rezepte" }}
+        width="medium"
         trailing={<IconButton label="Bearbeiten" href={`/rezepte/${recipe.id}/bearbeiten`}><IconEdit /></IconButton>}
         subtitle={recipe.subtitle ?? undefined}
       />
 
-      <div className="mx-auto max-w-2xl px-4">
+      <div className="page-medium lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-start lg:gap-x-10">
+        <div className="min-w-0">
         <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl" rounded={16} />
         {credit && (
           <p className="t-caption mt-1.5 px-1" style={{ color: "var(--label-3)" }}>
@@ -146,7 +148,9 @@ export default function RecipeDetailPage() {
             </div>
           ))}
         </Section>
+        </div>
 
+        <div className="min-w-0 lg:pt-[1px]">
         {recipe.steps.length > 0 && (
           <Section title="Zubereitung">
             <ol className="flex flex-col gap-3">
@@ -219,6 +223,7 @@ export default function RecipeDetailPage() {
             </button>
           </div>
         </Section>
+        </div>
       </div>
 
       <PlanSheet recipe={planOpen ? recipe : null} onClose={() => setPlanOpen(false)} />

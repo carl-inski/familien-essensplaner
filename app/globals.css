@@ -29,8 +29,14 @@
   --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.12);
   --radius: 14px;
   --radius-lg: 22px;
+  --sidebar-bg: rgba(233, 233, 238, 0.82);
+  --sidebar-w: 0px;
   color-scheme: light;
 }
+
+/* Computer: Seitenleiste als schmale Symbolleiste (lg), mit Beschriftung ab xl */
+@media (min-width: 64rem) { :root { --sidebar-w: 84px; } }
+@media (min-width: 80rem) { :root { --sidebar-w: 232px; } }
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -56,6 +62,7 @@
     --material-edge: rgba(255, 255, 255, 0.1);
     --scrim: rgba(0, 0, 0, 0.5);
     --shadow-sheet: 0 -8px 40px rgba(0, 0, 0, 0.5);
+    --sidebar-bg: rgba(22, 22, 24, 0.86);
     color-scheme: dark;
   }
 }
@@ -130,6 +137,27 @@ body {
 
 .navbar-edge { box-shadow: 0 0.5px 0 var(--material-edge); }
 
+/* Seitenleiste: schwereres Material trennt die Struktur vom Inhalt */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  backdrop-filter: blur(30px) saturate(160%);
+  box-shadow: inset -0.5px 0 0 var(--material-edge);
+  padding-top: env(safe-area-inset-top);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.sidebar-item { color: var(--label-2); }
+.sidebar-item[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+@media (hover: hover) {
+  .sidebar-item:not([aria-current="page"]):hover { background: var(--fill); color: var(--label); }
+}
+
+.app-main { padding-left: var(--sidebar-w); }
+.app-fixed { left: var(--sidebar-w); }
+
 /* Bausteine in @layer components, damit Tailwind-Utilities (z. B. pl-9) sie überschreiben können */
 @layer components {
 /* ------------------------------------------------------------------
@@ -167,6 +195,9 @@ body {
 }
 .pressable:active { transform: scale(0.97); }
 .row.pressable:active { transform: none; background: var(--fill); }
+@media (hover: hover) {
+  .row.pressable:hover, .icon-button:hover { background: var(--fill); }
+}
 
 .btn {
   display: inline-flex;
@@ -256,6 +287,24 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
+/* Seitenbreiten: schmal zum Lesen, breit zum Überblicken */
+.page { margin-inline: auto; width: 100%; max-width: 42rem; padding-inline: 1rem; }
+.page-medium, .page-wide { margin-inline: auto; width: 100%; max-width: 42rem; padding-inline: 1rem; }
+@media (min-width: 64rem) {
+  .page-medium { max-width: 76rem; padding-inline: 2rem; }
+  .page-wide { max-width: 120rem; padding-inline: 2rem; }
+}
+
+/* Leerer Platz im Wochenraster: getönte Fläche, lädt zum Planen ein */
+.slot-empty {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+@media (hover: hover) {
+  .slot-empty:hover { box-shadow: inset 0 0 0 1.5px var(--accent); }
+}
+
 /* Sheets */
 .sheet {
   background: var(--surface);
@@ -264,6 +313,12 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   padding-bottom: env(safe-area-inset-bottom);
 }
 @media (prefers-color-scheme: dark) { .sheet { background: #1c1c1e; } }
+/* Computer: zentrierter Dialog statt Sheet von unten */
+.sheet.sheet-dialog {
+  border-radius: var(--radius-lg);
+  padding-bottom: 0;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22), 0 0 0 0.5px var(--material-edge);
+}
 .sheet-grabber {
   width: 36px; height: 5px; border-radius: 3px; background: var(--fill-strong);
 }
@@ -280,3 +335,8 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 
 /* Platz unter der schwebenden Tableiste */
 .pb-tabbar { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+@media (min-width: 64rem) { .pb-tabbar { padding-bottom: 4rem; } }
+
+/* Toasts über der Tableiste, am Computer unten in der Inhaltsfläche */
+.toast-dock { left: 0; bottom: calc(92px + env(safe-area-inset-bottom)); }
+@media (min-width: 64rem) { .toast-dock { left: var(--sidebar-w); bottom: 1.5rem; } }

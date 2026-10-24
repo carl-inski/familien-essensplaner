@@ -88,6 +88,7 @@ function Shopping() {
     <>
       <PageHeader
         title="Einkauf"
+        width="wide"
         subtitle={`${weekNumberLabel(isoWeek)} · ${items.length} Zutaten aus ${dishes.length} Gerichten`}
         trailing={
           <>
@@ -96,7 +97,7 @@ function Shopping() {
           </>
         }
       >
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 lg:max-w-md">
           <a
             className="btn btn-primary pressable"
             href={slug && items.length ? bringDeeplink(shoppingPublicUrl(slug)) : undefined}
@@ -125,11 +126,11 @@ function Shopping() {
         </div>
       </PageHeader>
 
-      <div className="mx-auto max-w-2xl px-4">
+      <div className="page-wide">
         {loaded && !dishes.length ? (
           <Empty title="Noch nichts geplant" text="Plane Gerichte in der Woche – die Zutaten landen automatisch hier, passend zur Zahl der Esser." />
         ) : (
-          <>
+          <div className="lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
             <Section title="Gerichte">
               <ul className="group">
                 {dishes.map(({ p, r, servings }) => (
@@ -147,6 +148,8 @@ function Shopping() {
               )}
             </Section>
 
+            {/* Computer: Bereiche fließen in Spalten, jede Gruppe bleibt zusammen */}
+            <div className="lg:columns-2 lg:gap-6 2xl:columns-3 [&>section]:break-inside-avoid lg:[&>section]:mt-0 lg:[&>section]:pt-6">
             {groups.map(([aisle, list]) => (
               <Section key={aisle} title={aisle}>
                 <ul className="group">
@@ -173,10 +176,11 @@ function Shopping() {
                 </ul>
               </Section>
             ))}
-            <p className="t-footnote mt-6 px-4 text-center" style={{ color: "var(--label-3)" }}>
+            </div>
+            <p className="t-footnote mt-6 px-4 text-center lg:col-span-2" style={{ color: "var(--label-3)" }}>
               Bring! öffnet die Liste als Rezept „Wocheneinkauf {weekNumberLabel(isoWeek)}“ – dort alle Zutaten übernehmen.
             </p>
-          </>
+          </div>
         )}
       </div>
     </>
