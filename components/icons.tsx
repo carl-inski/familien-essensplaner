@@ -98,3 +98,6 @@ export const IconNote = (p: P) => (
 export const IconLink = (p: P) => (
   <Svg {...p}><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" /><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" /></Svg>
 );
+export const IconSidebar = (p: P) => (
+  <Svg {...p}><rect x="3.5" y="4.5" width="17" height="15" rx="3" /><path d="M9.5 4.5v15" /></Svg>
+);

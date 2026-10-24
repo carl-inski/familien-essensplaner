@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconCart, IconCheck, IconChevronLeft, IconChevronRight, IconCopy } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
+import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { IconButton, PageHeader } from "@/components/nav";
 import { useToast } from "@/components/toast";
 import { Empty, Section } from "@/components/ui";
@@ -89,6 +90,7 @@ function Shopping() {
     <>
       <PageHeader
         title="Einkauf"
+        icon="🛒"
         width="wide"
         subtitle={`${weekNumberLabel(isoWeek)} · ${items.length} Zutaten aus ${dishes.length} Gerichten`}
         trailing={
@@ -126,6 +128,11 @@ function Shopping() {
             <IconCopy size={18} /> Als Text
           </button>
         </div>
+        <AiPromptBar
+          className="mt-4 lg:max-w-3xl"
+          placeholder="Frag die KI zum Einkauf …"
+          suggestions={["Fasse den Einkauf zusammen", "Was fehlt für die geplanten Gerichte?"]}
+        />
       </PageHeader>
 
       <div className="page-wide">

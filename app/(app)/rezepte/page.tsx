@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconClock, IconHistory, IconNote, IconPlus, IconSearch, IconUpload } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
+import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { IconButton, PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
@@ -87,6 +88,7 @@ export default function RecipesPage() {
     <>
       <PageHeader
         title="Rezepte"
+        icon="🍲"
         width="wide"
         subtitle={`${recipes.length} Rezepte in der Sammlung`}
         trailing={
@@ -120,6 +122,11 @@ export default function RecipesPage() {
             <button className="chip pressable" data-on={filters.never} onClick={() => set({ never: !filters.never })}>Nie gekocht</button>
           </div>
         </div>
+        <AiPromptBar
+          className="mt-4 lg:max-w-3xl"
+          placeholder="Frag die KI nach Rezepten …"
+          suggestions={["Was Schnelles für heute Abend?", "Was haben wir lange nicht gegessen?", "Rezept aus einem Foto anlegen"]}
+        />
         <div className="mt-3 flex items-center justify-between">
           <span className="t-footnote" style={{ color: "var(--label-2)" }}>{list.length} Treffer</span>
           <select className="t-footnote w-auto appearance-none rounded-lg bg-transparent py-1 text-right font-medium" style={{ color: "var(--accent)" }} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sortierung">
@@ -137,7 +144,7 @@ export default function RecipesPage() {
               <div className="flex flex-1 flex-col gap-1 p-3">
                 <h3 className="t-sub line-clamp-2 font-semibold leading-snug">{r.title}</h3>
                 <div className="t-caption flex flex-wrap items-center gap-x-2 gap-y-0.5" style={{ color: "var(--label-2)" }}>
-                  <DietIcon diet={r.diet} size={13} />
+                  {r.diet && <span className={`tag tag-${r.diet}`}><DietIcon diet={r.diet} size={11} />{DIET_LABEL[r.diet]}</span>}
                   {r.time_min !== null && <span className="flex items-center gap-0.5"><IconClock size={12} />{r.time_min} Min.</span>}
                   {r.servings && <span>{r.servings} Port.</span>}
                 </div>

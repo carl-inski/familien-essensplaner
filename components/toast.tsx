@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx value={show}>
       {children}
-      <div className="toast-dock pointer-events-none fixed right-0 z-[60] flex justify-center px-4" aria-live="polite">
+      <div className="toast-dock pointer-events-none fixed z-[60] flex justify-center px-4" aria-live="polite">
         <AnimatePresence>
           {toast && (
             <motion.div
