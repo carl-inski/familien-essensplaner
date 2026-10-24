@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { scaleIngredients } from "@/lib/planning";
+import { dishPhoto } from "@/lib/medien";
 import { anonClient, jsonLd, requestOrigin } from "@/lib/public/data";
 import type { Ingredient } from "@/lib/types";
 
@@ -38,7 +39,11 @@ export default async function PublicRecipePage({ params, searchParams }: PagePro
     servings ?? recipe.servings ?? 1,
   );
   const origin = await requestOrigin();
-  const image = recipe.image_url ?? `${origin}/og?t=${encodeURIComponent(recipe.title)}`;
+  const example = dishPhoto(recipe.title);
+  const storedImage = recipe.image_url
+    ? recipe.image_url.startsWith("http") ? recipe.image_url : `${origin}${recipe.image_url}`
+    : null;
+  const image = storedImage ?? (example ? `${origin}${example.src}` : `${origin}/og?t=${encodeURIComponent(recipe.title)}`);
 
   const ld = {
     "@context": "https://schema.org",
@@ -57,6 +62,10 @@ export default async function PublicRecipePage({ params, searchParams }: PagePro
       <p className="t-footnote" style={{ color: "var(--label-2)" }}>Familien-Essensplaner</p>
       <h1 className="t-title mt-1">{recipe.title}</h1>
       {recipe.subtitle && <p className="t-sub mt-1" style={{ color: "var(--label-2)" }}>{recipe.subtitle}</p>}
+      {(storedImage || example) && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={image} alt="" className="mt-4 aspect-[16/9] w-full object-cover" style={{ borderRadius: 16 }} />
+      )}
       <p className="t-sub mt-3">{servings ? `${servings} Portionen` : recipe.servings_text}{recipe.time_text ? ` · ${recipe.time_text}` : ""}</p>
       <h2 className="t-section mt-6 mb-2">Zutaten</h2>
       <ul className="group">

@@ -11,6 +11,7 @@ import { RecipePicker } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { DietIcon, Empty, Section, lastCookedLabel } from "@/components/ui";
+import { bookQuelle, presentCookbook } from "@/lib/medien";
 import type { Diet, Recipe } from "@/lib/types";
 
 export default function BookDetailPage() {
@@ -18,7 +19,9 @@ export default function BookDetailPage() {
   const router = useRouter();
   const { cookbooksById, recipes, stats, sb, household, reloadRecipes, reloadCookbooks } = useApp();
   const toast = useToast();
-  const book = cookbooksById.get(id);
+  const stored = cookbooksById.get(id);
+  const book = stored ? presentCookbook(stored) : undefined;
+  const quelle = book ? bookQuelle(book) : null;
   const [editing, setEditing] = useState(false);
   const [linking, setLinking] = useState(false);
   const [pending, setPending] = useState<Recipe | null>(null);
@@ -80,7 +83,13 @@ export default function BookDetailPage() {
           <dl className="t-sub flex flex-col gap-1.5">
             {book.authors.length > 0 && <div><dt className="t-caption" style={{ color: "var(--label-2)" }}>Autor</dt><dd>{book.authors.join(", ")}</dd></div>}
             {book.publisher && <div><dt className="t-caption" style={{ color: "var(--label-2)" }}>Verlag</dt><dd>{book.publisher}{book.year ? `, ${book.year}` : ""}</dd></div>}
-            {book.isbn && <div><dt className="t-caption" style={{ color: "var(--label-2)" }}>ISBN</dt><dd className="tabular-nums">{book.isbn}</dd></div>}
+            {book.isbn && (
+              <div>
+                <dt className="t-caption" style={{ color: "var(--label-2)" }}>ISBN</dt>
+                <dd className="tabular-nums">{book.isbn}</dd>
+                {quelle && <dd className="t-caption" style={{ color: "var(--label-3)" }}>{quelle}</dd>}
+              </div>
+            )}
             {book.notes && <div><dd className="t-footnote" style={{ color: "var(--label-2)" }}>{book.notes}</dd></div>}
             {!book.isbn && <button className="btn btn-tinted btn-sm pressable mt-1 self-start" onClick={() => setEditing(true)}>ISBN ergänzen</button>}
           </dl>
@@ -120,7 +129,7 @@ export default function BookDetailPage() {
         </Section>
       </div>
 
-      <BookSheet open={editing} onClose={() => setEditing(false)} book={book} />
+      <BookSheet open={editing} onClose={() => setEditing(false)} book={stored ? presentCookbook(stored) : book} />
       <RecipePicker open={linking} onClose={() => setLinking(false)} title="Rezept verknüpfen" onPick={(r) => { setLinking(false); setPending(r); setPage(r.cookbook_page?.toString() ?? ""); }} />
       <Sheet open={!!pending} onClose={() => setPending(null)} title="Seite angeben">
         <p className="t-sub mb-3">{pending?.title} → {book.title}</p>

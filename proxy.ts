@@ -4,9 +4,12 @@ import { supabaseEnv } from "./lib/supabase/env";
 
 // Frischt die Supabase-Session auf und schickt nicht eingeloggte Besucher zum Login.
 // Öffentlich bleiben nur Login, Auth-Callback und die Bring!-Seiten (/r/…, /einkauf/…).
-const PUBLIC_PREFIXES = ["/login", "/auth", "/r/", "/einkauf/", "/og"];
+const PUBLIC_PREFIXES = ["/login", "/auth", "/r/", "/einkauf/", "/og", "/bildnachweise"];
 
 export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  // Statische Nachweiseite: kein Login und kein Supabase-Aufruf nötig.
+  if (path === "/bildnachweise") return NextResponse.next({ request });
   let response = NextResponse.next({ request });
   const { url, key } = supabaseEnv();
   const supabase = createServerClient(url, key, {
@@ -22,7 +25,6 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
-  const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!data?.claims && !isPublic) {

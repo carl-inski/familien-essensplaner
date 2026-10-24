@@ -8,6 +8,7 @@ import { PageHeader } from "./nav";
 import { useToast } from "./toast";
 import { DIET_LABEL, RecipeImage, Section, Segmented } from "./ui";
 import { parseNutrition, parseTimeMinutes, slugifyTag } from "@/lib/markdown";
+import { dishPhoto } from "@/lib/medien";
 import { parseAmount } from "@/lib/quantity";
 import type { Diet, Recipe } from "@/lib/types";
 
@@ -128,6 +129,9 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
             </label>
             {imageUrl && <button className="btn-plain t-sub pressable" onClick={() => setImageUrl("")}>Entfernen</button>}
           </div>
+          {!imageUrl && dishPhoto(title) && (
+            <p className="t-footnote mt-2" style={{ color: "var(--label-2)" }}>Beispielbild aus frei lizenzierter Quelle. Ein eigenes Foto ersetzt es.</p>
+          )}
         </Section>
 
         <Section title="Grunddaten">
