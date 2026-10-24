@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
+import { BookCover } from "@/components/book";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, Section, Stepper, downloadText, lastCookedLabel } from "@/components/ui";
 import { bringDeeplink, recipePublicUrl } from "@/lib/bring";
+import { dishCredit, presentCookbook } from "@/lib/medien";
 import { WEEKDAY_LONG, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
 import { recipeToMarkdown } from "@/lib/markdown";
 import { scaleIngredients } from "@/lib/planning";
@@ -44,7 +46,9 @@ export default function RecipeDetailPage() {
 
   if (!recipe) return <Empty title="Rezept nicht gefunden" action={<Link className="btn btn-tinted" href="/rezepte">Zur Sammlung</Link>} />;
 
-  const book = recipe.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
+  const linkedBook = recipe.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
+  const book = linkedBook ? presentCookbook(linkedBook) : null;
+  const credit = dishCredit(recipe.title, recipe.image_url);
   const myHistory = history.filter((h) => h.recipe_id === recipe.id);
   const hasIngredients = (recipe.ep_recipe_ingredients ?? []).length > 0;
   const scalable = hasIngredients && recipe.servings !== null;
@@ -98,6 +102,14 @@ export default function RecipeDetailPage() {
 
       <div className="mx-auto max-w-2xl px-4">
         <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl" rounded={16} />
+        {credit && (
+          <p className="t-caption mt-1.5 px-1" style={{ color: "var(--label-3)" }}>
+            Beispielbild: {credit.author} · {credit.license} ·{" "}
+            <a href={credit.sourceUrl ?? "/bildnachweise"} className="underline" target="_blank" rel="noopener">Quelle</a>
+            {" · "}
+            <a href="/bildnachweise" className="underline">Nachweise</a>
+          </p>
+        )}
 
         <div className="mt-3 flex flex-wrap gap-2">
           {recipe.diet && <span className="chip"><DietIcon diet={recipe.diet} size={15} /> {DIET_LABEL[recipe.diet]}</span>}
@@ -108,6 +120,7 @@ export default function RecipeDetailPage() {
 
         {book && (
           <Link href={`/regal/${book.id}`} className="card pressable mt-3 flex items-center gap-3 px-4 py-3">
+            <BookCover book={book} className="h-16 w-11 shrink-0" />
             <span className="t-sub flex-1">
               <span style={{ color: "var(--label-2)" }}>aus deinem Regal:</span> <strong>{book.title}</strong>
               {recipe.cookbook_page ? `, S. ${recipe.cookbook_page}` : ""}

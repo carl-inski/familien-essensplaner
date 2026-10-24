@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { catalogBook } from "@/lib/medien";
 import { useApp } from "./app-data";
 import { Sheet } from "./sheet";
 import { useToast } from "./toast";
@@ -8,9 +9,16 @@ import type { Cookbook } from "@/lib/types";
 
 /** Cover-Foto oder ein ruhiger Buchrücken mit Titel */
 export function BookCover({ book, className = "" }: { book: Pick<Cookbook, "title" | "cover_url" | "authors">; className?: string }) {
-  if (book.cover_url) {
+  const catalog = catalogBook(book.title);
+  const cover = book.cover_url || catalog?.coverUrl;
+  const authors = book.authors.length ? book.authors : catalog?.authors ?? [];
+  if (cover) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={book.cover_url} alt="" loading="lazy" className={`object-cover ${className}`} style={{ borderRadius: 6, boxShadow: "0 1px 2px rgba(0,0,0,.2), 0 6px 16px rgba(0,0,0,.12)" }} />;
+    return (
+      <span className={`flex items-center justify-center overflow-hidden ${className}`} style={{ borderRadius: 6, background: "#f4efe6", boxShadow: "0 1px 2px rgba(0,0,0,.2), 0 6px 16px rgba(0,0,0,.12)" }}>
+        <img src={cover} alt="" loading="lazy" className="h-full w-full object-contain" />
+      </span>
+    );
   }
   let h = 0;
   for (const c of book.title) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -26,7 +34,7 @@ export function BookCover({ book, className = "" }: { book: Pick<Cookbook, "titl
       aria-hidden
     >
       <span className="line-clamp-4 pl-1.5 text-[13px] leading-tight font-semibold" style={{ letterSpacing: "-0.01em" }}>{book.title}</span>
-      {book.authors[0] && <span className="truncate pl-1.5 text-[10px] opacity-80">{book.authors[0]}</span>}
+      {authors[0] && <span className="truncate pl-1.5 text-[10px] opacity-80">{authors[0]}</span>}
     </div>
   );
 }
