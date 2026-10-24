@@ -153,7 +153,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
         </div>
       )}
       <div className="ai-composer flex items-end gap-2">
-        <button type="button" className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ color: "var(--accent)" }} aria-label="Foto anhängen" title="Foto anhängen" onClick={() => fileRef.current?.click()}>
+        <button type="button" className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ color: "var(--ai)" }} aria-label="Foto anhängen" title="Foto anhängen" onClick={() => fileRef.current?.click()}>
           <IconCamera size={22} />
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => attach(e.target.files)} aria-label="Foto für die KI" />
@@ -183,7 +183,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
             <span className="h-3 w-3 rounded-[3px]" style={{ background: "var(--label)" }} />
           </button>
         ) : (
-          <button type="submit" className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-40" style={{ background: "var(--accent)", color: "var(--on-accent)" }} aria-label="Senden" disabled={(!input.trim() && !files.length) || pendingConfirm}>
+          <button type="submit" className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:opacity-40" style={{ background: "var(--ai)", color: "var(--on-ai)" }} aria-label="Senden" disabled={(!input.trim() && !files.length) || pendingConfirm}>
             <IconArrowUp size={20} strokeWidth={2.4} />
           </button>
         )}
@@ -224,7 +224,7 @@ function Message({ message, respond }: { message: UIMessage; respond: (toolCallI
           </div>
         )}
         {text && (
-          <p className="t-sub max-w-[85%] rounded-[20px] px-3.5 py-2 whitespace-pre-wrap" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>{text}</p>
+          <p className="t-sub max-w-[85%] rounded-[20px] px-3.5 py-2 whitespace-pre-wrap" style={{ background: "var(--ai)", color: "var(--on-ai)" }}>{text}</p>
         )}
       </div>
     );
