@@ -104,7 +104,7 @@ export default function RecipeDetailPage() {
         <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl" rounded={16} />
         {credit && (
           <p className="t-caption mt-1.5 px-1" style={{ color: "var(--label-3)" }}>
-            Beispielbild: {credit.author} · {credit.license} ·{" "}
+            Foto: {credit.author} ·{" "}
             <a href={credit.sourceUrl ?? "/bildnachweise"} className="underline" target="_blank" rel="noopener">Quelle</a>
             {" · "}
             <a href="/bildnachweise" className="underline">Nachweise</a>

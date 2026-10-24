@@ -15,8 +15,9 @@ export default function CreditsPage() {
       <p className="t-footnote" style={{ color: "var(--label-2)" }}>Familien-Essensplaner</p>
       <h1 className="t-large-title mt-1">Gerichte und Regal</h1>
       <p className="t-sub mt-2 max-w-2xl" style={{ color: "var(--label-2)" }}>
-        Beispielbilder stehen unter freier Lizenz. Wo kein Foto zum Gericht passt, bleibt der Platzhalter.
-        Eine ISBN erscheint nur, wenn eine Quelle genau diese Ausgabe nennt.
+        Die Fotos sind Beispielbilder für die private App. Die Quelle steht bei jedem Bild.
+        Eine ISBN erscheint nur, wenn eine Quelle genau diese Ausgabe nennt. Bei mehreren Ausgaben
+        zeigt das Cover die jüngste deutsche Ausgabe, das ISBN-Feld bleibt leer.
       </p>
 
       <h2 className="t-title-2 mt-8">Rezepte</h2>
@@ -27,7 +28,8 @@ export default function CreditsPage() {
             <div className="flex flex-1 flex-col gap-1 p-3">
               <h3 className="t-sub line-clamp-2 font-semibold leading-snug">{d.title}</h3>
               <p className="t-caption" style={{ color: "var(--label-3)" }}>
-                {d.src ? `${d.author} · ${d.license}` : "Platzhalter"}
+                {d.author}
+                {d.hinweis ? ` · ${d.hinweis}` : ""}
               </p>
             </div>
           </article>
@@ -50,17 +52,30 @@ export default function CreditsPage() {
       <ul className="mt-3 flex max-w-3xl flex-col gap-2">
         {DISH_PHOTOS.filter((d) => d.src).map((d) => (
           <li key={d.title} className="t-sub">
-            <span className="font-semibold">{d.title}.</span> {d.author}, {d.license}.{" "}
-            <a className="underline" href={d.sourceUrl ?? "/bildnachweise"}>Wikimedia Commons</a>
+            <span className="font-semibold">{d.title}.</span> {d.author}.{" "}
+            <a className="underline" href={d.sourceUrl ?? "/bildnachweise"}>Quelle</a>
+            {d.hinweis ? <span style={{ color: "var(--label-2)" }}> {d.hinweis}</span> : null}
           </li>
         ))}
       </ul>
-      <p className="t-sub mt-4 max-w-3xl" style={{ color: "var(--label-2)" }}>
-        Ohne Beispielbild, weil kein frei lizenziertes Foto das Gericht trifft: {missing.map((d) => d.title).join(" · ")}.
-      </p>
+      <h2 className="t-title-2 mt-10">Cover</h2>
+      <ul className="mt-3 flex max-w-3xl flex-col gap-2">
+        {CATALOG_BOOKS.map((b) => (
+          <li key={b.title} className="t-sub">
+            <span className="font-semibold">{b.title}.</span> {b.coverQuelle}
+            {b.isbn ? ` ISBN ${b.isbn}.` : " ISBN-Feld leer."}
+          </li>
+        ))}
+      </ul>
+      {missing.length > 0 && (
+        <p className="t-sub mt-4 max-w-3xl" style={{ color: "var(--label-2)" }}>
+          Ohne Beispielbild: {missing.map((d) => d.title).join(" · ")}.
+        </p>
+      )}
       <p className="t-footnote mt-6 max-w-3xl" style={{ color: "var(--label-3)" }}>
-        Buchcover, wo vorhanden, über die Open-Library-Covers-API. In einer schon befüllten Datenbank setzt
-        {" "}<span className="tabular-nums">supabase/manual/20261024_bilder_und_kochbuecher.sql</span> dieselben Werte. Die Datei läuft nicht von selbst.
+        In einer schon befüllten Datenbank setzt{" "}
+        <span className="tabular-nums">supabase/manual/20261024_bilder_und_kochbuecher.sql</span> dieselben
+        Pfade. Die Datei läuft nicht von selbst.
       </p>
     </main>
   );
