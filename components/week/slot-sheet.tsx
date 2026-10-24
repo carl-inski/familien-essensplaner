@@ -9,33 +9,44 @@ import { useToast } from "@/components/toast";
 import { Avatar, DietIcon, RecipeImage, Section, Segmented, Stepper } from "@/components/ui";
 import { WEEKDAY_LONG, formatDateDE, weekdayIndex } from "@/lib/dates";
 import { effectiveStatus, presentMembers, servingsFor } from "@/lib/planning";
-import type { MealPlanEntry, PlanStatus } from "@/lib/types";
-import { MEAL, type useWeek } from "./use-week";
+import { MEAL_LABEL, slotKey } from "@/lib/meals";
+import type { Meal, MealPlanEntry, PlanStatus } from "@/lib/types";
+import type { useWeek } from "./use-week";
+
+export interface Slot {
+  date: string;
+  meal: Meal;
+}
 
 interface Props {
-  date: string | null;
+  slot: Slot | null;
   onClose: () => void;
   week: ReturnType<typeof useWeek>;
-  onChangeRecipe: (date: string) => void;
-  onSuggest: (date: string) => void;
+  onChangeRecipe: (slot: Slot) => void;
+  onSuggest: (slot: Slot) => void;
   onCooked: (entry: MealPlanEntry, cooked: boolean) => void;
 }
 
-export function SlotSheet({ date, onClose, week, onChangeRecipe, onSuggest, onCooked }: Props) {
+export function SlotSheet({ slot, onClose, week, onChangeRecipe, onSuggest, onCooked }: Props) {
   return (
-    <Sheet open={date !== null} onClose={onClose} title={date ? `${WEEKDAY_LONG[weekdayIndex(date)]}, ${formatDateDE(date, { day: "numeric", month: "long" })}` : ""}>
-      {date && <SlotContent date={date} week={week} onChangeRecipe={onChangeRecipe} onSuggest={onSuggest} onCooked={onCooked} />}
+    <Sheet
+      open={slot !== null}
+      onClose={onClose}
+      title={slot ? `${WEEKDAY_LONG[weekdayIndex(slot.date)].slice(0, 2)}, ${formatDateDE(slot.date, { day: "numeric", month: "long" })} · ${MEAL_LABEL[slot.meal]}` : ""}
+    >
+      {slot && <SlotContent slot={slot} week={week} onChangeRecipe={onChangeRecipe} onSuggest={onSuggest} onCooked={onCooked} />}
     </Sheet>
   );
 }
 
-function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<Props, "date" | "onClose"> & { date: string }) {
+function SlotContent({ slot, week, onChangeRecipe, onSuggest, onCooked }: Omit<Props, "slot" | "onClose"> & { slot: Slot }) {
+  const { date, meal } = slot;
   const { members, recipesById, cookbooksById, today } = useApp();
   const toast = useToast();
   const { plan, attendance, upsertSlot, setStatus } = week;
-  const entry = plan.find((p) => p.date === date && p.meal === MEAL) ?? null;
+  const entry = plan.find((p) => p.date === date && p.meal === meal) ?? null;
   const recipe = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
-  const present = presentMembers(members, attendance, date, MEAL);
+  const present = presentMembers(members, attendance, date, meal);
   const book = recipe?.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
   const [note, setNote] = useState(entry?.note ?? "");
   const [noteFor, setNoteFor] = useState(entry?.note);
@@ -49,10 +60,13 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
   const servings = entry?.servings_override ?? autoServings;
 
   // Frühere Slots dieser Woche mit Rezept → als Reste-Quelle wählbar
-  const leftoverSources = plan.filter((p) => p.date < date && p.recipe_id && !p.leftover_of && p.status !== "ausgefallen");
+  const here = slotKey(date, meal);
+  const leftoverSources = plan
+    .filter((p) => slotKey(p.date, p.meal) < here && p.recipe_id && !p.leftover_of && p.status !== "ausgefallen")
+    .sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal)));
 
   async function save(patch: Partial<MealPlanEntry>) {
-    const { error } = await upsertSlot(date, patch);
+    const { error } = await upsertSlot(date, meal, patch);
     if (error) toast({ text: error.message.includes("Abwesende") ? "Abwesende Personen können nicht kochen." : error.message, tone: "error" });
   }
 
@@ -74,14 +88,14 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
           ) : entry?.leftover_of ? (
             <div className="row t-sub">Reste von {(() => {
               const src = plan.find((p) => p.id === entry.leftover_of);
-              return src ? `${WEEKDAY_LONG[weekdayIndex(src.date)]} (${recipesById.get(src.recipe_id!)?.title ?? "?"})` : "–";
+              return src ? `${WEEKDAY_LONG[weekdayIndex(src.date)]} ${MEAL_LABEL[src.meal]} (${recipesById.get(src.recipe_id!)?.title ?? "?"})` : "–";
             })()}</div>
           ) : (
             <div className="row t-sub" style={{ color: "var(--label-2)" }}>Noch nichts geplant</div>
           )}
           <div className="flex flex-wrap gap-2 px-4 py-3">
-            <button className="btn btn-tinted btn-sm pressable" onClick={() => onChangeRecipe(date)}>{recipe ? "Ändern" : "Rezept wählen"}</button>
-            <button className="btn btn-gray btn-sm pressable" onClick={() => onSuggest(date)}><IconSparkles size={16} /> Vorschlag</button>
+            <button className="btn btn-tinted btn-sm pressable" onClick={() => onChangeRecipe(slot)}>{recipe ? "Ändern" : "Rezept wählen"}</button>
+            <button className="btn btn-gray btn-sm pressable" onClick={() => onSuggest(slot)}><IconSparkles size={16} /> Vorschlag</button>
             {(recipe || entry?.leftover_of) && (
               <button className="btn btn-gray btn-sm pressable" style={{ color: "var(--red)" }} onClick={() => save({ recipe_id: null, leftover_of: null, status: "geplant", servings_override: null })}>
                 <IconTrash size={16} /> Entfernen
@@ -99,7 +113,7 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
                 data-on={entry?.leftover_of === src.id}
                 onClick={() => save({ recipe_id: null, leftover_of: entry?.leftover_of === src.id ? null : src.id, status: "geplant" })}
               >
-                {WEEKDAY_LONG[weekdayIndex(src.date)].slice(0, 2)} · {recipesById.get(src.recipe_id!)?.title}
+                {WEEKDAY_LONG[weekdayIndex(src.date)].slice(0, 2)} {MEAL_LABEL[src.meal]} · {recipesById.get(src.recipe_id!)?.title}
               </button>
             ))}
           </div>
@@ -129,7 +143,7 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
               <p className="t-footnote mb-2" style={{ color: "var(--label-2)" }}>Kocht</p>
               <div className="flex flex-wrap gap-2">
                 {members.map((m) => {
-                  const here = effectiveStatus(m, date, MEAL, attendance).status === "da";
+                  const here = effectiveStatus(m, date, meal, attendance).status === "da";
                   return (
                     <button key={m.id} className="chip pressable" data-on={entry.cook_id === m.id} disabled={!here} style={!here ? { opacity: 0.35 } : undefined}
                       onClick={() => save({ cook_id: entry.cook_id === m.id ? null : m.id, cook2_id: entry.cook2_id === m.id ? null : entry.cook2_id })}>
@@ -143,7 +157,7 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
                   <p className="t-footnote mt-3 mb-2" style={{ color: "var(--label-2)" }}>Hilft (optional)</p>
                   <div className="flex flex-wrap gap-2">
                     {members.filter((m) => m.id !== entry.cook_id).map((m) => {
-                      const here = effectiveStatus(m, date, MEAL, attendance).status === "da";
+                      const here = effectiveStatus(m, date, meal, attendance).status === "da";
                       return (
                         <button key={m.id} className="chip pressable" data-on={entry.cook2_id === m.id} disabled={!here} style={!here ? { opacity: 0.35 } : undefined}
                           onClick={() => save({ cook2_id: entry.cook2_id === m.id ? null : m.id })}>
@@ -175,15 +189,15 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
       <Section title="Wer isst mit?" footer="Gäste zählen bei den Portionen und im Einkauf mit.">
         <div className="group">
           {members.map((m) => {
-            const s = effectiveStatus(m, date, MEAL, attendance);
+            const s = effectiveStatus(m, date, meal, attendance);
             return (
               <div key={m.id} className="row">
                 <Avatar member={m} size={28} dim={s.status === "weg"} />
                 <span className="t-sub flex-1">{m.name}</span>
                 {s.status === "da" && (
-                  <Stepper label={`Gäste von ${m.name}`} value={s.guests} max={20} onChange={(g) => void setStatus(m.id, date, "da", g)} />
+                  <Stepper label={`Gäste von ${m.name}`} value={s.guests} max={20} onChange={(g) => void setStatus(m.id, date, meal, "da", g)} />
                 )}
-                <button className="chip pressable" data-on={s.status === "da"} onClick={() => void setStatus(m.id, date, s.status === "da" ? "weg" : "da")}>
+                <button className="chip pressable" data-on={s.status === "da"} onClick={() => void setStatus(m.id, date, meal, s.status === "da" ? "weg" : "da")}>
                   {s.status === "da" ? "da" : "weg"}
                 </button>
               </div>
@@ -195,7 +209,7 @@ function SlotContent({ date, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
       <Section title="Notiz">
         <textarea
           className="input"
-          placeholder="z. B. doppelt kochen fürs Mittagessen"
+          placeholder={meal === "abend" ? "z. B. doppelt kochen fürs Mittagessen morgen" : "z. B. Reste vom Vorabend"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onBlur={() => note !== (entry?.note ?? "") && save({ note: note || null })}

@@ -5,15 +5,13 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconCalendar } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
-import { Sheet } from "@/components/sheet";
-import { useToast } from "@/components/toast";
+import { PlanSheet } from "@/components/plan-sheet";
 import { DIET_LABEL, DietIcon, Empty, Section } from "@/components/ui";
-import { WEEKDAY_LONG, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
+import { formatDateDE } from "@/lib/dates";
 import type { Diet, Recipe } from "@/lib/types";
 
 export default function LongNotEatenPage() {
-  const { recipes, stats, cookbooks, cookbooksById, sb, household, today } = useApp();
-  const toast = useToast();
+  const { recipes, stats, cookbooks, cookbooksById } = useApp();
   const [diet, setDiet] = useState<Diet | null>(null);
   const [book, setBook] = useState<string | null>(null);
   const [planFor, setPlanFor] = useState<Recipe | null>(null);
@@ -21,13 +19,6 @@ export default function LongNotEatenPage() {
   const filtered = useMemo(() => recipes.filter((r) => (!diet || r.diet === diet) && (!book || r.cookbook_id === book)), [recipes, diet, book]);
   const cooked = filtered.filter((r) => stats.has(r.id)).sort((a, b) => stats.get(b.id)!.days_since - stats.get(a.id)!.days_since);
   const never = filtered.filter((r) => !stats.has(r.id));
-
-  async function planOn(date: string) {
-    const r = planFor!;
-    setPlanFor(null);
-    const { error } = await sb.from("ep_meal_plan").upsert({ household_id: household.id, date, meal: "abend", recipe_id: r.id, leftover_of: null, status: "geplant" }, { onConflict: "household_id,date,meal" });
-    toast(error ? { text: error.message, tone: "error" } : { text: `${r.title} für ${WEEKDAY_LONG[weekdayIndex(date)]} eingeplant` });
-  }
 
   const row = (r: Recipe) => {
     const s = stats.get(r.id);
@@ -67,13 +58,7 @@ export default function LongNotEatenPage() {
           <ul className="group">{never.map(row)}</ul>
         </Section>
       </div>
-      <Sheet open={!!planFor} onClose={() => setPlanFor(null)} title={planFor ? `${planFor.title} einplanen` : ""}>
-        <ul className="group">
-          {Array.from({ length: 14 }, (_, i) => addDays(today, i)).map((d) => (
-            <li key={d}><button className="row pressable t-sub" onClick={() => planOn(d)}>{WEEKDAY_LONG[weekdayIndex(d)]}, {formatDateDE(d, { day: "numeric", month: "long" })}</button></li>
-          ))}
-        </ul>
-      </Sheet>
+      <PlanSheet recipe={planFor} onClose={() => setPlanFor(null)} />
     </>
   );
 }

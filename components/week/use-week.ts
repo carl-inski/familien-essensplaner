@@ -5,7 +5,7 @@ import { useApp } from "@/components/app-data";
 import { weekDates } from "@/lib/dates";
 import type { Attendance, AttendanceStatus, MealPlanEntry, Meal } from "@/lib/types";
 
-export const MEAL: Meal = "abend"; // MVP: nur Abendessen sichtbar
+export { MEALS } from "@/lib/meals";
 
 export function useWeek(isoWeek: string) {
   const { sb, household, members } = useApp();
@@ -102,15 +102,15 @@ export function useWeek(isoWeek: string) {
   }, [sb, from, load]);
 
   const setStatus = useCallback(
-    async (memberId: string, date: string, status: AttendanceStatus, guests = 0) => {
+    async (memberId: string, date: string, meal: Meal, status: AttendanceStatus, guests = 0) => {
       // optimistisch
       setAttendance((cur) => {
-        const rest = cur.filter((a) => !(a.member_id === memberId && a.date === date && a.meal === MEAL));
-        return [...rest, { id: `tmp-${memberId}-${date}`, member_id: memberId, date, meal: MEAL, status, guests }];
+        const rest = cur.filter((a) => !(a.member_id === memberId && a.date === date && a.meal === meal));
+        return [...rest, { id: `tmp-${memberId}-${date}-${meal}`, member_id: memberId, date, meal, status, guests }];
       });
       stale.current = true; // nach dem Schreiben einmal frisch laden
       const { error } = await enqueue(() =>
-        sb.from("ep_attendance").upsert({ member_id: memberId, date, meal: MEAL, status, guests: status === "weg" ? 0 : guests }, { onConflict: "member_id,date,meal" }),
+        sb.from("ep_attendance").upsert({ member_id: memberId, date, meal, status, guests: status === "weg" ? 0 : guests }, { onConflict: "member_id,date,meal" }),
       );
       return error;
     },
@@ -118,25 +118,25 @@ export function useWeek(isoWeek: string) {
   );
 
   const upsertSlot = useCallback(
-    async (date: string, patch: Partial<MealPlanEntry>) => {
-      const existing = plan.find((p) => p.date === date && p.meal === MEAL);
+    async (date: string, meal: Meal, patch: Partial<MealPlanEntry>) => {
+      const existing = plan.find((p) => p.date === date && p.meal === meal);
       setPlan((cur) => {
         if (existing) return cur.map((p) => (p.id === existing.id ? { ...p, ...patch } : p));
         return [
           ...cur,
-          { id: `tmp-${date}`, household_id: household.id, date, meal: MEAL, recipe_id: null, leftover_of: null, cook_id: null, cook2_id: null, servings_override: null, status: "geplant", note: null, ...patch },
+          { id: `tmp-${date}-${meal}`, household_id: household.id, date, meal, recipe_id: null, leftover_of: null, cook_id: null, cook2_id: null, servings_override: null, status: "geplant", note: null, ...patch },
         ];
       });
       stale.current = true;
       const { data, error } = await enqueue(() =>
         sb
           .from("ep_meal_plan")
-          .upsert({ household_id: household.id, date, meal: MEAL, ...stripLocal(patch) }, { onConflict: "household_id,date,meal" })
+          .upsert({ household_id: household.id, date, meal, ...stripLocal(patch) }, { onConflict: "household_id,date,meal" })
           .select()
           .single(),
       );
       if (error) return { error, entry: null };
-      if (pending.current === 0) setPlan((cur) => [...cur.filter((p) => !(p.date === date && p.meal === MEAL)), data as MealPlanEntry]);
+      if (pending.current === 0) setPlan((cur) => [...cur.filter((p) => !(p.date === date && p.meal === meal)), data as MealPlanEntry]);
       return { error: null, entry: data as MealPlanEntry };
     },
     [sb, plan, household.id, enqueue],
