@@ -164,7 +164,7 @@ function Assistant() {
       </div>
 
       {!notReady && (
-        <div className="material fixed inset-x-0 z-30" style={{ bottom: "calc(56px + env(safe-area-inset-bottom))", boxShadow: "0 -0.5px 0 var(--material-edge)" }}>
+        <div className="composer-dock material fixed right-0 z-30" style={{ boxShadow: "0 -0.5px 0 var(--material-edge)" }}>
           <form
             className="mx-auto max-w-2xl px-3 py-2"
             onSubmit={(e) => {

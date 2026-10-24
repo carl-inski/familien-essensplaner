@@ -1,7 +1,8 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
@@ -9,9 +10,10 @@ import { IconButton, PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
 import { useToast } from "@/components/toast";
 import { Avatar, DietIcon, RecipeImage } from "@/components/ui";
+import { useIsDesktop } from "@/components/use-media";
 import { SlotSheet, type Slot } from "@/components/week/slot-sheet";
 import { MEALS, useWeek } from "@/components/week/use-week";
-import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, parseISODate, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { eaters, effectiveStatus, servingsFor } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
@@ -36,8 +38,32 @@ function Week() {
   const { dates, attendance, plan, setStatus, upsertSlot } = week;
   const [pickerFor, setPickerFor] = useState<Slot | null>(null);
   const [sheetFor, setSheetFor] = useState<Slot | null>(null);
+  const desktop = useIsDesktop();
+  const reduce = useReducedMotion();
+
+  // Richtung des letzten Wochenwechsels: die neue Woche kommt von dort, wohin man geblättert hat
+  const [shown, setShown] = useState({ week: isoWeek, dir: 0 });
+  if (shown.week !== isoWeek) setShown({ week: isoWeek, dir: isoWeek > shown.week ? 1 : -1 });
+  const enter = {
+    initial: reduce || !shown.dir ? { opacity: 0 } : { opacity: 0, x: shown.dir * 32 },
+    animate: { opacity: 1, x: 0 },
+    transition: reduce ? { duration: 0.15 } : { type: "spring" as const, bounce: 0, duration: 0.35 },
+  };
 
   const go = (w: string) => router.replace(`/woche?w=${w}`, { scroll: false });
+
+  // Computer: ← und → blättern durch die Wochen, solange kein Feld und kein Dialog den Fokus hat
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("input, textarea, select, [contenteditable], [role=dialog]") || document.querySelector("[role=dialog]")) return;
+      e.preventDefault();
+      router.replace(`/woche?w=${shiftWeek(isoWeek, e.key === "ArrowLeft" ? -1 : 1)}`, { scroll: false });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isoWeek, router]);
 
   // Für die Fleischregel zählt die Reihenfolge der Gerichte: Mo mittag, Mo abend, Di mittag, …
   const plannedDishes = (exclude?: Slot): PlannedDish[] =>
@@ -96,6 +122,7 @@ function Week() {
     <>
       <PageHeader
         title="Woche"
+        width="wide"
         subtitle={`${weekNumberLabel(isoWeek)} · ${formatDateDE(dates[0], { day: "numeric", month: "long" })} – ${formatDateDE(dates[6], { day: "numeric", month: "long" })} · ${plannedCount}/${dates.length * MEALS.length} geplant`}
         trailing={
           <>
@@ -106,23 +133,32 @@ function Week() {
         }
       >
         <div className="mt-3 flex items-center gap-2">
-          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, -1))}>
+          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, -1))} title="Vorige Woche (←)">
             <IconChevronLeft size={16} /> Vorige
           </button>
           {isoWeek !== isoWeekString(today) && (
             <button className="chip pressable" data-on="true" onClick={() => go(isoWeekString(today))}>Diese Woche</button>
           )}
-          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, 1))}>
+          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, 1))} title="Nächste Woche (→)">
             Nächste <IconChevronRight size={16} />
           </button>
         </div>
       </PageHeader>
 
-      <div className="mx-auto mt-4 flex max-w-2xl flex-col gap-3 px-4">
-        {!week.loaded
-          ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
-          : dates.map((date) => dayCard(date))}
-      </div>
+      {desktop ? (
+        // Computer: die sieben Tage nebeneinander; Mittag und Abend liegen über alle Tage auf einer Linie (Subgrid)
+        <motion.div key={isoWeek} {...enter} className="page-wide mt-5 grid grid-cols-7 gap-2 xl:gap-3" style={{ gridTemplateRows: "auto auto auto" }}>
+          {!week.loaded
+            ? dates.map((d) => <div key={d} className="skeleton row-span-3 h-[34rem]" style={{ borderRadius: 14 }} />)
+            : dates.map((date) => dayColumn(date))}
+        </motion.div>
+      ) : (
+        <motion.div key={isoWeek} {...enter} className="page mt-4 flex flex-col gap-3">
+          {!week.loaded
+            ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
+            : dates.map((date) => dayCard(date))}
+        </motion.div>
+      )}
 
       <RecipePicker
         open={pickerFor !== null}
@@ -172,7 +208,7 @@ function Week() {
     );
   }
 
-  function slotBlock(date: string, meal: Meal, divider: boolean) {
+  function slotInfo(date: string, meal: Meal) {
     const slot: Slot = { date, meal };
     const entry = plan.find((p) => p.date === date && p.meal === meal) ?? null;
     const count = eaters(members, attendance, date, meal);
@@ -188,6 +224,18 @@ function Week() {
     const hasMeal = !!recipe || !!source;
     const cancelled = entry?.status === "ausgefallen";
     const nobody = count === 0;
+    const detail = cancelled
+      ? "ausgefallen"
+      : source
+        ? `von ${WEEKDAY_LONG[weekdayIndex(source.date)]} ${MEAL_LABEL[source.meal]}`
+        : book
+          ? `aus deinem Regal · ${book.title}${recipe?.cookbook_page ? `, S. ${recipe.cookbook_page}` : ""}`
+          : recipe?.time_text ?? (recipe?.servings ? `Rezept für ${recipe.servings}` : "");
+    return { slot, entry, count, recipe, source, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail };
+  }
+
+  function slotBlock(date: string, meal: Meal, divider: boolean) {
+    const { slot, entry, count, recipe, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail } = slotInfo(date, meal);
 
     return (
       <section
@@ -243,15 +291,7 @@ function Week() {
                   <span className="truncate">{recipe ? recipe.title : `Reste: ${sourceRecipe?.title ?? "–"}`}</span>
                   {recipe && <DietIcon diet={recipe.diet} size={15} />}
                 </span>
-                <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>
-                  {cancelled
-                    ? "ausgefallen"
-                    : source
-                      ? `von ${WEEKDAY_LONG[weekdayIndex(source.date)]} ${MEAL_LABEL[source.meal]}`
-                      : book
-                        ? `aus deinem Regal · ${book.title}${recipe?.cookbook_page ? `, S. ${recipe.cookbook_page}` : ""}`
-                        : recipe?.time_text ?? (recipe?.servings ? `Rezept für ${recipe.servings}` : "")}
-                </span>
+                <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>{detail}</span>
               </span>
               <IconChevronRight size={18} style={{ color: "var(--label-3)" }} />
             </button>
@@ -293,6 +333,159 @@ function Week() {
             </div>
           )}
         </div>
+      </section>
+    );
+  }
+
+  // ---------- Computer: eine Spalte pro Tag ----------
+
+  function dayColumn(date: string) {
+    const idx = weekdayIndex(date);
+    const isToday = date === today;
+    const isPast = date < today;
+    return (
+      <article
+        key={date}
+        className="card row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid overflow-hidden"
+        style={{ opacity: isPast && !isToday ? 0.86 : 1, boxShadow: isToday ? "0 0 0 2px var(--accent)" : undefined }}
+        aria-label={`${WEEKDAY_LONG[idx]}, ${formatDateDE(date)}`}
+      >
+        <header className="flex items-center gap-2 px-3 pt-3 pb-1">
+          <span
+            className="t-title-2 flex h-9 min-w-9 items-center justify-center rounded-full px-1 tabular-nums"
+            style={isToday ? { background: "var(--accent)", color: "var(--on-accent)" } : undefined}
+          >
+            {parseISODate(date).getUTCDate()}
+          </span>
+          <h2 className="min-w-0 leading-tight">
+            <span className="t-headline block truncate">
+              {/* Volle Wochentage erst, wenn „Donnerstag“ ohne Kürzen passt */}
+              <span className="min-[96rem]:hidden">{WEEKDAY_SHORT[idx]}</span>
+              <span className="hidden min-[96rem]:inline">{WEEKDAY_LONG[idx]}</span>
+            </span>
+            <span className="t-caption block truncate" style={{ color: isToday ? "var(--accent)" : "var(--label-2)" }}>
+              {isToday ? "Heute" : formatDateDE(date, { month: "short" })}
+            </span>
+          </h2>
+        </header>
+        {MEALS.map((meal) => slotCell(date, meal))}
+      </article>
+    );
+  }
+
+  function slotCell(date: string, meal: Meal) {
+    const { slot, entry, count, recipe, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail } = slotInfo(date, meal);
+    const title = recipe ? recipe.title : `Reste: ${sourceRecipe?.title ?? "–"}`;
+
+    return (
+      <section
+        key={meal}
+        aria-label={`${WEEKDAY_LONG[weekdayIndex(date)]} ${MEAL_LABEL[meal]}`}
+        className="flex min-w-0 flex-col gap-2 px-2 pt-2.5 pb-3 xl:px-2.5"
+        style={{ boxShadow: "inset 0 0.5px 0 var(--separator)" }}
+      >
+        <div className="flex items-center px-0.5">
+          <h3 className="t-section">{MEAL_LABEL[meal]}</h3>
+          <span className="t-footnote ml-auto flex items-center gap-1 tabular-nums" style={{ color: "var(--label-2)" }} aria-label={`${count} Esser`} title={`${count} Esser`}>
+            <IconPeople size={14} /> {count}
+          </span>
+        </div>
+
+        {/* Anwesenheit: Avatare, ein Klick pro Person */}
+        <div className="flex flex-wrap gap-[3px]">
+          {members.map((m) => {
+            const s = effectiveStatus(m, date, meal, attendance);
+            const here = s.status === "da";
+            const label = `${m.name}: ${here ? "da" : "weg"}${s.guests ? ` mit ${s.guests} Gästen` : ""}`;
+            return (
+              <button
+                key={m.id}
+                className="pressable relative rounded-full"
+                style={{ boxShadow: here ? undefined : "0 0 0 1px var(--separator)" }}
+                aria-pressed={here}
+                aria-label={`${label} – klicken zum Ändern`}
+                title={label}
+                onClick={() => void setStatus(m.id, date, meal, here ? "weg" : "da")}
+              >
+                <Avatar member={m} size={24} dim={!here} />
+                {s.guests > 0 && (
+                  <span className="absolute -top-1 -right-1.5 rounded-full px-1 text-[10px] leading-[14px] font-semibold" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
+                    +{s.guests}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Gericht */}
+        {hasMeal ? (
+          <button className="pressable flex min-w-0 flex-col gap-1.5 rounded-xl text-left" onClick={() => setSheetFor(slot)} title={`${title}${detail ? ` – ${detail}` : ""}`}>
+            {recipe ? (
+              <RecipeImage recipe={recipe} className="aspect-[4/3] w-full text-sm" rounded={10} />
+            ) : (
+              <span className="flex aspect-[4/3] w-full items-center justify-center rounded-[10px]" style={{ background: "var(--fill)", color: "var(--label-2)" }}>
+                <IconLeftovers size={28} />
+              </span>
+            )}
+            <span className="min-w-0 px-0.5">
+              <span className="t-sub line-clamp-2 font-semibold leading-snug break-words hyphens-auto" style={{ textDecoration: cancelled ? "line-through" : undefined }}>
+                {title}
+              </span>
+              <span className="t-caption mt-0.5 flex items-center gap-1" style={{ color: "var(--label-2)" }}>
+                {recipe && <DietIcon diet={recipe.diet} size={13} />}
+                <span className="truncate">{detail}</span>
+              </span>
+            </span>
+          </button>
+        ) : nobody ? (
+          <p className="t-footnote flex aspect-[4/3] items-center justify-center rounded-[10px] px-2 text-center" style={{ color: "var(--label-3)", background: "var(--surface-2)" }}>
+            Niemand da
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <button
+              className="pressable slot-empty flex aspect-[4/3] w-full flex-col items-center justify-center gap-1 rounded-[10px]"
+              onClick={() => setPickerFor(slot)}
+            >
+              <IconPlus size={22} />
+              <span className="t-footnote font-semibold">Planen</span>
+            </button>
+            <button className="btn btn-gray btn-sm pressable w-full px-2" onClick={() => void suggest(slot)} aria-label="Vorschlag einfügen" title="Vorschlag einfügen">
+              <IconSparkles size={16} /> <span className="hidden truncate xl:inline">Vorschlag</span>
+            </button>
+          </div>
+        )}
+
+        {hasMeal && !cancelled && (
+          <div className="mt-auto flex flex-wrap gap-1.5">
+            <button
+              className="chip pressable min-w-0 max-w-full px-2.5"
+              onClick={() => setSheetFor(slot)}
+              style={cookMissing ? { background: "var(--red-soft)", color: "var(--red)" } : undefined}
+              title={cookMissing ? "Koch fehlt" : cook ? `Kocht: ${cook.name}${cook2 ? ` & ${cook2.name}` : ""}` : "Koch wählen"}
+            >
+              {cookMissing ? (
+                <><IconWarning size={15} /> <span className="truncate">Koch fehlt</span></>
+              ) : cook ? (
+                <><Avatar member={cook} size={18} /> <span className="truncate">{cook.name}{cook2 ? ` & ${cook2.name}` : ""}</span></>
+              ) : (
+                <><IconChef size={15} /> <span className="truncate">Koch</span></>
+              )}
+            </button>
+            {recipe && entry && date <= today && (
+              entry.status === "gekocht" ? (
+                <button className="chip pressable px-2.5" style={{ background: "var(--green-soft)", color: "var(--green)" }} onClick={() => void markCooked(entry, false)} aria-label="Gekocht – klicken zum Rückgängigmachen" title="Gekocht – klicken zum Rückgängigmachen">
+                  <IconCheck size={15} /> Gekocht
+                </button>
+              ) : (
+                <button className="chip pressable px-2.5" onClick={() => void markCooked(entry, true)} title="Als gekocht markieren">
+                  gekocht ✓
+                </button>
+              )
+            )}
+          </div>
+        )}
       </section>
     );
   }

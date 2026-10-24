@@ -9,6 +9,7 @@ import { useToast } from "./toast";
 import { DIET_LABEL, RecipeImage, Section, Segmented } from "./ui";
 import { parseNutrition, parseTimeMinutes, slugifyTag, type RecipeDraft } from "@/lib/markdown";
 import { dishPhoto } from "@/lib/medien";
+import { photoForUpload } from "@/lib/image";
 import { parseAmount } from "@/lib/quantity";
 import { matchCookbook, suggestCookbook } from "@/lib/recipe-draft";
 import type { Diet, Recipe } from "@/lib/types";
@@ -64,9 +65,13 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
 
   async function upload(file: File) {
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${household.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await sb.storage.from("ep-images").upload(path, file, { contentType: file.type, upsert: false });
+    const jpeg = await photoForUpload(file);
+    if (!jpeg) {
+      setUploading(false);
+      return toast({ text: "Dieses Bildformat kann der Browser nicht lesen. Bitte als JPG oder PNG wählen.", tone: "error" });
+    }
+    const path = `${household.id}/${crypto.randomUUID()}.jpg`;
+    const { error } = await sb.storage.from("ep-images").upload(path, jpeg, { contentType: "image/jpeg", upsert: false });
     setUploading(false);
     if (error) return toast({ text: `Upload fehlgeschlagen: ${error.message}`, tone: "error" });
     setImageUrl(sb.storage.from("ep-images").getPublicUrl(path).data.publicUrl);

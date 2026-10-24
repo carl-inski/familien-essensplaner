@@ -29,6 +29,12 @@ export default function CreditsPage() {
               <h3 className="t-sub line-clamp-2 font-semibold leading-snug">{d.title}</h3>
               <p className="t-caption" style={{ color: "var(--label-3)" }}>
                 {d.author}
+                {d.licenseUrl && (
+                  <>
+                    {" · "}
+                    <a href={d.licenseUrl} className="underline" target="_blank" rel="noopener license">{d.license}</a>
+                  </>
+                )}
                 {d.hinweis ? ` · ${d.hinweis}` : ""}
               </p>
             </div>

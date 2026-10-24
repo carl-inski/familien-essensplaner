@@ -87,6 +87,7 @@ export default function RecipesPage() {
     <>
       <PageHeader
         title="Rezepte"
+        width="wide"
         subtitle={`${recipes.length} Rezepte in der Sammlung`}
         trailing={
           <>
@@ -97,25 +98,27 @@ export default function RecipesPage() {
           </>
         }
       >
-        <label className="relative mt-3 block">
-          <span className="absolute top-1/2 left-3 -translate-y-1/2" style={{ color: "var(--label-3)" }}><IconSearch size={18} /></span>
-          <input className="input pl-9" type="search" placeholder="Titel, Zutat, Tag …" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rezepte durchsuchen" />
-        </label>
-        <div className="scroll-x -mx-4 mt-3 flex gap-2 px-4">
-          <button className="chip pressable" data-on={active > 0} onClick={() => setFilterOpen(true)}>
-            Filter{active ? ` · ${active}` : ""}
-          </button>
-          {(["vegetarisch", "fisch", "fleisch"] as Diet[]).map((d) => (
-            <button key={d} className="chip pressable" data-on={filters.diet === d} onClick={() => set({ diet: filters.diet === d ? null : d })}>
-              <DietIcon diet={d} size={15} /> {DIET_LABEL[d]}
+        <div className="lg:mt-3 lg:flex lg:items-center lg:gap-3">
+          <label className="relative mt-3 block lg:mt-0 lg:w-80 lg:shrink-0">
+            <span className="absolute top-1/2 left-3 -translate-y-1/2" style={{ color: "var(--label-3)" }}><IconSearch size={18} /></span>
+            <input className="input pl-9" type="search" placeholder="Titel, Zutat, Tag …" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rezepte durchsuchen" />
+          </label>
+          <div className="scroll-x -mx-4 mt-3 flex gap-2 px-4 lg:mx-0 lg:mt-0 lg:flex-wrap lg:px-0">
+            <button className="chip pressable" data-on={active > 0} onClick={() => setFilterOpen(true)}>
+              Filter{active ? ` · ${active}` : ""}
             </button>
-          ))}
-          {TIMES.map((t) => (
-            <button key={t} className="chip pressable" data-on={filters.maxTime === t} onClick={() => set({ maxTime: filters.maxTime === t ? null : t })}>
-              ≤ {t} Min.
-            </button>
-          ))}
-          <button className="chip pressable" data-on={filters.never} onClick={() => set({ never: !filters.never })}>Nie gekocht</button>
+            {(["vegetarisch", "fisch", "fleisch"] as Diet[]).map((d) => (
+              <button key={d} className="chip pressable" data-on={filters.diet === d} onClick={() => set({ diet: filters.diet === d ? null : d })}>
+                <DietIcon diet={d} size={15} /> {DIET_LABEL[d]}
+              </button>
+            ))}
+            {TIMES.map((t) => (
+              <button key={t} className="chip pressable" data-on={filters.maxTime === t} onClick={() => set({ maxTime: filters.maxTime === t ? null : t })}>
+                ≤ {t} Min.
+              </button>
+            ))}
+            <button className="chip pressable" data-on={filters.never} onClick={() => set({ never: !filters.never })}>Nie gekocht</button>
+          </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
           <span className="t-footnote" style={{ color: "var(--label-2)" }}>{list.length} Treffer</span>
@@ -125,7 +128,7 @@ export default function RecipesPage() {
         </div>
       </PageHeader>
 
-      <div className="mx-auto mt-2 grid max-w-2xl grid-cols-2 gap-3 px-4 sm:grid-cols-3">
+      <div className="page-wide mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-5 2xl:grid-cols-6">
         {list.map((r) => {
           const book = r.cookbook_id ? cookbooksById.get(r.cookbook_id) : null;
           return (

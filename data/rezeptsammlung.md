@@ -21,6 +21,7 @@
 17. [Chili con Carne](#chili-con-carne)
 18. [Fitness-Reisriegel (PB&J & Banane-Schoko)](#fitness-reisriegel-pbj--banane-schoko)
 19. [Honighähnchen](#honighähnchen)
+20. [Ofenlachs mit Brokkoli, Kartoffeln & Feta-Joghurt](#ofenlachs-mit-brokkoli-kartoffeln--feta-joghurt)
 
 ---
 
@@ -716,3 +717,42 @@
 **Tipp:** Dazu passen Couscous oder ein einfacher Salat.
 
 **Nährwerte pro Portion:** 442 kcal | Fett 23,7 g | gesättigte Fettsäuren 6,6 g | Eiweiß 42 g | KH 16,3 g | Zucker 13,6 g | Salz 0,9 g | Ballaststoffe 2,5 g
+
+---
+
+## Ofenlachs mit Brokkoli, Kartoffeln & Feta-Joghurt
+
+**Quelle:** Küchenchef (eigener Vorschlag, von Carl nachgekocht)
+**Kategorie:** Fisch / Blech
+**Zeit:** ca. 45 Min.
+**Portionen:** 2
+
+### Zutaten
+
+| Zutat | Menge |
+|---|---|
+| **Blech** | |
+| Lachsfilets | 2 |
+| Kartoffeln (festkochend) | 750 g |
+| Brokkoli (Strunk geschält mitverwenden) | 1 großer |
+| Kirschtomaten | 150 g |
+| Zitrone | 1 |
+| Olivenöl, Paprikapulver, Salz, Pfeffer | nach Geschmack |
+| **Feta-Joghurt** | |
+| Joghurt (griechisch oder Natur) | 225 g |
+| Feta | 75 g |
+| Knoblauchzehe | 1 |
+| Dill oder Petersilie (optional) | etwas |
+
+### Zubereitung
+
+1. Ofen auf 200 °C Umluft vorheizen. Kartoffeln in Spalten schneiden, auf dem Blech mit Olivenöl, Paprika, Salz und Pfeffer mischen und 20 Min. backen.
+2. Brokkoli in Röschen teilen, den Strunk schälen und in Scheiben schneiden, Tomaten halbieren. Mit etwas Öl und Salz mischen.
+3. Kartoffeln zur Seite schieben, Brokkoli, Tomaten und Lachs aufs Blech legen. Lachs salzen, pfeffern und mit Zitronensaft beträufeln.
+4. Noch 12–15 Min. backen, bis der Lachs gar ist.
+5. Feta zerbröseln und mit Joghurt, gepresstem Knoblauch, Zitronenabrieb, Salz, Pfeffer und nach Wunsch Kräutern verrühren.
+6. Alles mit dem Feta-Joghurt servieren.
+
+**Tipp:** Gefrorener Lachs geht auch: kurz abspülen, trocken tupfen, mit Öl einstreichen und 20–25 Min. backen, nach 10 Min. würzen. Brokkoli und Tomaten dann erst nach 10 Min. dazugeben.
+
+**Nährwerte pro Portion:** nicht berechnet (reich an Protein, Vitamin D und Kalzium)

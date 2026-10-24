@@ -1,6 +1,6 @@
 import { AppDataProvider } from "@/components/app-data";
 import { AssistantProvider } from "@/components/assistant/assistant-provider";
-import { TabBar } from "@/components/tabbar";
+import { Sidebar, TabBar } from "@/components/tabbar";
 import { ToastProvider } from "@/components/toast";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -8,7 +8,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
     <ToastProvider>
       <AppDataProvider>
         <AssistantProvider>
-          <main className="pb-tabbar">{children}</main>
+          <Sidebar />
+          <main className="app-main pb-tabbar">{children}</main>
           <TabBar />
         </AssistantProvider>
       </AppDataProvider>

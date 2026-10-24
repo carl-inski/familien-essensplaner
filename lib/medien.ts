@@ -210,6 +210,15 @@ export const DISH_PHOTOS: DishPhoto[] = [
     sourceUrl: "https://reciperunner.com/chicken-with-feta-and-tomatoes/",
     hinweis: "Hähnchen mit Feta und Tomaten. Honig, Pistazien und Zwiebeln sind nicht das Hauptmotiv.",
   },
+  {
+    title: "Ofenlachs mit Brokkoli, Kartoffeln & Feta-Joghurt",
+    src: "/images/rezepte/ofenlachs.jpg",
+    author: "Nathan Borror",
+    license: "CC BY 2.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
+    sourceUrl: "https://www.flickr.com/photos/72897141@N00/2815891083",
+    hinweis: "Lachs mit Zitrone, Brokkoli und Kartoffelpüree statt Ofenkartoffeln; dazu Jakobsmuscheln.",
+  },
 ];
 
 const DNB = "Deutsche Nationalbibliografie";
@@ -383,7 +392,7 @@ export const CATALOG_BOOKS: CatalogBook[] = [
 ];
 
 function norm(title: string): string {
-  return title.trim().toLocaleLowerCase("de").replace(/\s+/g, " ");
+  return title.trim().toLocaleLowerCase("de").replace(/\s+&\s+/g, " und ").replace(/\s+/g, " ");
 }
 
 const dishesByTitle = new Map(DISH_PHOTOS.map((d) => [norm(d.title), d]));
