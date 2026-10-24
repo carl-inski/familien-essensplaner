@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { AiUsageSection } from "@/components/ai-status";
 import { useApp } from "@/components/app-data";
 import { IconEdit, IconLogout, IconPlus } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
@@ -121,6 +122,8 @@ export default function HouseholdPage() {
           </ul>
           {isAdmin && <button className="btn btn-tinted btn-sm pressable mt-2" onClick={() => setAdding(true)}><IconPlus size={16} /> Mitglied</button>}
         </Section>
+
+        <AiUsageSection />
 
         <Section title="Mein Konto">
           <button className="row card pressable" onClick={() => setPwOpen(true)}>

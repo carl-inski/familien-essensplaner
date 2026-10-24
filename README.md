@@ -23,7 +23,7 @@ Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), d
 | Haushalt | Mitglieder und Einladungen per E-Mail, Standardwoche, Kochdienst-Zähler (4 Wochen) |
 | Öffentlich | `/r/<slug>` und `/einkauf/<slug>` mit schema.org/Recipe-JSON-LD für den Bring!-Import, `noindex` |
 
-KI-Funktionen (Briefing Abschnitt 6) sind Phase 2 und noch nicht gebaut; die Env-Variablen stehen schon in `.env.example`.
+KI-Funktionen (Briefing Abschnitt 6) entstehen in Stufen, siehe „KI“ unten. Ohne API-Schlüssel zeigt die App „KI noch nicht eingerichtet“.
 
 ## Lokales Setup
 
@@ -59,6 +59,12 @@ Projekt mit dem GitHub-Repo verbinden, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`,
 
 Kein inoffizieller Client: Die App öffnet `https://api.getbring.com/rest/bringrecipes/deeplink?url=<öffentliche Seite>&source=web`. Bring! liest dort das JSON-LD (`recipeIngredient` mit bereits skalierten Mengen, beim Wocheneinkauf `recipeYield = "1"`).
 
-## KI-Anbieter wechseln (Phase 2)
+## KI
 
-Geplant über `LLM_PROVIDER`, `LLM_MODEL`, `LLM_VISION_MODEL`, `LLM_API_KEY` – Aufrufe nur serverseitig in `/api/ai/*`.
+Alle Aufrufe laufen serverseitig in `/api/ai/*` über das Vercel AI SDK (`lib/ai/`), mit der Session des Nutzers (RLS gilt).
+
+- **Anbieter wechseln:** `LLM_PROVIDER` = `anthropic` (Standard, Modell `claude-haiku-5-5`), `openai-compatible` (Groq, OpenRouter …, braucht `LLM_BASE_URL` und `LLM_MODEL`), `mock` (feste Antworten für Tests, kostenlos) oder `off`. Bild- und Stark-Modell über `LLM_VISION_MODEL` / `LLM_MODEL_STRONG`.
+- **Limits:** `AI_DAILY_CALL_LIMIT` Anfragen pro Person und Tag, `AI_MONTHLY_BUDGET_EUR` pro Haushalt und Monat (Berliner Zeit). Jeder Aufruf landet mit Tokens und geschätzten Kosten in `ep_ai_usage`; Preise über `AI_PRICE_*`.
+- **Cache:** `ep_ai_cache` pro Haushalt und Eingabe-Hash – gleiche URL oder gleiches Bild kostet nichts.
+- **Anzeige und Test:** Haushalt → „KI“ zeigt Modell, Verbrauch im Monat und einen Verbindungstest.
+- Inhalte von Webseiten und Fotos gehen nur als markierte Daten an das Modell (`lib/ai/prompts.ts`).

@@ -26,6 +26,7 @@ export async function proxy(request: NextRequest) {
   const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!data?.claims && !isPublic) {
+    if (path.startsWith("/api/ai/")) return NextResponse.json({ error: "Bitte melde dich an.", code: "unauthorized" }, { status: 401 });
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`;
