@@ -15,6 +15,21 @@ export const EinplanenInput = z.object({
   begruendung: z.string().nullable().describe("kurz, warum dieses Gericht passt; sonst null"),
 });
 
+export const MehrereEinplanenInput = z.object({
+  eintraege: z
+    .array(
+      z.object({
+        datum: date,
+        mahlzeit: meal,
+        rezept_id: z.string(),
+        rezept_titel: z.string(),
+        begruendung: z.string().nullable().describe("ein kurzer Satz, warum es passt"),
+      }),
+    )
+    .min(1)
+    .max(14),
+});
+
 export const AnwesenheitInput = z.object({
   datum: date,
   mahlzeit: meal,
@@ -33,12 +48,13 @@ export const EntwurfInput = z.object({
 });
 
 export type EinplanenInput = z.infer<typeof EinplanenInput>;
+export type MehrereEinplanenInput = z.infer<typeof MehrereEinplanenInput>;
 export type AnwesenheitInput = z.infer<typeof AnwesenheitInput>;
 export type NotizInput = z.infer<typeof NotizInput>;
 export type EntwurfInput = z.infer<typeof EntwurfInput>;
 
 /** Namen der Werkzeuge, die erst nach „Übernehmen“ im Browser schreiben */
-export const WRITE_TOOLS = ["einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen"] as const;
+export const WRITE_TOOLS = ["einplanen", "mehrere_einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen"] as const;
 export type WriteTool = (typeof WRITE_TOOLS)[number];
 
 /** Kontext der Seite, von der aus der Assistent geöffnet wurde */

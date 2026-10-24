@@ -1,7 +1,8 @@
 // Anwesenheit, Esserzahl, Portionen und Wocheneinkauf (Briefing 4.2, 4.8, 7)
 
 import { WEEKDAY_KEYS, weekdayIndex } from "./dates";
-import { aisleFor, isPantryBasic } from "./aisles";
+import { aisleFor, aisleRank, isPantryBasic } from "./aisles";
+import { pantryKey, withoutPantry } from "./pantry";
 import { displayName, formatAmount, normalizeName, scaleAmount } from "./quantity";
 import type { Attendance, AttendanceStatus, Ingredient, Meal, MealPlanEntry, Member, Recipe, ShoppingItem } from "./types";
 
@@ -62,13 +63,15 @@ export function shoppingLine(item: Pick<ShoppingItem, "amount" | "unit" | "name"
 
 /**
  * Wocheneinkauf: alle geplanten Slots, skaliert, gleiche Zutat + Einheit summiert,
- * Zutaten ohne Menge nur einmal gelistet.
+ * Zutaten ohne Menge nur einmal gelistet. Vorrat (Salz, Pfeffer …) landet in
+ * `pantry` statt auf der Liste. Sortiert nach Supermarkt-Gang, dann alphabetisch.
  */
 export function buildShoppingList(
   plan: MealPlanEntry[],
   recipes: Map<string, Recipe>,
   members: Member[],
   attendance: Attendance[],
+  pantrySet: Set<string> = new Set(),
 ): ShoppingItem[] {
   const byKey = new Map<string, ShoppingItem>();
   for (const entry of plan) {
@@ -79,9 +82,11 @@ export function buildShoppingList(
     if (servings === 0) continue;
     for (const ing of scaleIngredients(recipe.ep_recipe_ingredients, recipe.servings, servings)) {
       if (isPantryBasic(ing.name)) continue;
-      const name = displayName(ing.name);
+      const rest = withoutPantry(ing.name, pantrySet);
+      const inPantry = rest === null;
+      const name = displayName(rest ?? ing.name);
       const unit = ing.scaled_amount === null ? null : ing.scaled_unit;
-      const key = `${normalizeName(ing.name)}|${ing.scaled_amount === null ? "-" : unit ?? ""}`;
+      const key = `${normalizeName(name)}|${ing.scaled_amount === null ? "-" : unit ?? ""}`;
       const existing = byKey.get(key);
       if (existing) {
         if (existing.amount !== null && ing.scaled_amount !== null) existing.amount = Number((existing.amount + ing.scaled_amount).toFixed(3));
@@ -93,15 +98,38 @@ export function buildShoppingList(
           amount: ing.scaled_amount,
           unit,
           text: "",
-          aisle: ing.aisle ?? aisleFor(ing.name),
+          aisle: ing.aisle ?? aisleFor(name),
           recipes: [recipe.title],
+          ...(inPantry ? { pantry: pantryKey(ing.name) } : {}),
         };
         item.text = shoppingLine(item);
         byKey.set(key, item);
       }
     }
   }
-  return [...byKey.values()].sort((a, b) => a.aisle.localeCompare(b.aisle, "de") || a.name.localeCompare(b.name, "de"));
+  return mergeSpoons([...byKey.values()]).sort(
+    (a, b) => aisleRank(a.aisle) - aisleRank(b.aisle) || a.name.localeCompare(b.name, "de"),
+  );
+}
+
+/** Gleiche Zutat in EL und TL → in EL zusammenfassen (1 EL = 3 TL, auf ½ EL gerundet) */
+function mergeSpoons(items: ShoppingItem[]): ShoppingItem[] {
+  const out: ShoppingItem[] = [];
+  for (const item of items) {
+    if (item.unit !== "TL" || item.amount === null) {
+      out.push(item);
+      continue;
+    }
+    const el = items.find((x) => x.unit === "EL" && x.amount !== null && normalizeName(x.name) === normalizeName(item.name));
+    if (!el) {
+      out.push(item);
+      continue;
+    }
+    el.amount = Math.ceil(((el.amount ?? 0) + item.amount / 3) * 2) / 2;
+    el.recipes = [...new Set([...el.recipes, ...item.recipes])];
+    el.text = shoppingLine(el);
+  }
+  return out;
 }
 
 export function groupByAisle(items: ShoppingItem[]): [string, ShoppingItem[]][] {

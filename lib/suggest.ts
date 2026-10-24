@@ -106,3 +106,47 @@ export function meatRuleHint(planned: PlannedDish[], slotDate: string, diet: Die
   }
   return null;
 }
+
+/** Kandidaten für einen offenen Slot, nach Gewicht sortiert (länger nicht gekocht zuerst) */
+export function rankedCandidates<R extends SuggestRecipe & { tags: string[]; categories: string[] }>(
+  recipes: R[],
+  stats: Map<string, CookStats>,
+  planned: PlannedDish[],
+  slot: string,
+  today: string,
+  opts: { dinner?: boolean; exclude?: Set<string> } = {},
+): R[] {
+  const pool = recipes.filter((r) => !opts.exclude?.has(r.id) && (!opts.dinner || isDinnerCandidate(r)));
+  return (suggestionCandidates(pool, stats, planned, slot, today) as R[]).sort(
+    (a, b) => weight(b, stats.get(b.id), today) - weight(a, stats.get(a.id), today),
+  );
+}
+
+export interface BatchProblem {
+  slot: string;
+  problem: string | null;
+}
+
+/**
+ * Prüft mehrere Vorschläge nacheinander gegen Plan, Kochhistorie und Hausregeln.
+ * Bereits geprüfte Einträge des Stapels zählen für die folgenden mit.
+ */
+export function checkBatch(
+  items: { slot: string; recipe_id: string; diet: Diet | null }[],
+  planned: PlannedDish[],
+  stats: Map<string, CookStats>,
+  today: string,
+): BatchProblem[] {
+  const accepted: PlannedDish[] = [];
+  return [...items]
+    .sort((a, b) => a.slot.localeCompare(b.slot))
+    .map((it) => {
+      const others = [...planned, ...accepted].filter((p) => p.date !== it.slot && p.recipe_id);
+      let problem: string | null = null;
+      if (others.some((p) => p.recipe_id === it.recipe_id)) problem = "Steht in dieser Zeit schon im Plan.";
+      else if (isBlocked(stats.get(it.recipe_id), today)) problem = `Vor weniger als ${BLOCK_DAYS} Tagen gekocht.`;
+      else if (addingViolatesMeatRule(others, { date: it.slot, diet: it.diet })) problem = "Zu viel Fleisch: mehr als 1 Fleischgericht in 3 Gerichten.";
+      if (!problem) accepted.push({ date: it.slot, recipe_id: it.recipe_id, diet: it.diet });
+      return { slot: it.slot, problem };
+    });
+}

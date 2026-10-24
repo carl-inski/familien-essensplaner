@@ -3,15 +3,17 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconCart, IconCheck, IconChevronLeft, IconChevronRight, IconCopy } from "@/components/icons";
+import { IconCart, IconCheck, IconChevronLeft, IconChevronRight, IconCopy, IconHome } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
 import { IconButton, PageHeader } from "@/components/nav";
+import { usePantry } from "@/components/pantry";
 import { useToast } from "@/components/toast";
 import { Empty, Section } from "@/components/ui";
 import { useWeek } from "@/components/week/use-week";
 import { bringDeeplink, shoppingPublicUrl } from "@/lib/bring";
 import { WEEKDAY_SHORT, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
+import { pantryEntriesFor } from "@/lib/pantry";
 import { buildShoppingList, groupByAisle, servingsFor } from "@/lib/planning";
 
 export default function ShoppingPage() {
@@ -48,8 +50,17 @@ function Shopping() {
     setChecked(readChecked(storageKey));
   }
 
-  const items = useMemo(() => buildShoppingList(plan, recipesById, members, attendance), [plan, recipesById, members, attendance]);
+  const pantry = usePantry();
+  const all = useMemo(() => buildShoppingList(plan, recipesById, members, attendance, pantry.set), [plan, recipesById, members, attendance, pantry.set]);
+  const items = useMemo(() => all.filter((i) => !i.pantry), [all]);
+  // Vorrats-Zutaten dieser Woche, jede nur einmal (Olivenöl aus drei Rezepten = ein Eintrag)
+  const atHome = useMemo(() => [...new Set(all.filter((i) => i.pantry).flatMap((i) => pantryEntriesFor(i.name, pantry.set)))].sort((a, b) => a.localeCompare(b, "de")), [all, pantry.set]);
   const groups = useMemo(() => groupByAisle(items), [items]);
+
+  async function keepAtHome(name: string) {
+    const names = await pantry.add(name);
+    if (names.length) toast({ text: `„${name}“ ist ab jetzt immer zu Hause`, action: { label: "Widerrufen", run: () => void pantry.remove(names) } });
+  }
   const dishes = plan
     .filter((p) => p.recipe_id && !p.leftover_of && p.status !== "ausgefallen")
     .sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal)))
@@ -156,8 +167,8 @@ function Shopping() {
                     const key = `${i.name}|${i.unit ?? ""}`;
                     const done = checked.has(key);
                     return (
-                      <li key={key}>
-                        <button className="row pressable" onClick={() => toggle(key)} aria-pressed={done}>
+                      <li key={key} className="flex items-stretch">
+                        <button className="row pressable min-w-0 flex-1" onClick={() => toggle(key)} aria-pressed={done}>
                           <span
                             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors"
                             style={{ background: done ? "var(--accent)" : "transparent", boxShadow: done ? undefined : "inset 0 0 0 1.5px var(--label-3)", color: "var(--on-accent)" }}
@@ -169,12 +180,29 @@ function Shopping() {
                             <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>{i.recipes.join(", ")}</span>
                           </span>
                         </button>
+                        <button className="pressable flex w-12 shrink-0 items-center justify-center" style={{ color: "var(--label-3)" }} aria-label={`${i.name}: immer zu Hause`} title="Immer zu Hause – nicht mehr einkaufen" onClick={() => keepAtHome(i.name)}>
+                          <IconHome size={19} />
+                        </button>
                       </li>
                     );
                   })}
                 </ul>
               </Section>
             ))}
+            {atHome.length > 0 && (
+              <Section title="Immer zu Hause" footer="Steht nicht auf der Liste und geht nicht an Bring!. Antippen, um es wieder einzukaufen.">
+                <div className="flex flex-wrap gap-2">
+                  {atHome.map((n) => {
+                    const label = n.charAt(0).toUpperCase() + n.slice(1);
+                    return (
+                      <button key={n} className="chip pressable" aria-label={`${label} wieder einkaufen`} onClick={() => void pantry.remove([n])}>
+                        <IconHome size={14} /> {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Section>
+            )}
             <p className="t-footnote mt-6 px-4 text-center" style={{ color: "var(--label-3)" }}>
               Bring! öffnet die Liste als Rezept „Wocheneinkauf {weekNumberLabel(isoWeek)}“ – dort alle Zutaten übernehmen.
             </p>
