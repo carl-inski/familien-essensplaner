@@ -33,7 +33,7 @@ export function TabBar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
-                style={{ color: active ? "var(--accent)" : "var(--label-2)" }}
+                style={{ color: active ? (href === "/assistent" ? "var(--ai)" : "var(--accent)") : "var(--label-2)" }}
               >
                 <Icon size={25} strokeWidth={active ? 2.1 : 1.7} />
                 <span className="text-[10.5px] font-medium tracking-[0.01em]">{label}</span>

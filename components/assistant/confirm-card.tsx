@@ -61,7 +61,7 @@ function Shell({ icon, title, children, actions }: { icon: ReactNode; title: str
   return (
     <div className="card overflow-hidden" role="group" aria-label={title}>
       <div className="px-4 pt-3 pb-3">
-        <p className="t-footnote mb-1 flex items-center gap-1.5 font-semibold" style={{ color: "var(--accent)" }}>{icon} {title}</p>
+        <p className="t-footnote mb-1 flex items-center gap-1.5 font-semibold" style={{ color: "var(--ai)" }}>{icon} {title}</p>
         {children}
       </div>
       {actions && <div className="grid grid-cols-2 gap-2 px-3 pb-3">{actions}</div>}
