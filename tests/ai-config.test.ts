@@ -28,6 +28,14 @@ describe("readAiConfig", () => {
     expect(ok.models.text).toBe("llama");
   });
 
+  it("OpenRouter: Basis-URL vorbelegt, Modell und Schlüssel nötig", () => {
+    expect(readAiConfig({ LLM_PROVIDER: "openrouter", LLM_API_KEY: "k" }).reason).toMatch(/LLM_MODEL/);
+    expect(readAiConfig({ LLM_PROVIDER: "openrouter", LLM_MODEL: "x/y" }).enabled).toBe(false);
+    const ok = readAiConfig({ LLM_PROVIDER: "openrouter", LLM_API_KEY: "k", LLM_MODEL: "x/y" });
+    expect(ok.enabled).toBe(true);
+    expect(ok.baseURL).toBe("https://openrouter.ai/api/v1");
+  });
+
   it("Mock braucht keinen Schlüssel, off schaltet ab", () => {
     expect(readAiConfig({ LLM_PROVIDER: "mock" }).enabled).toBe(true);
     expect(readAiConfig({ LLM_PROVIDER: "off", LLM_API_KEY: "k" }).enabled).toBe(false);

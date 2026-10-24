@@ -1,7 +1,7 @@
 // KI-Konfiguration aus Umgebungsvariablen (nur serverseitig ausgewertet).
 // Anbieter und Modelle lassen sich ohne Codeänderung tauschen.
 
-export type AiProvider = "anthropic" | "openai-compatible" | "mock" | "off";
+export type AiProvider = "anthropic" | "openrouter" | "openai-compatible" | "mock" | "off";
 export type ModelKind = "text" | "vision" | "strong";
 
 export interface AiPrices {
@@ -25,6 +25,7 @@ export interface AiConfig {
 }
 
 export const DEFAULT_MODEL = "claude-haiku-5-5";
+export const OPENROUTER_URL = "https://openrouter.ai/api/v1";
 
 type Env = Record<string, string | undefined>;
 
@@ -36,10 +37,10 @@ const num = (v: string | undefined, fallback: number) => {
 
 export function readAiConfig(env: Env = process.env): AiConfig {
   const apiKey = str(env.LLM_API_KEY);
-  const baseURL = str(env.LLM_BASE_URL);
   const raw = str(env.LLM_PROVIDER)?.toLowerCase();
   const provider: AiProvider =
-    raw === "anthropic" || raw === "openai-compatible" || raw === "mock" || raw === "off" ? raw : "anthropic";
+    raw === "anthropic" || raw === "openrouter" || raw === "openai-compatible" || raw === "mock" || raw === "off" ? raw : "anthropic";
+  const baseURL = str(env.LLM_BASE_URL) ?? (provider === "openrouter" ? OPENROUTER_URL : null);
 
   const text = str(env.LLM_MODEL) ?? (provider === "anthropic" || provider === "mock" ? DEFAULT_MODEL : "");
   const vision = str(env.LLM_VISION_MODEL) ?? text;
@@ -47,7 +48,8 @@ export function readAiConfig(env: Env = process.env): AiConfig {
 
   let reason: string | null = null;
   if (provider === "off") reason = "Die KI ist ausgeschaltet.";
-  else if (provider === "anthropic" && !apiKey) reason = "Es ist noch kein API-Schlüssel hinterlegt.";
+  else if ((provider === "anthropic" || provider === "openrouter") && !apiKey) reason = "Es ist noch kein API-Schlüssel hinterlegt.";
+  else if (provider === "openrouter" && !text) reason = "Für OpenRouter fehlt LLM_MODEL (z. B. ein Modell aus openrouter.ai/models).";
   else if (provider === "openai-compatible" && (!baseURL || !text)) reason = "Für den OpenAI-kompatiblen Anbieter fehlen LLM_BASE_URL oder LLM_MODEL.";
 
   return {

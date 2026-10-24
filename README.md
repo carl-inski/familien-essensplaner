@@ -63,7 +63,7 @@ Kein inoffizieller Client: Die App öffnet `https://api.getbring.com/rest/bringr
 
 Alle Aufrufe laufen serverseitig in `/api/ai/*` über das Vercel AI SDK (`lib/ai/`), mit der Session des Nutzers (RLS gilt).
 
-- **Anbieter wechseln:** `LLM_PROVIDER` = `anthropic` (Standard, Modell `claude-haiku-5-5`), `openai-compatible` (Groq, OpenRouter …, braucht `LLM_BASE_URL` und `LLM_MODEL`), `mock` (feste Antworten für Tests, kostenlos) oder `off`. Bild- und Stark-Modell über `LLM_VISION_MODEL` / `LLM_MODEL_STRONG`.
+- **Anbieter wechseln:** `LLM_PROVIDER` = `anthropic` (Standard, Modell `claude-haiku-5-5`), `openrouter` (braucht `LLM_API_KEY` von openrouter.ai und `LLM_MODEL`, z. B. ein Anthropic- oder Open-Source-Modell; `AI_PRICE_*` auf dessen Preise setzen), `openai-compatible` (Groq …, braucht `LLM_BASE_URL` und `LLM_MODEL`), `mock` (feste Antworten für Tests, kostenlos) oder `off`. Bild- und Stark-Modell über `LLM_VISION_MODEL` / `LLM_MODEL_STRONG`.
 - **Limits:** `AI_DAILY_CALL_LIMIT` Anfragen pro Person und Tag, `AI_MONTHLY_BUDGET_EUR` pro Haushalt und Monat (Berliner Zeit). Jeder Aufruf landet mit Tokens und geschätzten Kosten in `ep_ai_usage`; Preise über `AI_PRICE_*`.
 - **Cache:** `ep_ai_cache` pro Haushalt und Eingabe-Hash – gleiche URL oder gleiches Bild kostet nichts.
 - **Anzeige und Test:** Haushalt → „KI“ zeigt Modell, Verbrauch im Monat und einen Verbindungstest.

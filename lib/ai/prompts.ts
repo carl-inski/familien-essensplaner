@@ -16,3 +16,12 @@ export function asData(label: string, content: string): string {
   const clean = content.replaceAll("</daten>", "</ daten>");
   return `<daten quelle="${label.replace(/"/g, "'")}">\n${clean}\n</daten>`;
 }
+
+export const EXTRACT_RULES = `Übertrage das Rezept vollständig und genau in das Schema:
+- Nichts erfinden: Fehlt eine Angabe, setze null bzw. eine leere Liste. Nährwerte nur, wenn sie dastehen.
+- Englische oder andere Sprachen ins Deutsche übersetzen; Cups, oz, lb, °F in g, ml und °C umrechnen.
+- Mengen und Einheiten in "amount", die Zutat (mit Zusätzen wie "fein gewürfelt") in "name".
+- Zwischenüberschriften der Zutaten (z. B. "Für den Teig") als "group" ohne "Für".
+- Jeden Arbeitsschritt als eigenen Eintrag, ohne Nummerierung.
+- diet: "fleisch" bei Fleisch, Wurst oder Geflügel, "fisch" bei Fisch oder Meeresfrüchten, sonst "vegetarisch".
+- Ist kein Rezept erkennbar, setze is_recipe auf false.`;

@@ -35,6 +35,8 @@ export interface RecipeDraft {
   tip: string | null;
   nutrition: { text: string; [k: string]: string } | null;
   extra_meta: { lines: MetaLine[] };
+  /** Bild-URL aus einem Import (Webseite), sonst nicht gesetzt */
+  image_url?: string | null;
 }
 
 const KNOWN_HEAD = ["Untertitel", "Quelle", "Kochbuch", "Kategorie", "Zeit", "Portionen", "Menge", "Tags"];

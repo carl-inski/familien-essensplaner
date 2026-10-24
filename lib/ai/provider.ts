@@ -15,6 +15,15 @@ export function aiModel(cfg: AiConfig, kind: ModelKind, mock?: MockReply): Langu
   switch (cfg.provider) {
     case "anthropic":
       return createAnthropic({ apiKey: cfg.apiKey ?? undefined })(id);
+    case "openrouter":
+      return createOpenAICompatible({
+        name: "openrouter",
+        baseURL: cfg.baseURL!,
+        apiKey: cfg.apiKey ?? undefined,
+        includeUsage: true,
+        // OpenRouter ordnet Anfragen damit der App zu (optional)
+        headers: { "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "https://familien-essensplaner.vercel.app", "X-Title": "Familien-Essensplaner" },
+      })(id);
     case "openai-compatible":
       return createOpenAICompatible({ name: "llm", baseURL: cfg.baseURL!, apiKey: cfg.apiKey ?? undefined, includeUsage: true })(id);
     case "mock":

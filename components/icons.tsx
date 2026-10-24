@@ -95,3 +95,6 @@ export const IconLeftovers = (p: P) => (
 export const IconNote = (p: P) => (
   <Svg {...p}><path d="M5 4.5h14v10L14 19.5H5v-15Z" /><path d="M14 19.5v-5h5M8.5 9h7M8.5 12.5h4" /></Svg>
 );
+export const IconLink = (p: P) => (
+  <Svg {...p}><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1" /><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1" /></Svg>
+);

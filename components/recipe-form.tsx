@@ -1,15 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useApp } from "./app-data";
 import { IconArrowDown, IconArrowUp, IconCamera, IconPlus, IconTrash } from "./icons";
 import { PageHeader } from "./nav";
 import { useToast } from "./toast";
 import { DIET_LABEL, RecipeImage, Section, Segmented } from "./ui";
-import { parseNutrition, parseTimeMinutes, slugifyTag } from "@/lib/markdown";
+import { parseNutrition, parseTimeMinutes, slugifyTag, type RecipeDraft } from "@/lib/markdown";
 import { dishPhoto } from "@/lib/medien";
 import { parseAmount } from "@/lib/quantity";
+import { matchCookbook, suggestCookbook } from "@/lib/recipe-draft";
 import type { Diet, Recipe } from "@/lib/types";
 
 interface IngRow { key: number; group_name: string; name: string; amount_text: string }
@@ -17,30 +18,39 @@ interface IngRow { key: number; group_name: string; name: string; amount_text: s
 let keySeq = 0;
 const nextKey = () => ++keySeq;
 
-export function RecipeForm({ recipe }: { recipe?: Recipe }) {
+/**
+ * Formular für neue und bestehende Rezepte. `draft` füllt ein neues Rezept vor
+ * (Import aus Link, Foto oder vom Assistenten), `intro` steht über dem Formular.
+ */
+export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; draft?: RecipeDraft | null; notice?: string; intro?: ReactNode }) {
   const { sb, household, cookbooks, reloadRecipes } = useApp();
   const router = useRouter();
   const toast = useToast();
-  const [title, setTitle] = useState(recipe?.title ?? "");
-  const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? "");
-  const [source, setSource] = useState(recipe?.source ?? "");
-  const [categories, setCategories] = useState(recipe?.categories.join(" / ") ?? "");
-  const [tags, setTags] = useState(recipe?.tags.join(", ") ?? "");
-  const [diet, setDiet] = useState<Diet>(recipe?.diet ?? "vegetarisch");
-  const [timeText, setTimeText] = useState(recipe?.time_text ?? "");
-  const [timeMin, setTimeMin] = useState(recipe?.time_min?.toString() ?? "");
-  const [servings, setServings] = useState(recipe?.servings?.toString() ?? "4");
-  const [servingsText, setServingsText] = useState(recipe?.servings_text ?? "");
-  const [cookbookId, setCookbookId] = useState(recipe?.cookbook_id ?? "");
-  const [page, setPage] = useState(recipe?.cookbook_page?.toString() ?? "");
-  const [confirmed, setConfirmed] = useState(recipe?.cookbook_link_confirmed ?? true);
-  const [tip, setTip] = useState(recipe?.tip ?? "");
-  const [nutrition, setNutrition] = useState((recipe?.nutrition as { text?: string } | null)?.text ?? "");
-  const [imageUrl, setImageUrl] = useState(recipe?.image_url ?? "");
+  const d = recipe ? null : draft ?? null;
+  const draftBook = d?.cookbook ? matchCookbook(d.cookbook.title, cookbooks) : d ? suggestCookbook(d, cookbooks) : null;
+  const [title, setTitle] = useState(recipe?.title ?? d?.title ?? "");
+  const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? d?.subtitle ?? "");
+  const [source, setSource] = useState(recipe?.source ?? d?.source ?? "");
+  const [categories, setCategories] = useState((recipe?.categories ?? d?.categories)?.join(" / ") ?? "");
+  const [tags, setTags] = useState((recipe?.tags ?? d?.tags)?.join(", ") ?? "");
+  const [diet, setDiet] = useState<Diet>(recipe?.diet ?? d?.diet ?? "vegetarisch");
+  const [timeText, setTimeText] = useState(recipe?.time_text ?? d?.time_text ?? "");
+  const [timeMin, setTimeMin] = useState((recipe?.time_min ?? d?.time_min)?.toString() ?? "");
+  const [servings, setServings] = useState((recipe ? recipe.servings : d ? d.servings : 4)?.toString() ?? "");
+  const [servingsText, setServingsText] = useState(recipe?.servings_text ?? d?.servings_text ?? "");
+  const [cookbookId, setCookbookId] = useState(recipe?.cookbook_id ?? draftBook?.id ?? "");
+  const [page, setPage] = useState((recipe?.cookbook_page ?? (draftBook ? d?.cookbook?.page : null))?.toString() ?? "");
+  // Vom Import erkannte Bücher muss jemand bestätigen
+  const [confirmed, setConfirmed] = useState(recipe?.cookbook_link_confirmed ?? !draftBook);
+  const [tip, setTip] = useState(recipe?.tip ?? d?.tip ?? "");
+  const [nutrition, setNutrition] = useState(((recipe?.nutrition ?? d?.nutrition) as { text?: string } | null)?.text ?? "");
+  const [imageUrl, setImageUrl] = useState(recipe?.image_url ?? d?.image_url ?? "");
   const [ings, setIngs] = useState<IngRow[]>(
-    (recipe?.ep_recipe_ingredients ?? []).map((i) => ({ key: nextKey(), group_name: i.group_name ?? "", name: i.name, amount_text: i.amount_text ?? "" })),
+    recipe
+      ? (recipe.ep_recipe_ingredients ?? []).map((i) => ({ key: nextKey(), group_name: i.group_name ?? "", name: i.name, amount_text: i.amount_text ?? "" }))
+      : (d?.ingredients ?? []).map((i) => ({ key: nextKey(), group_name: i.group_name ?? "", name: i.name, amount_text: i.amount_text ?? "" })),
   );
-  const [steps, setSteps] = useState<{ key: number; text: string }[]>((recipe?.steps ?? []).map((t) => ({ key: nextKey(), text: t })));
+  const [steps, setSteps] = useState<{ key: number; text: string }[]>((recipe?.steps ?? d?.steps ?? []).map((t) => ({ key: nextKey(), text: t })));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -120,6 +130,10 @@ export function RecipeForm({ recipe }: { recipe?: Recipe }) {
         trailing={<button className="btn-plain t-sub pressable font-semibold" disabled={saving} onClick={save}>{saving ? "Speichert …" : "Sichern"}</button>}
       />
       <div className="mx-auto max-w-2xl px-4">
+        {intro}
+        {notice && (
+          <p className="card t-sub mt-4 px-4 py-3" role="status" style={{ background: "var(--accent-soft)" }}>{notice}</p>
+        )}
         <Section title="Foto">
           <div className="flex items-center gap-3">
             <RecipeImage recipe={{ title: title || "?", image_url: imageUrl || null, diet }} className="h-20 w-20 text-2xl" rounded={14} />

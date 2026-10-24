@@ -129,3 +129,22 @@ export function scaledAmountText(amountText: string | null, amount: number | nul
   const afterUnit = rest.replace(/^[A-Za-zÄÖÜäöüß.]+\s*/, "");
   return `${formatted} ${afterUnit}`.trim();
 }
+
+const NUM = "(?:\\d+(?:[.,]\\d+)?[½¼¾⅓⅔⅛]?|\\d+\\/\\d+|[½¼¾⅓⅔⅛])";
+const LINE_RE = new RegExp(`^(${NUM}(?:\\s*[–-]\\s*${NUM})?)\\s*(?:([A-Za-zÄÖÜäöüß]+\\.?)(?=\\s|$))?\\s*(.*)$`);
+
+/**
+ * Trennt eine Zutatenzeile („200 g Mehl“, „2 große Zwiebeln“, „1 Prise Salz“)
+ * in Mengentext und Name. Ohne erkennbare Menge bleibt alles im Namen.
+ */
+export function splitIngredientLine(line: string): { amount_text: string | null; name: string } {
+  const s = line.replace(/\s+/g, " ").replace(/^(?:ca\.|etwa|circa)\s*/i, "").trim();
+  const m = s.match(LINE_RE);
+  if (!m) return { amount_text: null, name: s };
+  const [, num, word, rest] = m;
+  if (word && UNIT_ALIASES[word.toLowerCase()]) {
+    return { amount_text: `${num} ${word}`, name: rest.replace(/^[,:]\s*/, "").trim() || s };
+  }
+  const name = `${word ?? ""} ${rest}`.trim();
+  return name ? { amount_text: num, name } : { amount_text: null, name: s };
+}
