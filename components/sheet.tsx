@@ -7,18 +7,25 @@
 //   die Feder übernimmt die Fingergeschwindigkeit
 // - jederzeit unterbrechbar (Feder startet vom aktuellen Wert)
 // - Reduce Motion: Überblenden statt Gleiten
-// - Computer: zentrierter Dialog, der aus Unschärfe und leichter Verkleinerung auftaucht – ohne Wischgeste
+// - Computer: zentrierter Dialog, der aus Unschärfe und leichter Verkleinerung auftaucht – ohne Wischgeste;
+//   er wächst aus der Richtung des Klicks, der ihn geöffnet hat, und schrumpft dorthin zurück
 
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useIsDesktop } from "./use-media";
 
 const SPRING_SHEET = { type: "spring" as const, bounce: 0.15, duration: 0.35 };
 const SPRING_SETTLE = { type: "spring" as const, bounce: 0, duration: 0.3 };
 const SPRING_DIALOG = { type: "spring" as const, bounce: 0, duration: 0.3 };
-const DIALOG_HIDDEN = { opacity: 0, scale: 0.96, filter: "blur(8px)" };
+const DIALOG_HIDDEN = { opacity: 0, scale: 0.94, filter: "blur(8px)" };
 const DIALOG_SHOWN = { opacity: 1, scale: 1, filter: "blur(0px)" };
+
+// Letzter Klick: Ursprung für den Dialog, damit er räumlich an seinem Auslöser hängt
+let lastPointer: { x: number; y: number; t: number } | null = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("pointerdown", (e) => (lastPointer = { x: e.clientX, y: e.clientY, t: e.timeStamp }), { capture: true, passive: true });
+}
 
 /** Apples Projektionsfunktion aus "Designing Fluid Interfaces" */
 function project(velocity: number, decelerationRate = 0.998) {
@@ -68,12 +75,24 @@ function SheetBody({ onClose, title, children, action, maxHeight = 92 }: SheetPr
     window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const opener = document.activeElement as HTMLElement | null;
     sheetRef.current?.focus();
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      // Fokus zurück dorthin, wo er vorher war (Tastatur und VoiceOver)
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, [onClose]);
+
+  // Vor dem ersten Bild: Skalierungs-Ursprung auf den auslösenden Klick legen
+  useLayoutEffect(() => {
+    const el = sheetRef.current;
+    if (!dialog || !el || !lastPointer || performance.now() - lastPointer.t > 1000) return;
+    const r = el.getBoundingClientRect();
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    el.style.transformOrigin = `${clamp((lastPointer.x - r.left) / r.width) * 100}% ${clamp((lastPointer.y - r.top) / r.height) * 100}%`;
+  }, [dialog]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (!draggable) return;

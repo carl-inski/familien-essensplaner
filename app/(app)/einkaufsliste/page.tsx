@@ -135,7 +135,7 @@ function Shopping() {
               <ul className="group">
                 {dishes.map(({ p, r, servings }) => (
                   <li key={p.id} className="row">
-                    <span className="t-footnote w-16 shrink-0 font-semibold" style={{ color: "var(--label-2)" }}>{WEEKDAY_SHORT[weekdayIndex(p.date)]} {MEAL_LABEL[p.meal]}</span>
+                    <span className="t-footnote w-[4.5rem] shrink-0 font-semibold whitespace-nowrap" style={{ color: "var(--label-2)" }}>{WEEKDAY_SHORT[weekdayIndex(p.date)]} {MEAL_LABEL[p.meal]}</span>
                     <span className="t-sub flex-1 truncate">{r.title}</span>
                     <span className="t-footnote tabular-nums" style={{ color: "var(--label-2)" }}>{servings} Port.</span>
                   </li>

@@ -1,5 +1,6 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
@@ -37,6 +38,16 @@ function Week() {
   const [pickerFor, setPickerFor] = useState<Slot | null>(null);
   const [sheetFor, setSheetFor] = useState<Slot | null>(null);
   const desktop = useIsDesktop();
+  const reduce = useReducedMotion();
+
+  // Richtung des letzten Wochenwechsels: die neue Woche kommt von dort, wohin man geblättert hat
+  const [shown, setShown] = useState({ week: isoWeek, dir: 0 });
+  if (shown.week !== isoWeek) setShown({ week: isoWeek, dir: isoWeek > shown.week ? 1 : -1 });
+  const enter = {
+    initial: reduce || !shown.dir ? { opacity: 0 } : { opacity: 0, x: shown.dir * 32 },
+    animate: { opacity: 1, x: 0 },
+    transition: reduce ? { duration: 0.15 } : { type: "spring" as const, bounce: 0, duration: 0.35 },
+  };
 
   const go = (w: string) => router.replace(`/woche?w=${w}`, { scroll: false });
 
@@ -134,17 +145,17 @@ function Week() {
 
       {desktop ? (
         // Computer: die sieben Tage nebeneinander; Mittag und Abend liegen über alle Tage auf einer Linie (Subgrid)
-        <div className="page-wide mt-5 grid grid-cols-7 gap-2 xl:gap-3" style={{ gridTemplateRows: "auto auto auto" }}>
+        <motion.div key={isoWeek} {...enter} className="page-wide mt-5 grid grid-cols-7 gap-2 xl:gap-3" style={{ gridTemplateRows: "auto auto auto" }}>
           {!week.loaded
             ? dates.map((d) => <div key={d} className="skeleton row-span-3 h-[34rem]" style={{ borderRadius: 14 }} />)
             : dates.map((date) => dayColumn(date))}
-        </div>
+        </motion.div>
       ) : (
-        <div className="page mt-4 flex flex-col gap-3">
+        <motion.div key={isoWeek} {...enter} className="page mt-4 flex flex-col gap-3">
           {!week.loaded
             ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
             : dates.map((date) => dayCard(date))}
-        </div>
+        </motion.div>
       )}
 
       <RecipePicker
@@ -333,7 +344,7 @@ function Week() {
     return (
       <article
         key={date}
-        className="card row-span-3 grid min-w-0 grid-rows-subgrid overflow-hidden"
+        className="card row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid overflow-hidden"
         style={{ opacity: isPast && !isToday ? 0.86 : 1, boxShadow: isToday ? "0 0 0 2px var(--accent)" : undefined }}
         aria-label={`${WEEKDAY_LONG[idx]}, ${formatDateDE(date)}`}
       >
@@ -346,8 +357,9 @@ function Week() {
           </span>
           <h2 className="min-w-0 leading-tight">
             <span className="t-headline block truncate">
-              <span className="xl:hidden">{WEEKDAY_SHORT[idx]}</span>
-              <span className="hidden xl:inline">{WEEKDAY_LONG[idx]}</span>
+              {/* Volle Wochentage erst, wenn „Donnerstag“ ohne Kürzen passt */}
+              <span className="min-[96rem]:hidden">{WEEKDAY_SHORT[idx]}</span>
+              <span className="hidden min-[96rem]:inline">{WEEKDAY_LONG[idx]}</span>
             </span>
             <span className="t-caption block truncate" style={{ color: isToday ? "var(--accent)" : "var(--label-2)" }}>
               {isToday ? "Heute" : formatDateDE(date, { month: "short" })}
