@@ -14,14 +14,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f2f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#f1ede7" },
+    { media: "(prefers-color-scheme: dark)", color: "#1d1916" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="de">
+    <html lang="de" data-theme="kueche">
       <body className="min-h-dvh">{children}</body>
     </html>
   );
