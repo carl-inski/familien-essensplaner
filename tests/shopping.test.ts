@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { aisleFor } from "../lib/aisles";
 import { matchByIngredients } from "../lib/leftovers";
-import { pantryEntriesFor, pantryParts, withoutPantry } from "../lib/pantry";
+import { pantryEntriesFor, pantryEntriesToAdd, withoutPantry } from "../lib/pantry";
 import { buildShoppingList, needsShopping } from "../lib/planning";
 import { parseAmount, scaledAmountText } from "../lib/quantity";
 import { checkBatch, rankedCandidates } from "../lib/suggest";
@@ -48,7 +48,7 @@ describe("Einkauf sortiert und Vorrat", () => {
   });
   it("erkennt Teile und Varianten", () => {
     const p = new Set(["salz", "pfeffer"]);
-    expect(pantryParts("Muskat, Salz und Pfeffer")).toEqual(["muskat", "salz", "pfeffer"]);
+    expect(pantryEntriesToAdd("Muskat, Salz und Pfeffer")).toEqual(["muskat", "salz", "pfeffer"]);
     expect(withoutPantry("Muskat, Salz, Pfeffer", p)).toBe("Muskat");
     expect(withoutPantry("schwarzer Pfeffer", p)).toBeNull();
     expect(withoutPantry("Meersalz", p)).toBe("Meersalz");

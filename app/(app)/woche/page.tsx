@@ -20,6 +20,7 @@ import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { eaters, effectiveStatus, servingsFor } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
 import type { Meal, MealPlanEntry, Recipe } from "@/lib/types";
+import { inBackground } from "@/lib/background";
 
 export default function WeekPage() {
   return (
@@ -91,15 +92,18 @@ function Week() {
     const recipe = recipesById.get(pick.id)!;
     const { error } = await upsertSlot(slot.date, slot.meal, { recipe_id: recipe.id, leftover_of: null, status: "geplant" });
     if (error) return toast({ text: error.message, tone: "error" });
-    void sb.from("ep_suggestions").insert({
-      household_id: app.household.id,
-      iso_week: isoWeek,
-      recipe_id: recipe.id,
-      origin: recipe.cookbook_id ? "regal" : "sammlung",
-      generated_by: "regel",
-      status: "angenommen",
-      reason_shown: stats.get(recipe.id) ? `${stats.get(recipe.id)!.days_since} Tage nicht gekocht` : "noch nie gekocht",
-    });
+    inBackground(
+      sb.from("ep_suggestions").insert({
+        household_id: app.household.id,
+        iso_week: isoWeek,
+        recipe_id: recipe.id,
+        origin: recipe.cookbook_id ? "regal" : "sammlung",
+        generated_by: "regel",
+        status: "angenommen",
+        reason_shown: stats.get(recipe.id) ? `${stats.get(recipe.id)!.days_since} Tage nicht gekocht` : "noch nie gekocht",
+      }),
+      "Vorschläge",
+    );
     const book = recipe.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
     toast({
       text: book ? `${recipe.title} – aus deinem Regal: ${book.title}${recipe.cookbook_page ? `, S. ${recipe.cookbook_page}` : ""}` : `Vorschlag: ${recipe.title}`,

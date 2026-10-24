@@ -16,6 +16,7 @@ import { stashDraft } from "@/lib/draft-handoff";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { checkBatch, meatRuleHint, type PlannedDish } from "@/lib/suggest";
 import type { MealPlanEntry } from "@/lib/types";
+import { inBackground } from "@/lib/background";
 
 export interface ToolPart {
   type: string;
@@ -227,16 +228,19 @@ function BatchPlanCard({ input, respond }: { input: unknown; respond: Respond })
       if (error) throw error;
     }
     // Für spätere Vorschläge: was angenommen und was abgewählt wurde
-    void sb.from("ep_suggestions").insert(
-      valid.map((r) => ({
-        household_id: household.id,
-        iso_week: isoWeekString(r.datum),
-        recipe_id: r.rezept_id,
-        origin: r.recipe!.cookbook_id ? "regal" : "sammlung",
-        generated_by: "ki",
-        reason_shown: r.begruendung,
-        status: take.includes(r) ? "angenommen" : "abgelehnt",
-      })),
+    inBackground(
+      sb.from("ep_suggestions").insert(
+        valid.map((r) => ({
+          household_id: household.id,
+          iso_week: isoWeekString(r.datum),
+          recipe_id: r.rezept_id,
+          origin: r.recipe!.cookbook_id ? "regal" : "sammlung",
+          generated_by: "ki",
+          reason_shown: r.begruendung,
+          status: take.includes(r) ? "angenommen" : "abgelehnt",
+        })),
+      ),
+      "Vorschläge",
     );
     const skipped = valid.filter((r) => !take.includes(r));
     return {

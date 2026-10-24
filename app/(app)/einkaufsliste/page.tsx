@@ -19,9 +19,10 @@ import { aisleFor } from "@/lib/aisles";
 import { bringDeeplink, shoppingPublicUrl } from "@/lib/bring";
 import { WEEKDAY_SHORT, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
-import { pantryEntriesFor } from "@/lib/pantry";
+import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry";
 import { buildShoppingList, groupByAisle, needsShopping, servingsFor } from "@/lib/planning";
 import type { ShoppingItem } from "@/lib/types";
+import { inBackground } from "@/lib/background";
 
 // Abhak-Status während des Einkaufs nur auf diesem Gerät
 function readChecked(key: string): Set<string> {
@@ -115,8 +116,8 @@ export default function ShoppingPage() {
   }, [loaded, exportItems, today, household.id, sb]);
 
   async function keepAtHome(name: string) {
-    const names = await pantry.add(name);
-    if (names.length) toast({ text: `„${name}“ ist ab jetzt immer zu Hause`, action: { label: "Widerrufen", run: () => void pantry.remove(names) } });
+    const names = await pantry.add(pantryEntriesToAdd(name));
+    if (names.length) toast({ text: `${names.map(pantryLabel).join(", ")}: ab jetzt immer zu Hause`, action: { label: "Widerrufen", run: () => void pantry.remove(names) } });
   }
 
   async function addExtra() {
@@ -208,7 +209,7 @@ export default function ShoppingPage() {
             style={!slug || !total ? { opacity: 0.4, pointerEvents: "none" } : undefined}
             target="_blank"
             rel="noopener"
-            onClick={() => void sb.from("ep_shopping_lists").update({ exported_at: new Date().toISOString() }).eq("household_id", household.id).eq("iso_week", isoWeekString(today))}
+            onClick={() => inBackground(sb.from("ep_shopping_lists").update({ exported_at: new Date().toISOString() }).eq("household_id", household.id).eq("iso_week", isoWeekString(today)), "Bring-Export")}
           >
             <IconCart size={18} /> In Bring übernehmen
           </a>
@@ -382,7 +383,7 @@ export default function ShoppingPage() {
                 <Section title="Immer zu Hause" footer="Steht nicht auf der Liste und geht nicht an Bring!. Antippen, um es wieder einzukaufen.">
                   <div className="flex flex-wrap gap-2">
                     {atHome.map((n) => {
-                      const label = n.charAt(0).toUpperCase() + n.slice(1);
+                      const label = pantryLabel(n);
                       return (
                         <button key={n} className="chip pressable" aria-label={`${label} wieder einkaufen`} onClick={() => void pantry.remove([n])}>
                           <IconHome size={14} /> {label}
