@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconClock, IconHistory, IconPlus, IconSearch, IconUpload } from "@/components/icons";
+import { IconClock, IconHistory, IconNote, IconPlus, IconSearch, IconUpload } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
@@ -141,7 +141,14 @@ export default function RecipesPage() {
                     {book.title}{r.cookbook_page ? `, S. ${r.cookbook_page}` : ""}{!r.cookbook_link_confirmed ? " · zu bestätigen" : ""}
                   </p>
                 )}
-                <p className="t-caption mt-auto pt-1" style={{ color: "var(--label-3)" }}>{lastCookedLabel(stats.get(r.id))}</p>
+                <p className="t-caption mt-auto flex items-center gap-1.5 pt-1" style={{ color: "var(--label-3)" }}>
+                  <span className="min-w-0 flex-1 truncate">{lastCookedLabel(stats.get(r.id))}</span>
+                  {(r.ep_recipe_notes?.[0]?.count ?? 0) > 0 && (
+                    <span className="flex shrink-0 items-center gap-0.5" aria-label={`${r.ep_recipe_notes![0].count} Notizen`}>
+                      <IconNote size={13} /> {r.ep_recipe_notes![0].count}
+                    </span>
+                  )}
+                </p>
               </div>
             </Link>
           );

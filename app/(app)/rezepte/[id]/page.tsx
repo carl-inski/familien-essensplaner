@@ -7,6 +7,7 @@ import { useApp } from "@/components/app-data";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
 import { PlanSheet } from "@/components/plan-sheet";
+import { RecipeNotes } from "@/components/recipe-notes";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, Section, Stepper, downloadText, lastCookedLabel } from "@/components/ui";
@@ -151,6 +152,8 @@ export default function RecipeDetailPage() {
             <p className="card t-sub px-4 py-3">{recipe.tip}</p>
           </Section>
         )}
+
+        <RecipeNotes recipeId={recipe.id} />
 
         {nutritionEntries.length > 0 && (
           <Section title="Nährwerte pro Portion" footer={recipe.nutrition_estimated ? "geschätzt" : "laut Rezept"}>

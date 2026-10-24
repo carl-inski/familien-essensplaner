@@ -77,6 +77,8 @@ export interface Recipe {
   created_at: string;
   updated_at: string;
   ep_recipe_ingredients?: Ingredient[];
+  /** Anzahl Notizen (Supabase-Aggregat) */
+  ep_recipe_notes?: { count: number }[];
 }
 
 export interface CookStats {

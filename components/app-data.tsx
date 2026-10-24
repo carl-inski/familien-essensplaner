@@ -38,7 +38,7 @@ export function useApp(): AppData {
   return v;
 }
 
-const RECIPE_SELECT = "*, ep_recipe_ingredients(*)";
+const RECIPE_SELECT = "*, ep_recipe_ingredients(*), ep_recipe_notes(count)";
 
 type State =
   | { phase: "loading" }

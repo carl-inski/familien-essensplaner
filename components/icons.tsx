@@ -92,3 +92,6 @@ export const IconCamera = (p: P) => (
 export const IconLeftovers = (p: P) => (
   <Svg {...p}><path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7v-2Z" /><path d="M9 7c0-1.5 1-2 1-3.5M13 7c0-1.5 1-2 1-3.5" /></Svg>
 );
+export const IconNote = (p: P) => (
+  <Svg {...p}><path d="M5 4.5h14v10L14 19.5H5v-15Z" /><path d="M14 19.5v-5h5M8.5 9h7M8.5 12.5h4" /></Svg>
+);
