@@ -292,8 +292,6 @@ body {
   font-size: 0.875rem;
   color: var(--label-2);
 }
-.crumb[aria-current="page"] { color: var(--label); }
-.crumb-sep { color: var(--label-3); font-size: 0.875rem; }
 @media (hover: hover) { a.crumb:hover { background: var(--fill); color: var(--label); } }
 
 /* Bausteine in @layer components, damit Tailwind-Utilities (z. B. pl-9) sie überschreiben können */
@@ -433,12 +431,14 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 /* Seitenbreiten: schmal zum Lesen, breit zum Überblicken */
 .page { margin-inline: auto; width: 100%; max-width: 42rem; padding-inline: 1rem; }
 .page-medium, .page-wide { margin-inline: auto; width: 100%; max-width: 42rem; padding-inline: 1rem; }
+/* Computer: jede Seite hat denselben Rahmen – Titel und linke Kante stehen überall an derselben Stelle.
+   Text- und Formularseiten begrenzen ihren Inhalt darin mit .measure, linksbündig. */
 @media (min-width: 64rem) {
-  .page { max-width: 48rem; padding-inline: 3rem; }
-  .page-medium { max-width: 72rem; padding-inline: 3rem; }
-  .page-wide { max-width: none; padding-inline: 2rem; }
+  .page, .page-medium, .page-wide { max-width: none; padding-inline: 2rem; }
+  .measure { max-width: 48rem; }
+  .page-ai { width: 100%; max-width: 40rem; }
 }
-@media (min-width: 96rem) { .page-wide { padding-inline: 3rem; } }
+@media (min-width: 96rem) { .page, .page-medium, .page-wide { padding-inline: 3rem; } }
 
 /* Leerer Platz im Wochenraster: getönte Fläche, lädt zum Planen ein */
 .slot-empty {
@@ -579,7 +579,6 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   body { font-size: 1rem; line-height: 1.5; letter-spacing: 0; }
   .t-large-title { font-size: 2.5rem; line-height: 1.2; letter-spacing: -0.022em; }
   .t-section { text-transform: none; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0; }
-  .page-icon { margin-right: 0.3em; font-size: 0.92em; letter-spacing: 0; }
 
   /* Kopfzeile: immer ruhig weiß, beim Scrollen nur eine feine Linie */
   .topbar, .topbar.material { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }

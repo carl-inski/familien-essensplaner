@@ -133,7 +133,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
 
   const composer = !notReady && (
     <form
-      className={panel ? "px-3 pt-2 pb-3" : "mx-auto max-w-2xl px-3 py-2"}
+      className={panel ? "px-3 pt-2 pb-3" : "page py-2 max-lg:px-3 lg:[&>*]:max-w-3xl"}
       onSubmit={(e) => {
         e.preventDefault();
         send(input);
@@ -201,7 +201,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
 
   return (
     <>
-      <div className="mx-auto max-w-2xl px-4 pb-24">{thread}</div>
+      <div className="page pb-24"><div className="measure">{thread}</div></div>
       {composer && (
         <div className="composer-dock material fixed z-30" style={{ boxShadow: "0 -0.5px 0 var(--material-edge)" }}>
           {composer}

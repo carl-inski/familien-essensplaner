@@ -89,8 +89,8 @@ export default function ImportExportPage() {
 
   return (
     <>
-      <PageHeader title="Import & Export" icon="📥" back={{ href: "/haushalt", label: "Profil" }} />
-      <div className="mx-auto max-w-2xl px-4">
+      <PageHeader title="Import & Export" back={{ href: "/haushalt", label: "Profil" }} />
+      <div className="page lg:[&>*]:max-w-3xl">
         <Section title="Export" footer="Gleiches Format wie die Rezeptsammlung inkl. Inhaltsverzeichnis – lässt sich wieder importieren.">
           <button className="btn btn-tinted pressable w-full" onClick={exportAll}><IconDownload size={18} /> Ganze Sammlung als Markdown ({recipes.length})</button>
         </Section>

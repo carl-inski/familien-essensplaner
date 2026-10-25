@@ -39,7 +39,7 @@ export default function LongNotEatenPage() {
 
   return (
     <>
-      <PageHeader title="Lange nicht gegessen" icon="⏳" back={{ href: "/haushalt", label: "Profil" }}>
+      <PageHeader title="Lange nicht gegessen" back={{ href: "/haushalt", label: "Profil" }}>
         <div className="scroll-x -mx-4 mt-3 flex gap-2 px-4">
           {(["vegetarisch", "fisch", "fleisch"] as Diet[]).map((d) => (
             <button key={d} className="chip pressable" data-on={diet === d} onClick={() => setDiet(diet === d ? null : d)}><DietIcon diet={d} size={15} /> {DIET_LABEL[d]}</button>
@@ -50,7 +50,7 @@ export default function LongNotEatenPage() {
           </select>
         </div>
       </PageHeader>
-      <div className="mx-auto max-w-2xl px-4">
+      <div className="page lg:[&>*]:max-w-3xl">
         <Section title="Zuletzt gekocht · Tage seitdem">
           {cooked.length ? <ul className="group">{cooked.map(row)}</ul> : <Empty title="Noch keine Kochhistorie" text="Markiere Gerichte im Wochenplan als „gekocht ✓“ oder trage sie auf der Rezeptseite nach." />}
         </Section>

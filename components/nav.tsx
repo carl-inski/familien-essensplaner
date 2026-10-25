@@ -1,13 +1,13 @@
 "use client";
 
 // Handy: großer Titel, der beim Scrollen in eine schwebende, transluzente Navigationsleiste übergeht.
-// Computer: ruhige Kopfzeile im Stil von Notion – Breadcrumbs links, Aktionen und „KI fragen“ rechts,
-// darunter Seitensymbol, großer Titel und optional ein Titelbild.
+// Computer: ruhige Kopfzeile – links nur der Weg zurück, rechts Aktionen und „KI fragen“;
+// darunter der große Titel, optional ein Titelbild und die KI-Zeile immer an derselben Stelle.
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AssistantContext } from "@/lib/ai/assistant-schemas";
-import { AiButton } from "./assistant/ai-panel";
+import { AiButton, AiPromptBar } from "./assistant/ai-panel";
 import { IconChevronLeft } from "./icons";
 
 interface Props {
@@ -18,22 +18,22 @@ interface Props {
   children?: ReactNode; // z. B. Suchfeld unter dem Titel
   /** Breite wie der Seiteninhalt: schmal (Standard), mittel oder breit (Computer) */
   width?: "narrow" | "medium" | "wide";
-  /** Seitensymbol (Emoji) vor dem Titel, nur am Computer */
-  icon?: string;
   /** Titelbild über dem Titel, nur am Computer */
   cover?: ReactNode;
-  /** Bezug für „KI fragen“ oben rechts, z. B. das offene Rezept */
+  /** Bezug für „KI fragen“ oben rechts und die KI-Zeile, z. B. das offene Rezept */
   aiKontext?: AssistantContext;
   /**
    * Startseite eines Tabs: auf dem Handy ohne großen Titel und ohne Kopfzeile
    * (der Tab unten sagt schon, wo man ist) – die Unterzeile wird zur Überschrift.
    */
   tabRoot?: boolean;
+  /** KI-Zeile unter dem Titel – auf jeder Seite an derselben Stelle und gleich breit */
+  ai?: { placeholder: string; suggestions: string[] };
 }
 
 const PAGE_CLASS = { narrow: "page", medium: "page-medium", wide: "page-wide" } as const;
 
-export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", icon, cover, aiKontext, tabRoot = false }: Props) {
+export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", cover, aiKontext, ai, tabRoot = false }: Props) {
   const page = PAGE_CLASS[width];
   const sentinel = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -71,19 +71,15 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
           >
             {title}
           </div>
-          {/* Computer: Breadcrumbs */}
-          <nav className="hidden min-w-0 flex-1 items-center gap-0.5 lg:flex" aria-label="Pfad">
+          {/* Computer: nur der Weg zurück – der Titel steht groß darunter */}
+          <div className="hidden min-w-0 flex-1 items-center lg:flex">
             {back && (
-              <>
-                <Link href={back.href} className="crumb pressable">{back.label}</Link>
-                <span className="crumb-sep" aria-hidden>/</span>
-              </>
+              <Link href={back.href} className="crumb pressable">
+                <IconChevronLeft size={16} />
+                <span className="truncate">{back.label}</span>
+              </Link>
             )}
-            <span className="crumb" aria-current="page">
-              {icon && <span aria-hidden>{icon}</span>}
-              <span className="truncate">{title}</span>
-            </span>
-          </nav>
+          </div>
           <div className="flex min-w-20 items-center justify-end gap-1 pr-1 lg:min-w-0">
             {trailing}
             <span className="hidden lg:contents"><AiButton kontext={aiKontext} /></span>
@@ -91,16 +87,15 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
         </div>
       </div>
       {cover && <div className="page-cover hidden lg:block">{cover}</div>}
-      <header className={`page-header ${page}`} data-cover={!!cover} data-tab-root={tabRoot}>
-        <h1 className="page-title t-large-title">
-          {icon && <span className="page-icon hidden lg:inline" aria-hidden>{icon}</span>}
-          {title}
-        </h1>
+      <header className={`page-header ${page} flex flex-col`} data-cover={!!cover} data-tab-root={tabRoot}>
+        <h1 className="page-title t-large-title">{title}</h1>
         {subtitle && (
           <div className={tabRoot ? "page-sub-tab t-sub" : "t-sub mt-1"} style={{ color: "var(--label-2)" }}>
             {subtitle}
           </div>
         )}
+        {/* Handy: unter den Bedienelementen der Seite. Computer: direkt unter dem Titel. */}
+        {ai && <AiPromptBar className="page-ai order-last mt-4 lg:order-none" kontext={aiKontext} placeholder={ai.placeholder} suggestions={ai.suggestions} />}
         <div ref={sentinel} aria-hidden className="h-px" />
         {children}
       </header>
