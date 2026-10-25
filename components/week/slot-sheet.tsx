@@ -24,22 +24,21 @@ interface Props {
   week: ReturnType<typeof useWeek>;
   onChangeRecipe: (slot: Slot) => void;
   onSuggest: (slot: Slot) => void;
-  onCooked: (entry: MealPlanEntry, cooked: boolean) => void;
 }
 
-export function SlotSheet({ slot, onClose, week, onChangeRecipe, onSuggest, onCooked }: Props) {
+export function SlotSheet({ slot, onClose, week, onChangeRecipe, onSuggest }: Props) {
   return (
     <Sheet
       open={slot !== null}
       onClose={onClose}
       title={slot ? `${WEEKDAY_LONG[weekdayIndex(slot.date)].slice(0, 2)}, ${formatDateDE(slot.date, { day: "numeric", month: "long" })} · ${MEAL_LABEL[slot.meal]}` : ""}
     >
-      {slot && <SlotContent slot={slot} week={week} onChangeRecipe={onChangeRecipe} onSuggest={onSuggest} onCooked={onCooked} />}
+      {slot && <SlotContent slot={slot} week={week} onChangeRecipe={onChangeRecipe} onSuggest={onSuggest} />}
     </Sheet>
   );
 }
 
-function SlotContent({ slot, week, onChangeRecipe, onSuggest, onCooked }: Omit<Props, "slot" | "onClose"> & { slot: Slot }) {
+function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slot" | "onClose"> & { slot: Slot }) {
   const { date, meal } = slot;
   const { members, recipesById, cookbooksById, today } = useApp();
   const toast = useToast();
@@ -175,10 +174,10 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest, onCooked }: Omit<P
             <Segmented<PlanStatus>
               label="Status"
               value={entry.status}
-              onChange={(s) => (s === "gekocht" || entry.status === "gekocht" ? onCooked(entry, s === "gekocht") : save({ status: s }))}
+              onChange={(s) => save({ status: s })}
+              // Ist der Tag vorbei, gilt ein Gericht von selbst als gekocht
               options={[
-                { value: "geplant", label: "Geplant" },
-                ...(date <= today && recipe ? [{ value: "gekocht" as PlanStatus, label: "Gekocht ✓" }] : []),
+                date < today && recipe ? { value: "gekocht" as PlanStatus, label: "Gekocht" } : { value: "geplant" as PlanStatus, label: "Geplant" },
                 { value: "ausgefallen", label: "Ausgefallen" },
               ]}
             />

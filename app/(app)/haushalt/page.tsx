@@ -8,6 +8,7 @@ import { useApp } from "@/components/app-data";
 import { PantrySection } from "@/components/pantry";
 import { IconChevronRight, IconEdit, IconHistory, IconLogout, IconPlus, IconUpload } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
+import { AvatarPicker } from "@/components/avatar-picker";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { Avatar, Section, Segmented } from "@/components/ui";
@@ -105,7 +106,7 @@ export default function HouseholdPage() {
           </div>
         </Section>
 
-        <Section title="Mitglieder" footer={isAdmin ? "Tippe ein Mitglied an, um E-Mail und Passwort für den Login festzulegen." : undefined}>
+        <Section title="Mitglieder" footer={isAdmin ? "Tippe ein Mitglied an, um Foto, E-Mail und Passwort festzulegen." : undefined}>
           <ul className="group">
             {members.map((m) => (
               <li key={m.id}>
@@ -143,6 +144,9 @@ export default function HouseholdPage() {
         <AiUsageSection />
 
         <Section title="Mein Konto">
+          <div className="card mb-2 px-4 py-3">
+            <AvatarPicker member={members.find((m) => m.id === me.id) ?? me} />
+          </div>
           <button className="row card pressable" onClick={() => setPwOpen(true)}>
             <IconEdit size={20} /> <span className="t-sub">Passwort ändern</span>
           </button>
@@ -214,6 +218,11 @@ function MemberForm({ member, onDone }: { member: Member | null; onDone: () => v
 
   return (
     <div className="flex flex-col gap-2 pb-4">
+      {member && (
+        <div className="mb-2">
+          <AvatarPicker member={members.find((m) => m.id === member.id) ?? member} />
+        </div>
+      )}
       <input className="input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
       <input className="input" type="email" placeholder="E-Mail für den Login" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="E-Mail" />
       <label className="t-sub mt-1 flex items-center gap-2 px-1"><input type="checkbox" checked={admin} onChange={(e) => setAdmin(e.target.checked)} /> Admin (darf Mitglieder verwalten)</label>

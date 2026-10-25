@@ -15,9 +15,9 @@ import { SlotSheet, type Slot } from "@/components/week/slot-sheet";
 import { MEALS, useWeek } from "@/components/week/use-week";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, parseISODate, isoWeekString, relativeWeekLabel, shiftWeek, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
-import { eaters, effectiveStatus, servingsFor } from "@/lib/planning";
+import { eaters, effectiveStatus } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
-import type { Meal, MealPlanEntry, Recipe } from "@/lib/types";
+import type { Meal, Recipe } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 
 export default function WeekPage() {
@@ -32,7 +32,7 @@ function Week() {
   const params = useSearchParams();
   const router = useRouter();
   const app = useApp();
-  const { today, members, recipes, recipesById, stats, cookbooksById, sb, reloadHistory } = app;
+  const { today, members, recipes, recipesById, stats, cookbooksById, sb } = app;
   const toast = useToast();
   const isoWeek = params.get("w") ?? isoWeekString(today);
   const week = useWeek(isoWeek);
@@ -109,17 +109,6 @@ function Week() {
     });
   }
 
-  async function markCooked(entry: MealPlanEntry, cooked: boolean) {
-    const { error } = await upsertSlot(entry.date, entry.meal, { status: cooked ? "gekocht" : "geplant" });
-    if (error) return toast({ text: error.message, tone: "error" });
-    if (cooked) {
-      const servings = servingsFor(entry, plan, members, attendance);
-      await sb.from("ep_cooking_history").update({ servings }).eq("meal_plan_id", entry.id);
-    }
-    await reloadHistory();
-    if (cooked) toast({ text: "Als gekocht markiert", action: { label: "Rückgängig", run: () => void markCooked(entry, false) } });
-  }
-
   const plannedCount = plan.filter((p) => MEALS.includes(p.meal) && (p.recipe_id || p.leftover_of)).length;
   const slotLabel = (s: Slot) => `${WEEKDAY_LONG[weekdayIndex(s.date)]} ${MEAL_LABEL[s.meal]}`;
 
@@ -190,7 +179,6 @@ function Week() {
           setPickerFor(s);
         }}
         onSuggest={(s) => void suggest(s)}
-        onCooked={(e, c) => void markCooked(e, c)}
       />
     </>
   );
@@ -331,16 +319,11 @@ function Week() {
                   <><IconChef size={16} /> Koch wählen</>
                 )}
               </button>
-              {recipe && entry && date <= today && (
-                entry.status === "gekocht" ? (
-                  <button className="chip pressable ml-auto" style={{ background: "var(--green-soft)", color: "var(--green)" }} onClick={() => void markCooked(entry, false)} aria-label="Gekocht – tippen zum Rückgängigmachen">
-                    <IconCheck size={16} /> Gekocht
-                  </button>
-                ) : (
-                  <button className="chip pressable ml-auto" onClick={() => void markCooked(entry, true)}>
-                    gekocht ✓
-                  </button>
-                )
+              {/* Vergangene Tage gelten von selbst als gekocht */}
+              {recipe && entry?.status === "gekocht" && (
+                <span className="chip ml-auto" style={{ background: "var(--green-soft)", color: "var(--green)" }}>
+                  <IconCheck size={16} /> Gekocht
+                </span>
               )}
             </div>
           )}
@@ -451,16 +434,10 @@ function Week() {
                     <><IconChef size={13} /> <span className="truncate">Koch wählen</span></>
                   )}
                 </button>
-                {recipe && entry && date <= today && (
-                  entry.status === "gekocht" ? (
-                    <button className="board-prop pressable ml-auto" data-done="true" onClick={() => void markCooked(entry, false)} aria-label="Gekocht – klicken zum Rückgängigmachen" title="Gekocht – klicken zum Rückgängigmachen">
-                      <IconCheck size={13} /> Gekocht
-                    </button>
-                  ) : (
-                    <button className="board-prop pressable ml-auto" onClick={() => void markCooked(entry, true)} title="Als gekocht markieren">
-                      <IconCheck size={13} /> gekocht?
-                    </button>
-                  )
+                {recipe && entry?.status === "gekocht" && (
+                  <span className="board-prop ml-auto" data-done="true">
+                    <IconCheck size={13} /> Gekocht
+                  </span>
                 )}
               </div>
             )}

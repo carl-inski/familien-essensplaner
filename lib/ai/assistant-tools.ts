@@ -25,6 +25,8 @@ function loader(ctx: AiContext, today: string) {
   let cached: Promise<HouseholdData> | null = null;
   const load = () =>
     (cached ??= (async () => {
+      // Vergangene Gerichte gelten als gekocht – vor dem Lesen der Historie verbuchen
+      await ctx.sb.rpc("ep_mark_past_cooked");
       const [m, r, c, h] = await Promise.all([
         ctx.sb.from("ep_members").select("*").order("position"),
         ctx.sb.from("ep_recipes").select("*, ep_recipe_ingredients(*)").order("title"),

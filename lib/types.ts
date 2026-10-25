@@ -20,6 +20,8 @@ export interface Member {
   role: "admin" | "member";
   default_week: DefaultWeek;
   position: number;
+  /** Profilbild (öffentliche URL im Bucket ep-images); sonst Initiale */
+  avatar_url?: string | null;
 }
 
 export interface Cookbook {

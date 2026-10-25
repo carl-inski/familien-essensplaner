@@ -101,6 +101,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return;
       }
       const { data: hh } = await sb.from("ep_households").select("id, name").eq("id", me.household_id).single();
+      // Vergangene Gerichte gelten als gekocht – vor dem Laden der Historie verbuchen
+      await sb.rpc("ep_mark_past_cooked");
       await Promise.all([reloadMembers(), reloadRecipes(), reloadCookbooks(), reloadHistory()]);
       if (!cancelled) setState({ phase: "ready", user: auth.user, household: hh as Household, me });
     })();
@@ -109,7 +111,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     };
   }, [sb, router, reloadMembers, reloadRecipes, reloadCookbooks, reloadHistory]);
 
-  // Kochhistorie live halten (gekocht ✓ von anderen Geräten)
+  // Kochhistorie live halten (Änderungen von anderen Geräten)
   useEffect(() => {
     if (state.phase !== "ready") return;
     const channel = sb

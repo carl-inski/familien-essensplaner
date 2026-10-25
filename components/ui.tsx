@@ -14,6 +14,17 @@ export function memberHue(member: Member): number {
 
 export function Avatar({ member, size = 32, dim = false }: { member: Member; size?: number; dim?: boolean }) {
   const hue = memberHue(member);
+  if (member.avatar_url)
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- kleine, schon zugeschnittene Bilder aus dem eigenen Bucket
+      <img
+        src={member.avatar_url}
+        alt=""
+        aria-hidden
+        className="inline-block shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size, opacity: dim ? 0.35 : 1, filter: dim ? "grayscale(1)" : undefined }}
+      />
+    );
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold"
