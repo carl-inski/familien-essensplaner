@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { BookCover } from "@/components/book";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconSparkles, IconTrash } from "@/components/icons";
@@ -94,6 +93,7 @@ export default function RecipeDetailPage() {
         }
         subtitle={recipe.subtitle ?? undefined}
         aiKontext={kontext}
+        ai={{ placeholder: "Frag die KI zu diesem Rezept …", suggestions: ["Was passt als Beilage?", "Wie wird das vegetarisch?", "Kann ich das vorbereiten?"] }}
         cover={
           <>
             <RecipeImage recipe={recipe} className="text-6xl" rounded={0} />
@@ -152,13 +152,6 @@ export default function RecipeDetailPage() {
             <button className="btn btn-tinted" disabled title="Erst Zutaten ergänzen"><IconCart size={18} /> In Bring</button>
           )}
         </div>
-
-        <AiPromptBar
-          className="mt-4"
-          kontext={kontext}
-          placeholder="Frag die KI zu diesem Rezept …"
-          suggestions={["Was passt als Beilage?", "Wie wird das vegetarisch?", "Kann ich das vorbereiten?"]}
-        />
 
         <Section
           title="Zutaten"

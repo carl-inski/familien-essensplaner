@@ -7,7 +7,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AccountButton } from "@/components/account-button";
 import { useApp } from "@/components/app-data";
-import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { IconCart, IconCheck, IconCopy, IconHome, IconPlus, IconTrash } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { usePantry } from "@/components/pantry";
@@ -200,7 +199,13 @@ export default function ShoppingPage() {
 
   return (
     <>
-      <PageHeader title="Einkauf" icon="🛒" width="wide" subtitle={subtitle} trailing={<AccountButton />}>
+      <PageHeader
+        title="Einkauf"
+        width="wide"
+        subtitle={subtitle}
+        trailing={<AccountButton />}
+        ai={{ placeholder: "Frag die KI zum Einkauf …", suggestions: ["Fasse den Einkauf zusammen", "Was fehlt für die geplanten Gerichte?"] }}
+      >
         <div className="mt-4 grid grid-cols-2 gap-2 lg:max-w-md">
           <a
             className="btn btn-primary pressable"
@@ -228,11 +233,6 @@ export default function ShoppingPage() {
             <IconCopy size={18} /> Als Text
           </button>
         </div>
-        <AiPromptBar
-          className="mt-4 lg:max-w-3xl"
-          placeholder="Frag die KI zum Einkauf …"
-          suggestions={["Fasse den Einkauf zusammen", "Was fehlt für die geplanten Gerichte?"]}
-        />
       </PageHeader>
 
       <div className="page-wide">

@@ -21,7 +21,6 @@ export default function ShelfPage() {
     <>
       <PageHeader
         title="Regal"
-        icon="📚"
         width="wide"
         subtitle={`${cookbooks.length} Kochbücher`}
         trailing={

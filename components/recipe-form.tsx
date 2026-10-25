@@ -131,11 +131,10 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
     <>
       <PageHeader
         title={recipe ? "Bearbeiten" : "Neues Rezept"}
-        icon={recipe ? "✏️" : "📝"}
         back={{ href: recipe ? `/rezepte/${recipe.id}` : "/rezepte", label: recipe ? "Rezept" : "Rezepte" }}
         trailing={<button className="btn-plain t-sub pressable font-semibold" disabled={saving} onClick={save}>{saving ? "Speichert …" : "Sichern"}</button>}
       />
-      <div className="mx-auto max-w-2xl px-4">
+      <div className="page lg:[&>*]:max-w-3xl">
         {intro}
         {notice && (
           <p className="card t-sub mt-4 px-4 py-3" role="status" style={{ background: "var(--accent-soft)" }}>{notice}</p>
