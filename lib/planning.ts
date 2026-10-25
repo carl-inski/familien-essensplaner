@@ -62,8 +62,8 @@ export function shoppingLine(item: Pick<ShoppingItem, "amount" | "unit" | "name"
 }
 
 /**
- * Wocheneinkauf: alle geplanten Slots, skaliert, gleiche Zutat + Einheit summiert,
- * Zutaten ohne Menge nur einmal gelistet. Vorrat (Salz, Pfeffer …) landet in
+ * Wocheneinkauf: alle geplanten Slots, skaliert, gleiche Zutat summiert (auch über
+ * Einheiten hinweg, siehe mergeUnits), Zutaten ohne Menge nur einmal gelistet. Vorrat (Salz, Pfeffer …) landet in
  * `pantry` statt auf der Liste. Sortiert nach Supermarkt-Gang, dann alphabetisch.
  */
 export function buildShoppingList(
@@ -112,30 +112,78 @@ export function buildShoppingList(
       }
     }
   }
-  return mergeSpoons([...byKey.values()]).sort(
+  return mergeUnits([...byKey.values()]).sort(
     (a, b) => aisleRank(a.aisle) - aisleRank(b.aisle) || a.name.localeCompare(b.name, "de"),
   );
 }
 
-/** Gleiche Zutat in EL und TL → in EL zusammenfassen (1 EL = 3 TL, auf ½ EL gerundet) */
-function mergeSpoons(items: ShoppingItem[]): ShoppingItem[] {
+const TO_BASE: Record<string, [string, number]> = { g: ["g", 1], kg: ["g", 1000], ml: ["ml", 1], l: ["ml", 1000] };
+const SPOON_ML: Record<string, number> = { EL: 15, TL: 5 };
+
+/**
+ * Jede Zutat genau eine Zeile, auch über Einheiten hinweg:
+ * - kg/g und l/ml werden addiert
+ * - EL und TL werden zu ml, wenn die Zutat auch in ml vorkommt (1 EL = 15 ml, auf 5 ml
+ *   gerundet), sonst TL zu EL (auf ½ EL gerundet)
+ * - „2 Knoblauchzehen“ zählt wie „2 Zehen Knoblauch“
+ * - ohne Menge („Olivenöl“) hängt sich an eine Angabe mit Menge an
+ * - was sich nicht umrechnen lässt, steht nebeneinander: „16 + 1 Bund Frühlingszwiebeln“
+ */
+function mergeUnits(items: ShoppingItem[]): ShoppingItem[] {
+  const groups = new Map<string, ShoppingItem[]>();
+  for (const raw of items) {
+    const clove = raw.amount !== null && raw.unit === null ? raw.name.match(/^(.+?)zehen?$/iu) : null;
+    const item = clove ? { ...raw, name: clove[1], unit: "Zehen" } : raw;
+    const key = `${shoppingKey(item.name)}|${item.pantry ?? ""}`;
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
   const out: ShoppingItem[] = [];
-  for (const item of items) {
-    if (item.unit !== "TL" || item.amount === null) {
-      out.push(item);
-      continue;
+  for (const group of groups.values()) {
+    const measured = group.filter((i) => i.amount !== null);
+    const hasMl = measured.some((i) => i.unit === "ml" || i.unit === "l");
+    const hasEl = measured.some((i) => i.unit === "EL");
+    const byUnit = new Map<string, { amount: number; unit: string | null; rounded?: "ml" | "EL" }>();
+    for (const item of measured) {
+      let amount = item.amount!;
+      let unit = item.unit;
+      let rounded: "ml" | "EL" | undefined;
+      if (unit && TO_BASE[unit]) {
+        amount *= TO_BASE[unit][1];
+        unit = TO_BASE[unit][0];
+      } else if (unit && SPOON_ML[unit] && hasMl) {
+        amount *= SPOON_ML[unit];
+        unit = "ml";
+        rounded = "ml";
+      } else if (unit === "TL" && hasEl) {
+        amount /= 3;
+        unit = "EL";
+        rounded = "EL";
+      }
+      const part = byUnit.get(unit ?? "");
+      if (part) {
+        part.amount += amount;
+        part.rounded ??= rounded;
+      } else byUnit.set(unit ?? "", { amount, unit, rounded });
     }
-    const el = items.find((x) => x.unit === "EL" && x.amount !== null && shoppingKey(x.name) === shoppingKey(item.name));
-    if (!el) {
-      out.push(item);
-      continue;
-    }
-    el.amount = Math.ceil(((el.amount ?? 0) + item.amount / 3) * 2) / 2;
-    el.recipes = [...new Set([...el.recipes, ...item.recipes])];
-    el.text = shoppingLine(el);
+    const parts = [...byUnit.values()]
+      .map((p) => ({ unit: p.unit, amount: p.rounded === "ml" ? Math.ceil(p.amount / 5) * 5 : p.rounded === "EL" ? Math.ceil(p.amount * 2) / 2 : Number(p.amount.toFixed(3)) }))
+      // Gewicht und Volumen zuerst, dann Stückzahl, dann Bund, Dose …
+      .sort((a, b) => unitRank(a.unit) - unitRank(b.unit));
+    const name = group.map((i) => i.name).reduce((a, b) => (b.length < a.length ? b : a));
+    const merged: ShoppingItem = {
+      ...group[0],
+      name,
+      amount: parts[0]?.amount ?? null,
+      unit: parts[0]?.unit ?? null,
+      recipes: [...new Set(group.flatMap((i) => i.recipes))],
+    };
+    merged.text = parts.length > 1 ? `${parts.map((p) => formatAmount(p.amount, p.unit)).join(" + ")} ${name}` : shoppingLine(merged);
+    out.push(merged);
   }
   return out;
 }
+
+const unitRank = (unit: string | null) => (unit === "g" || unit === "ml" ? 0 : unit === "EL" || unit === "TL" ? 1 : unit === null ? 2 : 3);
 
 export function groupByAisle(items: ShoppingItem[]): [string, ShoppingItem[]][] {
   const groups = new Map<string, ShoppingItem[]>();

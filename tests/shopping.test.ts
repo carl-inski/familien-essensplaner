@@ -62,6 +62,40 @@ describe("Gleiche Zutaten zusammenfassen", () => {
   });
 });
 
+describe("Gleiche Zutat in verschiedenen Einheiten", () => {
+  const list = (...recipes: Recipe[]) =>
+    buildShoppingList(recipes.map((r, i) => entry(String(i), `2026-10-2${6 + i}`, r.id)), new Map(recipes.map((r) => [r.id, r])), four, []);
+  it("rechnet EL in ml um, wenn die Zutat auch in ml vorkommt", () => {
+    const items = list(recipe("a", "Teriyaki", [ing("Sojasauce", "75 ml")]), recipe("b", "Suppe", [ing("Sojasauce", "4,5 EL")]));
+    expect(items.filter((i) => i.name === "Sojasauce")).toEqual([expect.objectContaining({ text: "145 ml Sojasauce", recipes: ["Teriyaki", "Suppe"] })]);
+  });
+  it("hängt eine Zutat ohne Menge an die mit Menge an", () => {
+    const items = list(recipe("a", "Shakshuka", [ing("Olivenöl", "5,5 EL")]), recipe("b", "Pasta", [ing("Olivenöl", null)]));
+    expect(items.filter((i) => /olivenöl/i.test(i.name))).toEqual([expect.objectContaining({ text: "5,5 EL Olivenöl", recipes: ["Shakshuka", "Pasta"] })]);
+  });
+  it("auch in umgekehrter Reihenfolge und mit anderer Schreibweise", () => {
+    const items = list(recipe("a", "Pasta", [ing("Olivenöl (extra vergine)", null)]), recipe("b", "Salat", [ing("Olivenöl", "3 EL")]));
+    expect(items.filter((i) => /olivenöl/i.test(i.name)).map((i) => i.text)).toEqual(["3 EL Olivenöl"]);
+  });
+  it("addiert kg und g, l und ml", () => {
+    const a = recipe("a", "Brot", [ing("Mehl", "1 kg"), ing("Brühe", "1 l")], { servings: null });
+    const b = recipe("b", "Kuchen", [ing("Mehl", "200 g"), ing("Brühe", "250 ml")], { servings: null });
+    expect(list(a, b).map((i) => i.text).sort()).toEqual(["1,2 kg Mehl", "1,25 l Brühe"]);
+  });
+  it("zeigt nicht umrechenbare Mengen in einer Zeile", () => {
+    const a = recipe("a", "Teriyaki", [ing("Frühlingszwiebeln", "4"), ing("Ingwer (frisch)", "20 g")]);
+    const b = recipe("b", "Miso", [ing("Frühlingszwiebeln", "1 Bund"), ing("Ingwer (frisch)", "4 cm")]);
+    const c = recipe("c", "Pasta", [ing("Frühlingszwiebeln", "8")]);
+    expect(list(a, b, c).map((i) => i.text).sort()).toEqual(["12 + 1 Bund Frühlingszwiebeln", "20 g + 4 cm Ingwer (frisch)"]);
+  });
+  it("zählt Knoblauchzehen wie Zehen Knoblauch", () => {
+    const a = recipe("a", "Chili", [ing("Knoblauch", "3 Zehen")]);
+    const b = recipe("b", "Gnocchi", [ing("Knoblauchzehen", "2")]);
+    const c = recipe("c", "Lachs", [ing("Knoblauchzehe", "1"), ing("Knoblauch (fein gehackt)", "1 Zehe")]);
+    expect(list(a, b, c).map((i) => i.text)).toEqual(["7 Zehen Knoblauch"]);
+  });
+});
+
 describe("Einkauf sortiert und Vorrat", () => {
   const r = recipe("r", "Pasta", [ing("Penne", "500 g"), ing("Zwiebeln", "2"), ing("Parmesan", "50 g"), ing("Salz, Pfeffer", null), ing("Olivenöl, Salz", null), ing("Pfeffer, frisch gemahlen", null)]);
   const list = buildShoppingList([entry("1", "2026-10-26", "r")], new Map([["r", r]]), four, [], new Set(["salz", "pfeffer"]));
