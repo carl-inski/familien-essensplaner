@@ -470,10 +470,10 @@ function BookCard({ input, respond }: { input: unknown; respond: Respond }) {
           onNo={() => respond({ ok: false, meldung: "Buch nicht hinzugefügt" })}
           onYes={() =>
             run(async () => {
-              const { data: row, error } = await sb.from("ep_cookbooks").insert({ household_id: household.id, ...book, notes: null }).select("id").single();
+              const { error } = await sb.from("ep_cookbooks").insert({ household_id: household.id, ...book, notes: null });
               if (error) throw new Error(error.message.includes("duplicate") ? "Diese ISBN steht schon im Regal." : error.message);
               await reloadCookbooks();
-              return { ok: true, meldung: `„${book.title}“ steht jetzt im Regal (id ${(row as { id: string }).id})` };
+              return { ok: true, meldung: `„${book.title}“ steht jetzt im Regal` };
             })
           }
         />
