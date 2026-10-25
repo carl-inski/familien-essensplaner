@@ -185,20 +185,28 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
         </>
       )}
 
-      <Section title="Wer isst mit?" footer="Gäste zählen bei den Portionen und im Einkauf mit.">
+      <Section title="Wer isst mit?" footer="Die Zahl zählt die Person mit, + für mitgebrachte Gäste. Auf 0 heißt: nicht da.">
         <div className="group">
           {members.map((m) => {
             const s = effectiveStatus(m, date, meal, attendance);
+            const count = s.status === "da" ? 1 + s.guests : 0;
             return (
               <div key={m.id} className="row">
                 <Avatar member={m} size={28} dim={s.status === "weg"} />
-                <span className="t-sub flex-1">{m.name}</span>
-                {s.status === "da" && (
-                  <Stepper label={`Gäste von ${m.name}`} value={s.guests} max={20} onChange={(g) => void setStatus(m.id, date, meal, "da", g)} />
-                )}
-                <button className="chip pressable" data-on={s.status === "da"} onClick={() => void setStatus(m.id, date, meal, s.status === "da" ? "weg" : "da")}>
-                  {s.status === "da" ? "da" : "weg"}
-                </button>
+                <span className="min-w-0 flex-1">
+                  <span className="t-sub block" style={s.status === "weg" ? { color: "var(--label-2)" } : undefined}>{m.name}</span>
+                  {(s.status === "weg" || s.guests > 0) && (
+                    <span className="t-caption block" style={{ color: "var(--label-3)" }}>
+                      {s.status === "weg" ? "nicht da" : `mit ${s.guests} ${s.guests === 1 ? "Gast" : "Gästen"}`}
+                    </span>
+                  )}
+                </span>
+                <Stepper
+                  label={`${m.name} und Gäste`}
+                  value={count}
+                  max={21}
+                  onChange={(n) => void (n === 0 ? setStatus(m.id, date, meal, "weg") : setStatus(m.id, date, meal, "da", n - 1))}
+                />
               </div>
             );
           })}

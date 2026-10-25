@@ -8,7 +8,7 @@ import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
 import { buildShoppingList, effectiveStatus, needsShopping, presentMembers } from "@/lib/planning";
 import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
 import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
-import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
+import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, GerichteEntfernenInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
 import type { AiContext } from "./guard";
 
 // Werkzeuge des Assistenten. Lesen läuft hier auf dem Server mit der Session
@@ -272,11 +272,12 @@ export function assistantTools(ctx: AiContext, today: string) {
 
     // ---- Schreiben: nur mit Bestätigung im Browser (kein execute) ----
     mehrere_einplanen: tool({
-      description: "Schlägt mehrere Gerichte auf einmal vor (z. B. die Woche füllen). Der Nutzer wählt auf einer Karte aus und übernimmt.",
+      description: "Schlägt mehrere Gerichte auf einmal vor (z. B. die Woche füllen). Steht dort schon etwas, wird es ersetzt. Der Nutzer wählt auf einer Karte aus und übernimmt.",
       inputSchema: MehrereEinplanenInput,
     }),
     einplanen: tool({
-      description: "Schlägt vor, ein Rezept an einem Tag einzuplanen. Der Nutzer bestätigt mit „Übernehmen“. Vorher mit woche_lesen prüfen, was dort schon steht.",
+      description:
+        "Schlägt vor, ein Rezept an einem Tag einzuplanen – auch um ein schon geplantes Gericht zu ersetzen („Montag lieber was anderes“). Der Nutzer bestätigt mit „Übernehmen“. Vorher mit woche_lesen prüfen, was dort schon steht.",
       inputSchema: EinplanenInput,
     }),
     anwesenheit_setzen: tool({
@@ -290,6 +291,10 @@ export function assistantTools(ctx: AiContext, today: string) {
     rezept_entwurf_oeffnen: tool({
       description: "Öffnet ein neues Rezept vorbefüllt im Formular, z. B. eine Idee oder ein Rezept aus einem Foto im Chat. Der Nutzer prüft und sichert dort.",
       inputSchema: EntwurfInput,
+    }),
+    gerichte_entfernen: tool({
+      description: "Schlägt vor, geplante Gerichte aus dem Plan zu nehmen (z. B. „lösch die Gerichte vom nächsten Montag“). Koch und Notiz der Mahlzeit bleiben. Der Nutzer bestätigt.",
+      inputSchema: GerichteEntfernenInput,
     }),
     buch_hinzufuegen: tool({
       description:

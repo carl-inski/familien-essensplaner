@@ -8,9 +8,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useApp } from "@/components/app-data";
 import { BookCover } from "@/components/book";
-import { IconBook, IconCalendar, IconCheck, IconEdit, IconNote, IconPeople } from "@/components/icons";
+import { IconBook, IconCalendar, IconCheck, IconEdit, IconNote, IconPeople, IconTrash } from "@/components/icons";
 import { DietIcon } from "@/components/ui";
-import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
+import { AnwesenheitInput, BuchInput, EinplanenInput, GerichteEntfernenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
 import { extractToDraft } from "@/lib/ai/schemas";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { stashDraft } from "@/lib/draft-handoff";
@@ -59,6 +59,8 @@ export function ConfirmCard({ tool, part, respond }: { tool: WriteTool; part: To
       return <DraftCard input={part.input} respond={respond} />;
     case "buch_hinzufuegen":
       return <BookCard input={part.input} respond={respond} />;
+    case "gerichte_entfernen":
+      return <RemoveCard input={part.input} respond={respond} />;
   }
 }
 
@@ -492,6 +494,81 @@ function BookCard({ input, respond }: { input: unknown; respond: Respond }) {
           {similar && <p className="t-footnote mt-1" style={{ color: "var(--accent)" }}>Ähnlich: „{similar.title}“ steht schon im Regal.</p>}
         </div>
       </div>
+    </Shell>
+  );
+}
+
+function RemoveCard({ input, respond }: { input: unknown; respond: Respond }) {
+  const { sb, recipesById } = useApp();
+  const parsed = useMemo(() => GerichteEntfernenInput.safeParse(input), [input]);
+  const slots = useMemo(
+    () => (parsed.success ? [...new Map(parsed.data.eintraege.map((e) => [slotKey(e.datum, e.mahlzeit), e])).values()].sort((a, b) => slotKey(a.datum, a.mahlzeit).localeCompare(slotKey(b.datum, b.mahlzeit))) : []),
+    [parsed],
+  );
+  const [rows, setRows] = useState<MealPlanEntry[] | null>(null);
+  const { busy, run } = useAction(respond);
+  const first = slots[0]?.datum;
+  const last = slots[slots.length - 1]?.datum;
+
+  useEffect(() => {
+    if (!first || !last) return;
+    let alive = true;
+    sb.from("ep_meal_plan")
+      .select("*")
+      .gte("date", first)
+      .lte("date", last)
+      .then(({ data }) => alive && setRows((data ?? []) as MealPlanEntry[]));
+    return () => {
+      alive = false;
+    };
+  }, [sb, first, last]);
+
+  if (!parsed.success || !slots.length) return <Invalid text="Der Vorschlag war unvollständig." respond={respond} />;
+  const label = (d: string, m: (typeof slots)[number]["mahlzeit"]) => `${WEEKDAY_SHORT[weekdayIndex(d)]} ${formatDateDE(d, { day: "numeric", month: "numeric" })} ${MEAL_LABEL[m]}`;
+  const found = slots.map((s) => ({ ...s, entry: rows?.find((r) => r.date === s.datum && r.meal === s.mahlzeit && (r.recipe_id || r.leftover_of)) }));
+  const filled = found.filter((f) => f.entry);
+  const title = (e: MealPlanEntry) => (e.recipe_id ? recipesById.get(e.recipe_id)?.title ?? "Gericht" : "Reste");
+
+  return (
+    <Shell
+      icon={<IconTrash size={16} />}
+      title="Aus dem Plan nehmen"
+      actions={
+        <>
+          <button className="btn btn-gray btn-sm pressable" disabled={busy} onClick={() => respond({ ok: false, meldung: "Nichts entfernt" })}>Nein danke</button>
+          <button
+            className="btn btn-sm pressable"
+            style={{ background: "var(--red)", color: "#fff" }}
+            disabled={busy || rows === null || !filled.length}
+            onClick={() =>
+              run(async () => {
+                // Wie „Entfernen“ in der Woche: Gericht raus, Koch und Notiz bleiben
+                const results = await Promise.all(
+                  filled.map((f) => sb.from("ep_meal_plan").update({ recipe_id: null, leftover_of: null, status: "geplant", servings_override: null }).eq("id", f.entry!.id)),
+                );
+                const error = results.find((r) => r.error)?.error;
+                if (error) throw error;
+                return { ok: true, meldung: `Entfernt: ${filled.map((f) => `${label(f.datum, f.mahlzeit)} ${title(f.entry!)}`).join("; ")}` };
+              })
+            }
+          >
+            {busy ? "Entfernt …" : "Entfernen"}
+          </button>
+        </>
+      }
+    >
+      {rows === null ? (
+        <div className="skeleton mt-1 h-5 w-2/3" />
+      ) : (
+        <ul className="mt-1 flex flex-col gap-1">
+          {found.map((f) => (
+            <li key={slotKey(f.datum, f.mahlzeit)} className="t-sub" style={f.entry ? undefined : { color: "var(--label-3)" }}>
+              <span className="t-caption mr-1.5 font-semibold" style={{ color: "var(--label-2)" }}>{label(f.datum, f.mahlzeit)}</span>
+              {f.entry ? <span style={{ textDecoration: "line-through", textDecorationColor: "var(--red)" }}>{title(f.entry)}</span> : "nichts geplant"}
+            </li>
+          ))}
+        </ul>
+      )}
     </Shell>
   );
 }
