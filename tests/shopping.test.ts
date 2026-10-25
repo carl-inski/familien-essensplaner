@@ -4,6 +4,7 @@ import { matchByIngredients } from "../lib/leftovers";
 import { pantryEntriesFor, pantryEntriesToAdd, withoutPantry } from "../lib/pantry";
 import { buildShoppingList, needsShopping } from "../lib/planning";
 import { parseAmount, scaledAmountText, shoppingKey } from "../lib/quantity";
+import { knusprLinks, knusprPrompt } from "../lib/knuspr";
 import { checkBatch, rankedCandidates } from "../lib/suggest";
 import type { CookStats, Ingredient, MealPlanEntry, Member, Recipe } from "../lib/types";
 
@@ -149,5 +150,17 @@ describe("Einkauf über Wochengrenzen", () => {
   it("kauft nur die ausgewählten Gerichte ein", () => {
     const list = buildShoppingList(plan, recipes, four, [], new Set(), (e) => needsShopping(e, today));
     expect(list.map((i) => i.name)).toEqual(["Linsen"]);
+  });
+});
+
+describe("Knuspr-Auftrag", () => {
+  it("listet jede Zutat und öffnet Claude oder ChatGPT vorbefüllt", () => {
+    const prompt = knusprPrompt(["600 g Basmatireis", "1 Limette"]);
+    expect(prompt).toContain("Knuspr");
+    expect(prompt).toContain("Nicht bestellen");
+    expect(prompt.split("\n").slice(-2)).toEqual(["- 600 g Basmatireis", "- 1 Limette"]);
+    const links = knusprLinks(prompt);
+    expect(links.claude.startsWith("https://claude.ai/new?q=")).toBe(true);
+    expect(decodeURIComponent(links.chatgpt.split("?q=")[1])).toBe(prompt);
   });
 });
