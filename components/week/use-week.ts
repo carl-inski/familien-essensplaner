@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { weekDates } from "@/lib/dates";
+import { daysFrom } from "@/lib/dates";
 import type { Attendance, AttendanceStatus, MealPlanEntry, Meal } from "@/lib/types";
 
 export { MEALS } from "@/lib/meals";
 
-export function useWeek(isoWeek: string) {
+/** Sieben Tage ab `start` (Planansicht beginnt mit heute) */
+export function useWeek(start: string) {
   const { sb, household, members } = useApp();
-  const dates = useMemo(() => weekDates(isoWeek), [isoWeek]);
+  const dates = useMemo(() => daysFrom(start), [start]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [plan, setPlan] = useState<MealPlanEntry[]>([]);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);

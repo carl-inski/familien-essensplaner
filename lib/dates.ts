@@ -56,26 +56,6 @@ export function isoWeekString(date: string): string {
   return `${year}-W${pad(week)}`;
 }
 
-export function mondayOfIsoWeek(isoWeek: string): string {
-  const m = isoWeek.match(/^(\d{4})-W(\d{2})$/);
-  if (!m) throw new Error(`Ungültige Kalenderwoche: ${isoWeek}`);
-  const year = Number(m[1]);
-  const week = Number(m[2]);
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const day = (jan4.getUTCDay() + 6) % 7;
-  jan4.setUTCDate(jan4.getUTCDate() - day + (week - 1) * 7);
-  return toISODate(jan4);
-}
-
-export function weekDates(isoWeek: string): string[] {
-  const monday = mondayOfIsoWeek(isoWeek);
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-}
-
-export function shiftWeek(isoWeek: string, delta: number): string {
-  return isoWeekString(addDays(mondayOfIsoWeek(isoWeek), delta * 7));
-}
-
 export function formatDateDE(date: string, opts: Intl.DateTimeFormatOptions = { day: "2-digit", month: "2-digit", year: "numeric" }): string {
   return parseISODate(date).toLocaleDateString("de-DE", { ...opts, timeZone: "UTC" });
 }
@@ -84,11 +64,16 @@ export function weekNumberLabel(isoWeek: string): string {
   return `KW ${Number(isoWeek.slice(6))}`;
 }
 
-/** „Aktuelle Woche“, „Nächste Woche“, „Letzte Woche“ – sonst „KW 45“ */
-export function relativeWeekLabel(isoWeek: string, today: string): string {
-  const diff = Math.round(daysBetween(mondayOfIsoWeek(isoWeekString(today)), mondayOfIsoWeek(isoWeek)) / 7);
-  if (diff === 0) return "Aktuelle Woche";
-  if (diff === 1) return "Nächste Woche";
-  if (diff === -1) return "Letzte Woche";
-  return weekNumberLabel(isoWeek);
+/** Sieben Tage ab einem Startdatum (Planansicht: ab heute statt Mo–So) */
+export function daysFrom(start: string, count = 7): string[] {
+  return Array.from({ length: count }, (_, i) => addDays(start, i));
+}
+
+/** Überschrift der Planansicht: „Ab heute“, „Ab morgen“, sonst „Ab Sonntag, 1. November“ */
+export function startLabel(start: string, today: string): string {
+  const diff = daysBetween(today, start);
+  if (diff === 0) return "Ab heute";
+  if (diff === 1) return "Ab morgen";
+  if (diff === -1) return "Ab gestern";
+  return `Ab ${WEEKDAY_LONG[weekdayIndex(start)]}, ${formatDateDE(start, { day: "numeric", month: "long" })}`;
 }

@@ -13,7 +13,7 @@ import { Avatar, DIET_LABEL, DietIcon, RecipeImage } from "@/components/ui";
 import { useIsDesktop } from "@/components/use-media";
 import { SlotSheet, type Slot } from "@/components/week/slot-sheet";
 import { MEALS, useWeek } from "@/components/week/use-week";
-import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, parseISODate, isoWeekString, relativeWeekLabel, shiftWeek, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, parseISODate, isoWeekString, startLabel, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { eaters, effectiveStatus } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
@@ -34,8 +34,10 @@ function Week() {
   const app = useApp();
   const { today, members, recipes, recipesById, stats, cookbooksById, sb } = app;
   const toast = useToast();
-  const isoWeek = params.get("w") ?? isoWeekString(today);
-  const week = useWeek(isoWeek);
+  // Die Ansicht beginnt immer mit heute; geblättert wird in Schritten von sieben Tagen
+  const ab = params.get("ab");
+  const start = ab && /^\d{4}-\d{2}-\d{2}$/.test(ab) ? ab : today;
+  const week = useWeek(start);
   const { dates, attendance, plan, setStatus, upsertSlot } = week;
   const [pickerFor, setPickerFor] = useState<Slot | null>(null);
   const [sheetFor, setSheetFor] = useState<Slot | null>(null);
@@ -43,29 +45,30 @@ function Week() {
   const { ask } = useAssistant();
   const reduce = useReducedMotion();
 
-  // Richtung des letzten Wochenwechsels: die neue Woche kommt von dort, wohin man geblättert hat
-  const [shown, setShown] = useState({ week: isoWeek, dir: 0 });
-  if (shown.week !== isoWeek) setShown({ week: isoWeek, dir: isoWeek > shown.week ? 1 : -1 });
+  // Richtung des letzten Blätterns: die neuen Tage kommen von dort, wohin man geblättert hat
+  const [shown, setShown] = useState({ start, dir: 0 });
+  if (shown.start !== start) setShown({ start, dir: start > shown.start ? 1 : -1 });
   const enter = {
     initial: reduce || !shown.dir ? { opacity: 0 } : { opacity: 0, x: shown.dir * 32 },
     animate: { opacity: 1, x: 0 },
     transition: reduce ? { duration: 0.15 } : { type: "spring" as const, bounce: 0, duration: 0.35 },
   };
 
-  const go = (w: string) => router.replace(`/woche?w=${w}`, { scroll: false });
+  const go = (d: string) => router.replace(d === today ? "/woche" : `/woche?ab=${d}`, { scroll: false });
 
-  // Computer: ← und → blättern durch die Wochen, solange kein Feld und kein Dialog den Fokus hat
+  // Computer: ← und → blättern je sieben Tage, solange kein Feld und kein Dialog den Fokus hat
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest("input, textarea, select, [contenteditable], [role=dialog]") || document.querySelector("[role=dialog]")) return;
       e.preventDefault();
-      router.replace(`/woche?w=${shiftWeek(isoWeek, e.key === "ArrowLeft" ? -1 : 1)}`, { scroll: false });
+      const next = addDays(start, e.key === "ArrowLeft" ? -7 : 7);
+      router.replace(next === today ? "/woche" : `/woche?ab=${next}`, { scroll: false });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isoWeek, router]);
+  }, [start, today, router]);
 
   // Für die Fleischregel zählt die Reihenfolge der Gerichte: Mo mittag, Mo abend, Di mittag, …
   const plannedDishes = (exclude?: Slot): PlannedDish[] =>
@@ -93,7 +96,7 @@ function Week() {
     inBackground(
       sb.from("ep_suggestions").insert({
         household_id: app.household.id,
-        iso_week: isoWeek,
+        iso_week: isoWeekString(slot.date),
         recipe_id: recipe.id,
         origin: recipe.cookbook_id ? "regal" : "sammlung",
         generated_by: "regel",
@@ -118,26 +121,29 @@ function Week() {
         title="Woche"
         width="wide"
         tabRoot
-        ai={{ placeholder: "Frag die KI zur Woche …", suggestions: ["Füll die offenen Abende dieser Woche", "Was steht diese Woche an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"] }}
+        ai={{ placeholder: "Frag die KI zur Woche …", suggestions: ["Füll die offenen Abende der nächsten Tage", "Was steht die nächsten Tage an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"] }}
         subtitle={
           <>
-            {relativeWeekLabel(isoWeek, today)}
+            {startLabel(start, today)}
             <span className="block text-[0.9375rem] font-normal tracking-normal lg:inline" style={{ color: "var(--label-2)" }}>
               <span className="hidden lg:inline"> · </span>
-              {formatDateDE(dates[0], { day: "numeric", month: "long" })} – {formatDateDE(dates[6], { day: "numeric", month: "long" })} · {plannedCount}/{dates.length * MEALS.length} geplant
+              {start === today
+                ? `${formatDateDE(dates[0], { day: "numeric", month: "long" })} – ${formatDateDE(dates[6], { day: "numeric", month: "long" })}`
+                : `bis ${WEEKDAY_LONG[weekdayIndex(dates[6])]}, ${formatDateDE(dates[6], { day: "numeric", month: "long" })}`}{" "}
+              · {plannedCount}/{dates.length * MEALS.length} geplant
             </span>
           </>
         }
       >
         <div className="mt-3 flex items-center gap-2">
-          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, -1))} title="Vorige Woche (←)">
+          <button className="chip pressable" onClick={() => go(addDays(start, -7))} title="7 Tage zurück (←)">
             <IconChevronLeft size={16} /> Vorige
           </button>
-          <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, 1))} title="Nächste Woche (→)">
+          <button className="chip pressable" onClick={() => go(addDays(start, 7))} title="7 Tage weiter (→)">
             Nächste <IconChevronRight size={16} />
           </button>
-          {isoWeek !== isoWeekString(today) && (
-            <button className="chip pressable" data-on="true" onClick={() => go(isoWeekString(today))}>Diese Woche</button>
+          {start !== today && (
+            <button className="chip pressable" data-on="true" onClick={() => go(today)}>Heute</button>
           )}
         </div>
       </PageHeader>
@@ -145,14 +151,14 @@ function Week() {
       {desktop ? (
         // Computer: die sieben Tage nebeneinander; Mittag und Abend liegen über alle Tage auf einer Linie (Subgrid)
         <div className="page-wide mt-6 overflow-x-auto pb-2">
-          <motion.div key={isoWeek} {...enter} className="grid grid-cols-[repeat(7,minmax(8.25rem,1fr))] gap-1.5" style={{ gridTemplateRows: "auto auto auto" }}>
+          <motion.div key={start} {...enter} className="grid grid-cols-[repeat(7,minmax(8.25rem,1fr))] gap-1.5" style={{ gridTemplateRows: "auto auto auto" }}>
             {!week.loaded
               ? dates.map((d) => <div key={d} className="skeleton row-span-3 h-[30rem]" />)
               : dates.map((date) => dayColumn(date))}
           </motion.div>
         </div>
       ) : (
-        <motion.div key={isoWeek} {...enter} className="page mt-4 flex flex-col gap-3">
+        <motion.div key={start} {...enter} className="page mt-4 flex flex-col gap-3">
           {!week.loaded
             ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
             : dates.map((date) => dayCard(date))}
