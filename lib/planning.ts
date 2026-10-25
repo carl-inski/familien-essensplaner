@@ -3,7 +3,7 @@
 import { WEEKDAY_KEYS, weekdayIndex } from "./dates";
 import { aisleFor, aisleRank, isPantryBasic } from "./aisles";
 import { pantryKey, withoutPantry } from "./pantry";
-import { displayName, formatAmount, normalizeName, scaleAmount } from "./quantity";
+import { displayName, formatAmount, scaleAmount, shoppingKey } from "./quantity";
 import type { Attendance, AttendanceStatus, Ingredient, Meal, MealPlanEntry, Member, Recipe, ShoppingItem } from "./types";
 
 export function effectiveStatus(member: Member, date: string, meal: Meal, attendance: Attendance[]): { status: AttendanceStatus; guests: number; explicit: boolean } {
@@ -89,11 +89,13 @@ export function buildShoppingList(
       const inPantry = rest === null;
       const name = displayName(rest ?? ing.name);
       const unit = ing.scaled_amount === null ? null : ing.scaled_unit;
-      const key = `${normalizeName(name)}|${ing.scaled_amount === null ? "-" : unit ?? ""}`;
+      const key = `${shoppingKey(name)}|${ing.scaled_amount === null ? "-" : unit ?? ""}`;
       const existing = byKey.get(key);
       if (existing) {
         if (existing.amount !== null && ing.scaled_amount !== null) existing.amount = Number((existing.amount + ing.scaled_amount).toFixed(3));
         if (!existing.recipes.includes(recipe.title)) existing.recipes.push(recipe.title);
+        // Schreibweisen weichen ab („Basmati-Reis“/„Basmatireis“): die kürzere zeigen
+        if (name.length < existing.name.length) existing.name = name;
         existing.text = shoppingLine(existing);
       } else {
         const item: ShoppingItem = {
@@ -123,7 +125,7 @@ function mergeSpoons(items: ShoppingItem[]): ShoppingItem[] {
       out.push(item);
       continue;
     }
-    const el = items.find((x) => x.unit === "EL" && x.amount !== null && normalizeName(x.name) === normalizeName(item.name));
+    const el = items.find((x) => x.unit === "EL" && x.amount !== null && shoppingKey(x.name) === shoppingKey(item.name));
     if (!el) {
       out.push(item);
       continue;

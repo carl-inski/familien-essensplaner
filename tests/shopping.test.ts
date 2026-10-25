@@ -3,7 +3,7 @@ import { aisleFor } from "../lib/aisles";
 import { matchByIngredients } from "../lib/leftovers";
 import { pantryEntriesFor, pantryEntriesToAdd, withoutPantry } from "../lib/pantry";
 import { buildShoppingList, needsShopping } from "../lib/planning";
-import { parseAmount, scaledAmountText } from "../lib/quantity";
+import { parseAmount, scaledAmountText, shoppingKey } from "../lib/quantity";
 import { checkBatch, rankedCandidates } from "../lib/suggest";
 import type { CookStats, Ingredient, MealPlanEntry, Member, Recipe } from "../lib/types";
 
@@ -31,6 +31,33 @@ describe("Umrechnen ohne KI", () => {
     const r2 = recipe("r2", "B", [ing("Olivenöl", "3 TL")]);
     const list = buildShoppingList([entry("1", "2026-10-26", "r1"), entry("2", "2026-10-27", "r2")], new Map([["r1", r1], ["r2", r2]]), four, []);
     expect(list.filter((i) => i.name === "Olivenöl")).toEqual([expect.objectContaining({ amount: 3, unit: "EL", text: "3 EL Olivenöl" })]);
+  });
+});
+
+describe("Gleiche Zutaten zusammenfassen", () => {
+  it("erkennt Schreibweisen und Beschreibungen", () => {
+    expect(shoppingKey("Basmati-Reis")).toBe(shoppingKey("Basmatireis"));
+    expect(shoppingKey("Ingwer (frisch, gerieben)")).toBe(shoppingKey("Ingwer (frisch)"));
+    expect(shoppingKey("Frühlingszwiebeln")).toBe(shoppingKey("Frühlingszwiebel"));
+    expect(shoppingKey("frischer Koriander")).toBe(shoppingKey("Koriander"));
+    expect(shoppingKey("Knoblauchzehen, gehackt")).toBe(shoppingKey("Knoblauchzehen"));
+    expect(shoppingKey("TK-Spinat")).toBe(shoppingKey("Spinat (TK)"));
+    expect(shoppingKey("Getrockneter Oregano")).toBe(shoppingKey("Oregano (getrocknet)"));
+    expect(shoppingKey("Eier")).toBe(shoppingKey("Ei"));
+  });
+  it("hält andere Waren auseinander", () => {
+    expect(shoppingKey("Koriander (gemahlen)")).not.toBe(shoppingKey("Koriander"));
+    expect(shoppingKey("Kichererbsen (Dose)")).not.toBe(shoppingKey("Kichererbsen (getrocknet)"));
+    expect(shoppingKey("TK-Spinat")).not.toBe(shoppingKey("Spinat (frisch)"));
+    expect(shoppingKey("rote Zwiebel")).not.toBe(shoppingKey("Zwiebel"));
+    expect(shoppingKey("Reis")).not.toBe(shoppingKey("Basmatireis"));
+  });
+  it("summiert sie auf der Liste unter dem kürzeren Namen", () => {
+    const r1 = recipe("r1", "Curry", [ing("Basmati-Reis", "300 g"), ing("Ingwer (frisch, gerieben)", "20 g")]);
+    const r2 = recipe("r2", "Teriyaki", [ing("Basmatireis", "300 g"), ing("Ingwer (frisch)", "20 g")]);
+    const list = buildShoppingList([entry("1", "2026-10-26", "r1"), entry("2", "2026-10-27", "r2")], new Map([["r1", r1], ["r2", r2]]), four, []);
+    expect(list.map((i) => i.text).sort()).toEqual(["40 g Ingwer (frisch)", "600 g Basmatireis"]);
+    expect(list.find((i) => i.name === "Basmatireis")?.recipes).toEqual(["Curry", "Teriyaki"]);
   });
 });
 

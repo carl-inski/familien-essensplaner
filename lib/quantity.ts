@@ -141,6 +141,33 @@ export function normalizeName(name: string): string {
   return displayName(name).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+// Beschreibungen, die beim Einkauf keine andere Ware meinen („frischer Koriander“ = „Koriander“)
+const PREP_WORD = /^(?:frisch|gehackt|gerieben|geschält|gewürfelt|fein|grob|klein)(?:e[nrs]?)?\s+/u;
+// … und solche, die es tun: getrockneter Koriander ist nicht frischer
+const VARIANTS: [RegExp, string][] = [
+  [/\b(?:tk|tiefgekühlt\w*)\b/u, "tk"],
+  [/getrocknet/u, "trocken"],
+  [/gemahlen/u, "gemahlen"],
+  [/\b(?:dose|konserve)\b/u, "dose"],
+];
+
+/**
+ * Schlüssel zum Zusammenfassen auf der Einkaufsliste: „Basmati-Reis“ = „Basmatireis“,
+ * „Ingwer (frisch, gerieben)“ = „Ingwer (frisch)“, „Frühlingszwiebel“ = „Frühlingszwiebeln“.
+ * Getrocknet, gemahlen, TK und Dose bleiben eigene Waren.
+ */
+export function shoppingKey(name: string): string {
+  const lower = displayName(name).toLowerCase();
+  const variant = VARIANTS.filter(([re]) => re.test(lower)).map(([, v]) => v);
+  let core = lower.replace(/\([^)]*\)/g, " ").split(",")[0].replace(/\s+/g, " ").trim();
+  while (PREP_WORD.test(core)) core = core.replace(PREP_WORD, "");
+  // Die Variante steckt schon im Schlüssel: „Getrockneter Oregano“ = „Oregano (getrocknet)“, „TK-Spinat“ = „Spinat (TK)“
+  core = core.replace(/^tk\b-?\s*/u, "").replace(/\b(?:getrocknet|gemahlen)(?:e[nrs]?)?\s+/gu, "");
+  core = core.replace(/[-\s]+/g, "");
+  core = core.replace(/(?:ern|er|en|n|e|s)$/u, "") || core;
+  return [core || lower, ...variant].join("+");
+}
+
 /** Anzeigename ohne Hinweis-Klammern wie "(optional)" oder "(zum Würzen)" */
 export function displayName(name: string): string {
   const cleaned = name
