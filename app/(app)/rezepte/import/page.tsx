@@ -7,8 +7,7 @@ import { PageHeader } from "@/components/nav";
 import { useToast } from "@/components/toast";
 import { DietIcon, Section, downloadText } from "@/components/ui";
 import { collectionToMarkdown, parseRecipeCollection, type RecipeDraft } from "@/lib/markdown";
-import { draftToIngredientRows, draftToRecipeRow, matchCookbook, recipeToDraft, suggestCookbook } from "@/lib/recipe-draft";
-import type { Cookbook } from "@/lib/types";
+import { draftToIngredientRows, normalizeTitle, recipeRowFor, recipeToDraft, resolveCookbook, type CookbookChoice } from "@/lib/recipe-draft";
 
 type Choice = "neu" | "ueberspringen" | "ueberschreiben" | "kopie";
 
@@ -16,7 +15,7 @@ interface Item {
   draft: RecipeDraft;
   duplicateId: string | null;
   choice: Choice;
-  book: { match: Cookbook | null; create: string | null; confirmed: boolean } | null;
+  book: CookbookChoice | null;
 }
 
 export default function ImportExportPage() {
@@ -31,16 +30,8 @@ export default function ImportExportPage() {
     if (!drafts.length) return toast({ text: "Keine Rezepte im erwarteten Format gefunden.", tone: "error" });
     setItems(
       drafts.map((d) => {
-        const dup = recipes.find((r) => r.title.trim().toLowerCase() === d.title.trim().toLowerCase());
-        let book: Item["book"] = null;
-        if (d.cookbook) {
-          const match = matchCookbook(d.cookbook.title, cookbooks);
-          book = { match, create: match ? null : d.cookbook.title, confirmed: !!match };
-        } else {
-          const hint = suggestCookbook(d, cookbooks);
-          if (hint) book = { match: hint, create: null, confirmed: false };
-        }
-        return { draft: d, duplicateId: dup?.id ?? null, choice: dup ? "ueberspringen" : "neu", book };
+        const dup = recipes.find((r) => normalizeTitle(r.title) === normalizeTitle(d.title));
+        return { draft: d, duplicateId: dup?.id ?? null, choice: dup ? "ueberspringen" : "neu", book: resolveCookbook(d, cookbooks) };
       }),
     );
   }
@@ -61,13 +52,12 @@ export default function ImportExportPage() {
         }
         cookbookId = created.get(key) ?? null;
       }
+      const { image_url, ...rest } = recipeRowFor(it.draft, cookbookId, !!it.book?.confirmed);
       const row = {
-        ...draftToRecipeRow(it.draft),
+        ...rest,
+        ...(image_url ? { image_url } : {}),
         title: it.choice === "kopie" ? `${it.draft.title} (Kopie)` : it.draft.title,
         household_id: household.id,
-        cookbook_id: cookbookId,
-        cookbook_page: cookbookId ? it.draft.cookbook?.page ?? null : null,
-        cookbook_link_confirmed: cookbookId ? !!it.book?.confirmed : true,
       };
       const res =
         it.choice === "ueberschreiben" && it.duplicateId

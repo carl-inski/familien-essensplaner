@@ -82,3 +82,50 @@ export function suggestCookbook(d: Pick<RecipeDraft, "title" | "source">, cookbo
   }
   return null;
 }
+
+/**
+ * Titel für den Duplikat-Abgleich: klein, „&“ = „und“, Satzzeichen und
+ * Mehrfach-Leerzeichen raus. Klammerzusätze bleiben als Wörter erhalten.
+ * „Ofenlachs mit Brokkoli, Kartoffeln & Feta-Joghurt“ = „… Kartoffeln und Feta-Joghurt“.
+ */
+export function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/&/g, " und ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+export interface CookbookChoice {
+  /** vorhandenes Buch im Regal */
+  match: Cookbook | null;
+  /** neues Buch mit diesem Titel anlegen */
+  create: string | null;
+  /** Verknüpfung gilt als bestätigt */
+  confirmed: boolean;
+}
+
+/**
+ * Kochbuch für einen Entwurf: „**Kochbuch:**“ gegen das Regal abgleichen
+ * (Treffer = bestätigt, sonst neues Buch zum Bestätigen); ohne Angabe nur ein
+ * unbestätigter Vorschlag über Titel/Quelle.
+ */
+export function resolveCookbook(d: Pick<RecipeDraft, "title" | "source" | "cookbook">, cookbooks: Cookbook[]): CookbookChoice | null {
+  if (d.cookbook) {
+    const match = matchCookbook(d.cookbook.title, cookbooks);
+    return { match, create: match ? null : d.cookbook.title, confirmed: !!match };
+  }
+  const hint = suggestCookbook(d, cookbooks);
+  return hint ? { match: hint, create: null, confirmed: false } : null;
+}
+
+/** Spalten für ep_recipes inkl. Kochbuch-Verknüpfung und (nur http/https) Bild */
+export function recipeRowFor(d: RecipeDraft, cookbookId: string | null, confirmed: boolean) {
+  return {
+    ...draftToRecipeRow(d),
+    cookbook_id: cookbookId,
+    cookbook_page: cookbookId ? d.cookbook?.page ?? null : null,
+    cookbook_link_confirmed: cookbookId ? confirmed : true,
+    image_url: d.image_url && /^https?:\/\//i.test(d.image_url) ? d.image_url : null,
+  };
+}

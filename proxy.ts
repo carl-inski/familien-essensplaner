@@ -10,6 +10,8 @@ export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   // Statische Nachweiseite: kein Login und kein Supabase-Aufruf nötig.
   if (path === "/bildnachweise") return NextResponse.next({ request });
+  // Rezept-Schnittstelle für Assistenten: prüft ihren Bearer-Token selbst, keine Session
+  if (path === "/api/rezepte" || path === "/api/rezepte/export") return NextResponse.next({ request });
   let response = NextResponse.next({ request });
   const { url, key } = supabaseEnv();
   const supabase = createServerClient(url, key, {

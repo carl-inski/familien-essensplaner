@@ -55,6 +55,30 @@ Live: https://familien-essensplaner-umber.vercel.app (Vercel-Projekt `familien-e
 
 Projekt mit dem GitHub-Repo verbinden, Env-Variablen `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` und `NEXT_PUBLIC_SITE_URL` setzen. Die Bring!-Seiten müssen ohne Vercel-Login erreichbar sein; die Produktions-Domain ist das bei Standard-Schutz.
 
+## Schnittstelle für Assistenten
+
+Externe Assistenten (z. B. der „Küchenchef“-Bot) tragen Rezepte ohne Browser-Login ein – im Format von `data/rezeptsammlung.md` oder als JSON. Logik in `lib/api/recipes.ts` (reine Funktionen, Tests in `tests/api-recipes.test.ts`), Routen in `app/api/rezepte/`.
+
+| Endpunkt | Zweck |
+|---|---|
+| `POST /api/rezepte?modus=neu\|ueberspringen\|ueberschreiben&dry_run=1` | Ein oder mehrere Rezepte anlegen. Body `text/markdown` (`## Titel`-Blöcke, getrennt durch `---`, Inhaltsverzeichnis wird ignoriert) oder `application/json` `{ "rezepte": [ … ] }`. Max. 50 Rezepte bzw. 1 MB. |
+| `GET /api/rezepte` | `[{ id, title, updated_at, servings, cookbook_title }]` zum Abgleich |
+| `GET /api/rezepte/export` | Ganze Sammlung als Markdown (wie der Export-Button) |
+
+- **Modi:** `neu` (Standard) schreibt bei einem Duplikat nichts und meldet `duplikat` mit der vorhandenen `id` (409, wenn sonst nichts geschrieben wurde); `ueberspringen` lässt Duplikate still aus; `ueberschreiben` aktualisiert das vorhandene Rezept und ersetzt die Zutaten – `id`, `public_slug`, Historie, Notizen, Plan und ein eigenes Foto bleiben. `dry_run=1` parst nur und zeigt die Entwürfe.
+- **Duplikate** über `normalizeTitle()` (klein, `&` = „und“, ohne Satzzeichen; Klammerzusätze zählen mit) – dieselbe Funktion nutzt die Import-Seite.
+- **Kochbuch:** `**Kochbuch:** Titel, S. 12` wird gegen das Regal abgeglichen (Treffer = bestätigt); unbekannte Bücher werden mit „Über API angelegt – zu bestätigen“ angelegt und unbestätigt verknüpft. Ohne Angabe gibt es höchstens einen unbestätigten Vorschlag.
+- **Antwort:** `{ "ergebnisse": [{ "titel", "status": "angelegt|aktualisiert|uebersprungen|duplikat|fehler", "id", "url", "fehler"? }] }` – ein fehlerhaftes Rezept bricht den Stapel nicht ab. Status 201 (etwas angelegt), 200, 409 (nur Duplikate), 422 (nur Fehler), 401/503 bei Auth.
+- **Sicherheit:** `Authorization: Bearer <RECIPES_API_TOKEN>`, Vergleich in konstanter Zeit. Geschrieben wird ausschließlich über die security-definer-RPCs `ep_api_snapshot` / `ep_api_save_recipe` (Migration `20261024190000_recipes_api.sql`): Sie prüfen den sha256-Hash des Tokens gegen `ep_api_tokens` und arbeiten nur im Haushalt dieses Tokens; `household_id` aus dem Body wird verworfen. Rezept und Zutaten werden in einer Transaktion geschrieben. Bewusst kein `sb_secret`-Key: Das Supabase-Projekt ist geteilt, ein Secret Key würde RLS für alle Tabellen umgehen. Nur Rezepte und Kochbücher – kein Plan, keine Anwesenheit, kein Löschen.
+- **Neuen Token anlegen:** `openssl rand -hex 32`, den Wert als `RECIPES_API_TOKEN` in Vercel setzen und den Hash eintragen: `insert into ep_api_tokens (household_id, label, token_hash) values ('<haushalt>', 'Küchenchef', encode(extensions.digest('<token>', 'sha256'), 'hex'));`
+
+```bash
+curl -X POST "$SITE/api/rezepte?modus=neu" \
+  -H "Authorization: Bearer $RECIPES_API_TOKEN" \
+  -H "Content-Type: text/markdown" \
+  --data-binary @rezept.md
+```
+
 ## Bring!
 
 Kein inoffizieller Client: Die App öffnet `https://api.getbring.com/rest/bringrecipes/deeplink?url=<öffentliche Seite>&source=web`. Bring! liest dort das JSON-LD (`recipeIngredient` mit bereits skalierten Mengen, beim Wocheneinkauf `recipeYield = "1"`).
