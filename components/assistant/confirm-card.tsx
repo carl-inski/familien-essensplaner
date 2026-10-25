@@ -565,7 +565,7 @@ function RemoveCard({ input, respond }: { input: unknown; respond: Respond }) {
       ) : (
         <ul className="mt-1 flex flex-col gap-1">
           {found.map((f) => (
-            <li key={slotKey(f.datum, f.mahlzeit)} className="t-sub" style={f.entry ? undefined : { color: "var(--label-3)" }}>
+            <li key={slotKey(f.datum, f.mahlzeit)} className="t-sub" style={f.entry ? undefined : { color: "var(--label-2)" }}>
               <span className="t-caption mr-1.5 font-semibold" style={{ color: "var(--label-2)" }}>{label(f.datum, f.mahlzeit)}</span>
               {f.entry ? <span style={{ textDecoration: "line-through", textDecorationColor: "var(--red)" }}>{title(f.entry)}</span> : "nichts geplant"}
             </li>

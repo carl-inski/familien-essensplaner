@@ -31,7 +31,7 @@ export function SlotSheet({ slot, onClose, week, onChangeRecipe, onSuggest }: Pr
     <Sheet
       open={slot !== null}
       onClose={onClose}
-      title={slot ? `${WEEKDAY_LONG[weekdayIndex(slot.date)].slice(0, 2)}, ${formatDateDE(slot.date, { day: "numeric", month: "long" })} · ${MEAL_LABEL[slot.meal]}` : ""}
+      title={slot ? `${WEEKDAY_LONG[weekdayIndex(slot.date)].slice(0, 2)}, ${formatDateDE(slot.date, { day: "numeric", month: "short" })} · ${MEAL_LABEL[slot.meal]}` : ""}
     >
       {slot && <SlotContent slot={slot} week={week} onChangeRecipe={onChangeRecipe} onSuggest={onSuggest} />}
     </Sheet>
@@ -119,13 +119,41 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
         )}
       </Section>
 
+      <Section title="Wer isst mit?" footer="Die Zahl zählt die Person mit, + für mitgebrachte Gäste. Auf 0 heißt: nicht da.">
+        <div className="group">
+          {members.map((m) => {
+            const s = effectiveStatus(m, date, meal, attendance);
+            const count = s.status === "da" ? 1 + s.guests : 0;
+            return (
+              <div key={m.id} className="row">
+                <Avatar member={m} size={28} dim={s.status === "weg"} />
+                <span className="min-w-0 flex-1">
+                  <span className="t-sub block" style={s.status === "weg" ? { color: "var(--label-2)" } : undefined}>{m.name}</span>
+                  {(s.status === "weg" || s.guests > 0) && (
+                    <span className="t-caption block" style={{ color: "var(--label-2)" }}>
+                      {s.status === "weg" ? "nicht da" : `mit ${s.guests} ${s.guests === 1 ? "Gast" : "Gästen"}`}
+                    </span>
+                  )}
+                </span>
+                <Stepper
+                  label={`${m.name} und Gäste`}
+                  value={count}
+                  max={21}
+                  onChange={(n) => void (n === 0 ? setStatus(m.id, date, meal, "weg") : setStatus(m.id, date, meal, "da", n - 1))}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
       {entry && (recipe || entry.leftover_of) && (
         <>
           {recipe && (
             <Section title="Portionen" footer={entry.servings_override ? `Automatisch wären es ${autoServings}.` : "Automatisch aus Anwesenheit, Gästen und Resten."}>
               <div className="group">
                 <div className="row justify-between">
-                  <span className="t-sub">{entry.servings_override ? "Manuell" : "Automatisch"}</span>
+                  <span className="t-sub">{entry.servings_override ? "Von Hand" : "Automatisch"}</span>
                   <div className="flex items-center gap-2">
                     {entry.servings_override && (
                       <button className="btn-plain t-footnote pressable" onClick={() => save({ servings_override: null })}>Zurücksetzen</button>
@@ -184,34 +212,6 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
           </Section>
         </>
       )}
-
-      <Section title="Wer isst mit?" footer="Die Zahl zählt die Person mit, + für mitgebrachte Gäste. Auf 0 heißt: nicht da.">
-        <div className="group">
-          {members.map((m) => {
-            const s = effectiveStatus(m, date, meal, attendance);
-            const count = s.status === "da" ? 1 + s.guests : 0;
-            return (
-              <div key={m.id} className="row">
-                <Avatar member={m} size={28} dim={s.status === "weg"} />
-                <span className="min-w-0 flex-1">
-                  <span className="t-sub block" style={s.status === "weg" ? { color: "var(--label-2)" } : undefined}>{m.name}</span>
-                  {(s.status === "weg" || s.guests > 0) && (
-                    <span className="t-caption block" style={{ color: "var(--label-3)" }}>
-                      {s.status === "weg" ? "nicht da" : `mit ${s.guests} ${s.guests === 1 ? "Gast" : "Gästen"}`}
-                    </span>
-                  )}
-                </span>
-                <Stepper
-                  label={`${m.name} und Gäste`}
-                  value={count}
-                  max={21}
-                  onChange={(n) => void (n === 0 ? setStatus(m.id, date, meal, "weg") : setStatus(m.id, date, meal, "da", n - 1))}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </Section>
 
       <Section title="Notiz">
         <textarea

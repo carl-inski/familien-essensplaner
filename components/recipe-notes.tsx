@@ -113,7 +113,7 @@ export function RecipeNotes({ recipeId }: { recipeId: string }) {
           maxLength={4000}
         />
         <div className="flex items-center justify-between">
-          <span className="t-caption" style={{ color: "var(--label-3)" }}>als {me.name}</span>
+          <span className="t-caption" style={{ color: "var(--label-2)" }}>als {me.name}</span>
           <button className="btn btn-tinted btn-sm pressable" disabled={busy || !draft.trim()} onClick={add}>
             {busy ? "Speichert …" : "Notiz hinzufügen"}
           </button>
@@ -132,7 +132,7 @@ export function RecipeNotes({ recipeId }: { recipeId: string }) {
                 <div className="mb-1.5 flex items-center gap-2">
                   {author && <Avatar member={author} size={22} />}
                   <span className="t-footnote font-semibold">{author?.name ?? "Ehemaliges Mitglied"}</span>
-                  <span className="t-caption" style={{ color: "var(--label-3)" }}>
+                  <span className="t-caption" style={{ color: "var(--label-2)" }}>
                     {when(n.created_at)}
                     {n.updated_at.slice(0, 16) !== n.created_at.slice(0, 16) ? " · bearbeitet" : ""}
                   </span>

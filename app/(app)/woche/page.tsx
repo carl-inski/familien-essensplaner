@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
+import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
@@ -20,6 +21,11 @@ import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } fro
 import type { Meal, Recipe } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 import { haptic } from "@/lib/haptics";
+
+const WEEK_AI = {
+  placeholder: "Frag die KI zur Woche …",
+  suggestions: ["Füll die offenen Abende der nächsten Tage", "Was steht die nächsten Tage an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"],
+};
 
 export default function WeekPage() {
   return (
@@ -123,7 +129,8 @@ function Week() {
         title="Woche"
         width="wide"
         tabRoot
-        ai={{ placeholder: "Frag die KI zur Woche …", suggestions: ["Füll die offenen Abende der nächsten Tage", "Was steht die nächsten Tage an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"] }}
+        // Handy: KI-Zeile erst unter dem ersten Tag, damit heute ganz oben steht
+        ai={desktop ? WEEK_AI : undefined}
         subtitle={
           <>
             {startLabel(start, today)}
@@ -163,7 +170,7 @@ function Week() {
         <motion.div key={start} {...enter} className="page mt-4 flex flex-col gap-3">
           {!week.loaded
             ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
-            : dates.map((date) => dayCard(date))}
+            : dates.flatMap((date, i) => (i === 0 ? [dayCard(date), <AiPromptBar key="ai" className="page-ai" {...WEEK_AI} />] : [dayCard(date)]))}
         </motion.div>
       )}
 
@@ -203,7 +210,7 @@ function Week() {
         style={{ opacity: isPast && !isToday ? 0.86 : 1, boxShadow: isToday ? "0 0 0 2px var(--accent)" : undefined }}
         aria-label={`${WEEKDAY_LONG[idx]}, ${formatDateDE(date)}`}
       >
-        <header className="flex items-center gap-2 px-4 pt-3">
+        <header className="flex items-center gap-2 px-4 pt-3 pb-1">
           <h2 className="t-headline">
             {WEEKDAY_SHORT[idx]} <span style={{ color: "var(--label-2)", fontWeight: 500 }}>{formatDateDE(date, { day: "numeric", month: "numeric" })}</span>
           </h2>
@@ -242,50 +249,45 @@ function Week() {
     return { slot, entry, count, recipe, source, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail };
   }
 
+  /** Wer da ist, als überlappende Avatare; Tipp öffnet die Mahlzeit (dort: Wer isst mit?) */
+  function attendanceStack(slot: Slot, count: number) {
+    const present = members.filter((m) => effectiveStatus(m, slot.date, slot.meal, attendance).status === "da");
+    const away = members.length - present.length;
+    return (
+      <button
+        className="pressable -my-1 flex items-center gap-1.5 rounded-full py-1 pr-1 pl-1"
+        onClick={() => setSheetFor(slot)}
+        aria-label={`${count} essen mit${away ? `, ${away} nicht da` : ""} – tippen zum Ändern`}
+      >
+        <span className="flex">
+          {present.map((m, i) => (
+            <span key={m.id} className="rounded-full" style={{ marginLeft: i ? -4 : 0, boxShadow: "0 0 0 2px var(--surface)" }}>
+              <Avatar member={m} size={22} />
+            </span>
+          ))}
+        </span>
+        <span className="t-footnote tabular-nums" style={{ color: "var(--label-2)" }}>{count}</span>
+      </button>
+    );
+  }
+
   function slotBlock(date: string, meal: Meal, divider: boolean) {
     const { slot, entry, count, recipe, sourceRecipe, cook, cook2, cookMissing, hasMeal, cancelled, nobody, detail } = slotInfo(date, meal);
+    const cooked = !!recipe && entry?.status === "gekocht";
 
     return (
       <section
         key={meal}
         aria-label={`${WEEKDAY_LONG[weekdayIndex(date)]} ${MEAL_LABEL[meal]}`}
-        className="pt-2.5"
-        style={divider ? { boxShadow: "inset 0 0.5px 0 var(--separator)", marginTop: 4 } : undefined}
+        className="px-2 py-1.5"
+        style={divider ? { boxShadow: "inset 0 0.5px 0 var(--separator)" } : undefined}
       >
-        <div className="flex items-center px-4">
-          <h3 className="t-section">{MEAL_LABEL[meal]}</h3>
-          <span className="t-footnote ml-auto flex items-center gap-1 tabular-nums" style={{ color: "var(--label-2)" }} aria-label={`${count} Esser`}>
-            <IconPeople size={15} /> {count}
-          </span>
-        </div>
-
-        {/* Anwesenheit: ein Tipp pro Person */}
-        <div className="scroll-x flex gap-1.5 px-4 pt-2 pb-1">
-          {members.map((m) => {
-            const s = effectiveStatus(m, date, meal, attendance);
-            const here = s.status === "da";
-            return (
-              <button
-                key={m.id}
-                className="pressable flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1"
-                style={{ background: here ? "var(--fill)" : "transparent", boxShadow: here ? undefined : "inset 0 0 0 1px var(--separator)" }}
-                aria-pressed={here}
-                aria-label={`${m.name}: ${here ? "da" : "weg"}${s.guests ? ` mit ${s.guests} Gästen` : ""} – tippen zum Ändern`}
-                onClick={() => void setStatus(m.id, date, meal, here ? "weg" : "da")}
-              >
-                <Avatar member={m} size={24} dim={!here} />
-                <span className="t-footnote font-medium" style={{ color: here ? "var(--label)" : "var(--label-3)", textDecoration: here ? undefined : "line-through" }}>
-                  {m.name}
-                </span>
-                {s.guests > 0 && <span className="t-caption font-semibold" style={{ color: "var(--accent)" }}>+{s.guests}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Gericht */}
-        <div className="px-2 pb-2">
-          {hasMeal ? (
+        {hasMeal ? (
+          <>
+            <div className="flex min-h-9 items-center gap-2 px-2">
+              <h3 className="t-section w-14 shrink-0">{MEAL_LABEL[meal]}</h3>
+              {attendanceStack(slot, count)}
+            </div>
             <button className="row pressable rounded-xl" onClick={() => setSheetFor(slot)}>
               {recipe ? (
                 <RecipeImage recipe={recipe} className="h-12 w-12 shrink-0 text-sm" rounded={10} />
@@ -299,43 +301,46 @@ function Week() {
                   <span className="truncate">{recipe ? recipe.title : `Reste: ${sourceRecipe?.title ?? "–"}`}</span>
                   {recipe && <DietIcon diet={recipe.diet} size={15} />}
                 </span>
-                <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>{detail}</span>
+                <span className="t-footnote flex items-center gap-1 truncate" style={{ color: "var(--label-2)" }}>
+                  {cooked && <span className="flex shrink-0 items-center gap-0.5 font-medium" style={{ color: "var(--green)" }}><IconCheck size={13} /> Gekocht ·</span>}
+                  <span className="truncate">{detail}</span>
+                </span>
               </span>
+              {/* Kochdienst kompakt: Avatar, Warnung oder Hinweis */}
+              {!cancelled &&
+                (cookMissing ? (
+                  <span className="flex shrink-0 items-center gap-1 t-caption font-semibold" style={{ color: "var(--red)" }}><IconWarning size={16} /> Koch fehlt</span>
+                ) : cook ? (
+                  <span className="flex shrink-0 items-center" title={`Kocht: ${cook.name}${cook2 ? ` & ${cook2.name}` : ""}`} aria-label={`Kocht: ${cook.name}${cook2 ? ` und ${cook2.name}` : ""}`}>
+                    <Avatar member={cook} size={26} />
+                    {cook2 && <span style={{ marginLeft: -8, borderRadius: 999, boxShadow: "0 0 0 2px var(--surface)" }}><Avatar member={cook2} size={26} /></span>}
+                  </span>
+                ) : (
+                  <span className="flex shrink-0 items-center gap-1 t-caption" style={{ color: "var(--label-2)" }} aria-label="Koch wählen"><IconChef size={16} /></span>
+                ))}
               <IconChevronRight size={18} style={{ color: "var(--label-3)" }} />
             </button>
-          ) : nobody ? (
-            <p className="t-footnote px-2 py-2" style={{ color: "var(--label-3)" }}>Niemand da – nichts zu planen.</p>
-          ) : (
-            <div className="flex gap-2 px-2 py-1">
-              <button className="btn btn-tinted pressable flex-1" onClick={() => setPickerFor(slot)}>
-                <IconPlus size={18} /> Planen
-              </button>
-              <button className="btn btn-gray pressable" onClick={() => void suggest(slot)} aria-label="Vorschlag einfügen">
-                <IconSparkles size={18} /> Vorschlag
-              </button>
-            </div>
-          )}
-
-          {hasMeal && !cancelled && (
-            <div className="flex items-center gap-2 px-2 pt-1 pb-1">
-              <button className="chip pressable" onClick={() => setSheetFor(slot)} style={cookMissing ? { background: "var(--red-soft)", color: "var(--red)" } : undefined}>
-                {cookMissing ? (
-                  <><IconWarning size={16} /> Koch fehlt</>
-                ) : cook ? (
-                  <><Avatar member={cook} size={20} /> {cook.name}{cook2 ? ` & ${cook2.name}` : ""}</>
-                ) : (
-                  <><IconChef size={16} /> Koch wählen</>
-                )}
-              </button>
-              {/* Vergangene Tage gelten von selbst als gekocht */}
-              {recipe && entry?.status === "gekocht" && (
-                <span className="chip ml-auto" style={{ background: "var(--green-soft)", color: "var(--green)" }}>
-                  <IconCheck size={16} /> Gekocht
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+          </>
+        ) : (
+          // Leere Mahlzeit: eine Zeile
+          <div className="flex min-h-11 items-center gap-2 px-2">
+            <h3 className="t-section w-14 shrink-0">{MEAL_LABEL[meal]}</h3>
+            {nobody ? (
+              <button className="t-footnote pressable flex-1 text-left" style={{ color: "var(--label-2)" }} onClick={() => setSheetFor(slot)}>Niemand da</button>
+            ) : (
+              <>
+                {attendanceStack(slot, count)}
+                <span className="flex-1" />
+                <button className="chip pressable" style={{ background: "var(--accent-soft)", color: "var(--accent)" }} onClick={() => setPickerFor(slot)}>
+                  <IconPlus size={16} /> Planen
+                </button>
+                <button className="chip pressable px-2.5" onClick={() => void suggest(slot)} aria-label="Vorschlag einfügen" title="Vorschlag einfügen">
+                  <IconSparkles size={17} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </section>
     );
   }
@@ -373,7 +378,7 @@ function Week() {
       <section key={meal} aria-label={slotName} className="flex min-w-0 flex-col gap-1.5 px-1 pt-2 pb-1.5">
         <div className="flex items-center gap-1 px-1">
           <h3 className="t-footnote font-semibold" style={{ color: "var(--label-2)" }}>{MEAL_LABEL[meal]}</h3>
-          <span className="t-caption ml-auto flex items-center gap-1 tabular-nums" style={{ color: "var(--label-3)" }} aria-label={`${count} Esser`} title={`${count} Esser`}>
+          <span className="t-caption ml-auto flex items-center gap-1 tabular-nums" style={{ color: "var(--label-2)" }} aria-label={`${count} Esser`} title={`${count} Esser`}>
             <IconPeople size={13} /> {count}
           </span>
         </div>
@@ -451,7 +456,7 @@ function Week() {
             )}
           </div>
         ) : nobody ? (
-          <p className="t-caption px-2 py-1.5" style={{ color: "var(--label-3)" }}>Niemand da</p>
+          <p className="t-caption px-2 py-1.5" style={{ color: "var(--label-2)" }}>Niemand da</p>
         ) : (
           <div className="flex flex-col gap-0.5">
             <button className="board-add pressable" onClick={() => setPickerFor(slot)}>

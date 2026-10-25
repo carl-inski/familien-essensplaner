@@ -88,7 +88,8 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
       </div>
       {cover && <div className="page-cover hidden lg:block">{cover}</div>}
       <header className={`page-header ${page} flex flex-col`} data-cover={!!cover} data-tab-root={tabRoot}>
-        <h1 className="page-title t-large-title">{title}</h1>
+        {/* Lange Titel (z. B. Rezepte) eine Stufe kleiner, damit das Bild höher rückt */}
+        <h1 className="page-title t-large-title" data-long={title.length > 24 || undefined}>{title}</h1>
         {subtitle && (
           <div className={tabRoot ? "page-sub-tab t-sub" : "t-sub mt-1"} style={{ color: "var(--label-2)" }}>
             {subtitle}

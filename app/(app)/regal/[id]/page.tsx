@@ -87,7 +87,7 @@ export default function BookDetailPage() {
               <div>
                 <dt className="t-caption" style={{ color: "var(--label-2)" }}>ISBN</dt>
                 <dd className="tabular-nums">{book.isbn}</dd>
-                {quelle && <dd className="t-caption" style={{ color: "var(--label-3)" }}>{quelle}</dd>}
+                {quelle && <dd className="t-caption" style={{ color: "var(--label-2)" }}>{quelle}</dd>}
               </div>
             )}
             {book.notes && <div><dd className="t-footnote" style={{ color: "var(--label-2)" }}>{book.notes}</dd></div>}

@@ -88,7 +88,7 @@ function Login() {
         <button className="btn btn-primary pressable mt-2 w-full" disabled={busy || !email || !password}>
           {busy ? "Melde an …" : "Anmelden"}
         </button>
-        <p className="t-footnote mt-2 text-center" style={{ color: "var(--label-3)" }}>
+        <p className="t-footnote mt-2 text-center" style={{ color: "var(--label-2)" }}>
           Zugang haben nur eingetragene Familienmitglieder. Passwort vergessen? Carl kann es unter „Haushalt“ neu setzen.
         </p>
       </form>

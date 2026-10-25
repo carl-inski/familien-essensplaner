@@ -88,11 +88,11 @@ export function lastCookedLabel(stats: CookStats | undefined): string {
 export function Stepper({ value, onChange, min = 0, max = 99, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; label: string }) {
   return (
     <div className="inline-flex items-center rounded-full" style={{ background: "var(--fill)" }} role="group" aria-label={label}>
-      <button className="pressable flex h-9 w-10 items-center justify-center" aria-label={`${label} verringern`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
+      <button className="pressable flex h-11 w-11 items-center justify-center" aria-label={`${label} verringern`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
         <IconMinus size={18} />
       </button>
       <span className="t-headline min-w-7 text-center tabular-nums" aria-live="polite">{value}</span>
-      <button className="pressable flex h-9 w-10 items-center justify-center" aria-label={`${label} erhöhen`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
+      <button className="pressable flex h-11 w-11 items-center justify-center" aria-label={`${label} erhöhen`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
         <IconPlus size={18} />
       </button>
     </div>

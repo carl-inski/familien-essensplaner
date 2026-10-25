@@ -42,7 +42,7 @@ function Assistant() {
       <PageHeader
         title="KI"
         tabRoot
-        subtitle={kontext.rezept_titel ? <>Zum Rezept <strong>{kontext.rezept_titel}</strong></> : "Fragt eure Rezepte, plant mit, schreibt Notizen"}
+        subtitle={kontext.rezept_titel ? <>Zum Rezept <strong>{kontext.rezept_titel}</strong></> : "Frag die KI"}
       />
       <AssistantChat variant="page" />
     </>

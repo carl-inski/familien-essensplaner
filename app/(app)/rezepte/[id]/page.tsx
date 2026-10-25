@@ -12,6 +12,7 @@ import { PlanSheet } from "@/components/plan-sheet";
 import { RecipeNotes } from "@/components/recipe-notes";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
+import { keepCompoundTogether } from "@/lib/text";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, Section, Stepper, downloadText, lastCookedLabel } from "@/components/ui";
 import { bringDeeplink, recipePublicUrl } from "@/lib/bring";
 import { addDays, formatDateDE } from "@/lib/dates";
@@ -110,7 +111,7 @@ export default function RecipeDetailPage() {
         <div className="min-w-0">
         <RecipeImage recipe={recipe} className="mt-4 aspect-[16/9] w-full text-6xl lg:hidden" rounded={16} />
         {credit && (
-          <p className="t-caption mt-1.5 px-1 lg:hidden" style={{ color: "var(--label-3)" }}>
+          <p className="t-caption mt-1.5 px-1 lg:hidden" style={{ color: "var(--label-2)" }}>
             Foto: {credit.author} ·{" "}
             <a href={credit.sourceUrl ?? "/bildnachweise"} className="underline" target="_blank" rel="noopener">Quelle</a>
             {credit.licenseUrl && (
@@ -128,7 +129,10 @@ export default function RecipeDetailPage() {
           {recipe.diet && <span className="chip"><DietIcon diet={recipe.diet} size={15} /> {DIET_LABEL[recipe.diet]}</span>}
           {recipe.time_text && <span className="chip"><IconClock size={15} /> {recipe.time_text}</span>}
           {recipe.servings_text && <span className="chip"><IconPeople size={15} /> {recipe.servings_text}</span>}
-          {recipe.categories.map((c) => <span key={c} className="chip">{c}</span>)}
+          {/* Kategorie „Vegetarisch“ o. ä. nicht doppelt neben der Ernährung zeigen */}
+          {recipe.categories
+            .filter((c) => !recipe.diet || c.trim().toLowerCase() !== DIET_LABEL[recipe.diet].toLowerCase())
+            .map((c) => <span key={c} className="chip">{c}</span>)}
         </div>
 
         {book && (
@@ -144,27 +148,40 @@ export default function RecipeDetailPage() {
 
         <p className="t-footnote mt-3 px-1" style={{ color: "var(--label-2)" }}>{lastCookedLabel(stats.get(recipe.id))}</p>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className="btn btn-primary pressable" onClick={() => setPlanOpen(true)}><IconCalendar size={18} /> Einplanen</button>
-          {hasIngredients ? (
-            <a className="btn btn-tinted pressable" href={bringHref} target="_blank" rel="noopener"><IconCart size={18} /> In Bring</a>
-          ) : (
-            <button className="btn btn-tinted" disabled title="Erst Zutaten ergänzen"><IconCart size={18} /> In Bring</button>
-          )}
-        </div>
+        <button className="btn btn-primary pressable mt-4 w-full" onClick={() => setPlanOpen(true)}><IconCalendar size={18} /> Einplanen</button>
 
         <Section
           title="Zutaten"
-          trailing={scalable ? <Stepper label="Portionen" value={target} min={1} max={40} onChange={setServings} /> : undefined}
-          footer={!hasIngredients ? "Nur Verweis aufs Kochbuch – Zutaten ergänzen, um zu skalieren und nach Bring zu exportieren." : scalable ? `Mengen für ${target} Portionen` : "Ohne Portionsangabe nicht skalierbar."}
+          footer={
+            !hasIngredients ? (
+              "Nur Verweis aufs Kochbuch – Zutaten ergänzen, um zu skalieren und nach Bring zu exportieren."
+            ) : (
+              <span className="flex items-center justify-between gap-3">
+                <span>{scalable ? "" : "Ohne Portionsangabe nicht skalierbar."}</span>
+                <a className="btn-plain pressable flex shrink-0 items-center gap-1.5 font-semibold" href={bringHref} target="_blank" rel="noopener">
+                  <IconCart size={16} /> Zutaten in Bring
+                </a>
+              </span>
+            )
+          }
         >
+          {scalable && (
+            // Umrechnen direkt über der Liste: „Mengen für [– 4 +] Portionen“
+            <div className="mb-2 flex items-center justify-between gap-3 px-4">
+              <span className="t-sub" style={{ color: "var(--label-2)" }}>Mengen für</span>
+              <span className="flex items-center gap-2">
+                <Stepper label="Portionen" value={target} min={1} max={40} onChange={setServings} />
+                <span className="t-sub" style={{ color: "var(--label-2)" }}>Portionen</span>
+              </span>
+            </div>
+          )}
           {groups.map((g, gi) => (
             <div key={gi} className="mb-3">
               {g.name && <p className="t-footnote mb-1 px-4 font-semibold" style={{ color: "var(--label-2)" }}>{g.name}</p>}
               <ul className="group">
                 {g.items.map((i, ii) => (
                   <li key={ii} className="row justify-between gap-4">
-                    <span className="t-sub">{i.name}</span>
+                    <span className="t-sub">{keepCompoundTogether(i.name)}</span>
                     <span className="t-sub shrink-0 text-right tabular-nums" style={{ color: "var(--label-2)" }}>
                       {scalable ? scaledAmountText(i.amount_text, i.scaled_amount, i.scaled_unit, i) : i.amount_text}
                     </span>

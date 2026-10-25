@@ -27,7 +27,7 @@ export default function CreditsPage() {
             <RecipeImage recipe={{ title: d.title, image_url: null, diet: null }} className="aspect-[4/3] w-full" rounded={0} />
             <div className="flex flex-1 flex-col gap-1 p-3">
               <h3 className="t-sub line-clamp-2 font-semibold leading-snug">{d.title}</h3>
-              <p className="t-caption" style={{ color: "var(--label-3)" }}>
+              <p className="t-caption" style={{ color: "var(--label-2)" }}>
                 {d.author}
                 {d.licenseUrl && (
                   <>
@@ -49,7 +49,7 @@ export default function CreditsPage() {
             <BookCover book={{ title: b.title, cover_url: b.coverUrl, authors: b.authors }} className="aspect-[2/3] w-full" />
             <span className="t-footnote line-clamp-2 font-medium leading-tight">{b.title}</span>
             <span className="t-caption truncate" style={{ color: "var(--label-2)" }}>{b.authors[0] ?? " "}</span>
-            <span className="t-caption truncate tabular-nums" style={{ color: "var(--label-3)" }}>{b.isbn ?? "ISBN offen"}</span>
+            <span className="t-caption truncate tabular-nums" style={{ color: "var(--label-2)" }}>{b.isbn ?? "ISBN offen"}</span>
           </article>
         ))}
       </div>
@@ -78,7 +78,7 @@ export default function CreditsPage() {
           Ohne Beispielbild: {missing.map((d) => d.title).join(" · ")}.
         </p>
       )}
-      <p className="t-footnote mt-6 max-w-3xl" style={{ color: "var(--label-3)" }}>
+      <p className="t-footnote mt-6 max-w-3xl" style={{ color: "var(--label-2)" }}>
         In einer schon befüllten Datenbank setzt{" "}
         <span className="tabular-nums">supabase/manual/20261024_bilder_und_kochbuecher.sql</span> dieselben
         Pfade. Die Datei läuft nicht von selbst.

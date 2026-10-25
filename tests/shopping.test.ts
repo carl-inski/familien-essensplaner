@@ -5,6 +5,7 @@ import { pantryEntriesFor, pantryEntriesToAdd, withoutPantry } from "../lib/pant
 import { buildShoppingList, needsShopping } from "../lib/planning";
 import { parseAmount, scaledAmountText, shoppingKey } from "../lib/quantity";
 import { knusprLinks, knusprPrompt } from "../lib/knuspr";
+import { keepCompoundTogether } from "../lib/text";
 import { checkBatch, rankedCandidates } from "../lib/suggest";
 import type { CookStats, Ingredient, MealPlanEntry, Member, Recipe } from "../lib/types";
 
@@ -196,5 +197,12 @@ describe("Knuspr-Auftrag", () => {
     const links = knusprLinks(prompt);
     expect(links.claude.startsWith("https://claude.ai/new?q=")).toBe(true);
     expect(decodeURIComponent(links.chatgpt.split("?q=")[1])).toBe(prompt);
+  });
+});
+
+describe("Anzeige", () => {
+  it("hält den Ergänzungsstrich am Wort", () => {
+    expect(keepCompoundTogether("500 g Hähnchenober- und -unterschenkel")).toBe("500 g Hähnchenober- und ‑unterschenkel");
+    expect(keepCompoundTogether("1-2 EL Öl")).toBe("1-2 EL Öl");
   });
 });

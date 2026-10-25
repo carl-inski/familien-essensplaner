@@ -11,6 +11,7 @@ import { IconCheck, IconCopy, IconHome, IconPlus, IconTrash } from "@/components
 import { PageHeader } from "@/components/nav";
 import { usePantry } from "@/components/pantry";
 import { Sheet } from "@/components/sheet";
+import { SwipeRow } from "@/components/shopping/swipe-row";
 import { useShopping, type ShoppingExtra } from "@/components/shopping/use-shopping";
 import { useToast } from "@/components/toast";
 import { Empty, Section } from "@/components/ui";
@@ -23,6 +24,8 @@ import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry"
 import { buildShoppingList, groupByAisle, needsShopping, servingsFor } from "@/lib/planning";
 import type { ShoppingItem } from "@/lib/types";
 import { inBackground } from "@/lib/background";
+import { keepCompoundTogether } from "@/lib/text";
+import { useIsDesktop } from "@/components/use-media";
 import { haptic } from "@/lib/haptics";
 
 // Abhak-Status während des Einkaufs nur auf diesem Gerät
@@ -56,6 +59,7 @@ export default function ShoppingPage() {
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const [finishOpen, setFinishOpen] = useState(false);
   const [knusprOpen, setKnusprOpen] = useState(false);
+  const desktop = useIsDesktop();
   const [busy, setBusy] = useState(false);
   const [extraText, setExtraText] = useState("");
   const [slug, setSlug] = useState<string | null>(null);
@@ -323,7 +327,7 @@ export default function ShoppingPage() {
                     {shopped.map((p) => (
                       <li key={p.id} className="row">
                         <span className="min-w-0 flex-1">
-                          <span className="t-caption block font-semibold" style={{ color: "var(--label-3)" }}>{p.date === today ? "Heute" : dayShort(p.date)} · {MEAL_LABEL[p.meal]}</span>
+                          <span className="t-caption block font-semibold" style={{ color: "var(--label-2)" }}>{p.date === today ? "Heute" : dayShort(p.date)} · {MEAL_LABEL[p.meal]}</span>
                           <span className="t-sub block truncate" style={{ color: "var(--label-2)" }}>{recipesById.get(p.recipe_id!)!.title}</span>
                         </span>
                         <button className="btn-plain t-footnote pressable font-semibold" onClick={() => backOnList(p.id)} aria-label={`${recipesById.get(p.recipe_id!)!.title} wieder auf die Liste`}>
@@ -371,25 +375,34 @@ export default function ShoppingPage() {
                 </ul>
               </Section>
 
-              {groups.map(([aisle, list]) => (
-                <Section key={aisle} title={aisle}>
+              {groups.map(([aisle, list], gi) => (
+                <Section
+                  key={aisle}
+                  title={aisle}
+                  footer={gi === 0 && !desktop ? "Tipp: Nach links wischen oder lange drücken, wenn du etwas immer zu Hause hast – dann steht es nicht mehr auf der Liste." : undefined}
+                >
                   <ul className="group">
                     {list.map((i) => {
                       const key = itemKey(i);
                       const done = checked.has(key);
                       return (
-                        <li key={key} className="flex items-stretch">
-                          <button className="row pressable min-w-0 flex-1" onClick={() => toggle(key)} aria-pressed={done}>
-                            <CheckDot done={done} />
-                            <span className="min-w-0 flex-1" style={{ opacity: done ? 0.45 : 1 }}>
-                              <span className="t-sub block" style={{ textDecoration: done ? "line-through" : undefined }}>{i.text}</span>
-                              <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>{i.recipes.join(", ")}</span>
-                            </span>
-                          </button>
-                          <button className="pressable flex w-12 shrink-0 items-center justify-center" style={{ color: "var(--label-3)" }} aria-label={`${i.name}: immer zu Hause`} title="Immer zu Hause – nicht mehr einkaufen" onClick={() => keepAtHome(i.name)}>
-                            <IconHome size={19} />
-                          </button>
-                        </li>
+                        <SwipeRow
+                          key={key}
+                          desktop={desktop}
+                          actionLabel={`${i.name}: immer zu Hause`}
+                          actionIcon={<IconHome size={19} />}
+                          onAction={() => void keepAtHome(i.name)}
+                        >
+                          {({ onClick }) => (
+                            <button className="row pressable min-w-0 flex-1" onClick={onClick(() => toggle(key))} aria-pressed={done}>
+                              <CheckDot done={done} />
+                              <span className="min-w-0 flex-1" style={{ opacity: done ? 0.45 : 1 }}>
+                                <span className="t-sub block" style={{ textDecoration: done ? "line-through" : undefined }}>{keepCompoundTogether(i.text)}</span>
+                                <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>{i.recipes.join(", ")}</span>
+                              </span>
+                            </button>
+                          )}
+                        </SwipeRow>
                       );
                     })}
                   </ul>
@@ -417,7 +430,7 @@ export default function ShoppingPage() {
                 <button className="btn btn-primary pressable w-full" disabled={busy} onClick={() => (uncheckedItems.length || uncheckedExtras.length ? setFinishOpen(true) : void finish(false))}>
                   <IconCheck size={18} /> Einkauf erledigt
                 </button>
-                <p className="t-footnote mt-2 px-4 text-center" style={{ color: "var(--label-3)" }}>
+                <p className="t-footnote mt-2 px-4 text-center" style={{ color: "var(--label-2)" }}>
                   {included.length
                     ? `${included.length === 1 ? "Das ausgewählte Gericht verschwindet" : `Die ${included.length} ausgewählten Gerichte verschwinden`} danach von der Liste – beim nächsten Einkauf kaufst du nichts doppelt.`
                     : "Abgehakte Posten verschwinden danach von der Liste."}
@@ -460,7 +473,7 @@ export default function ShoppingPage() {
             Auftrag kopieren
           </button>
         </div>
-        <p className="t-footnote mt-4" style={{ color: "var(--label-3)" }}>
+        <p className="t-footnote mt-4" style={{ color: "var(--label-2)" }}>
           Einmalig nötig: in Claude unter Einstellungen → Konnektoren bzw. in ChatGPT unter Apps „Knuspr“ hinzufügen und mit deinem Knuspr-Konto anmelden.
         </p>
       </Sheet>

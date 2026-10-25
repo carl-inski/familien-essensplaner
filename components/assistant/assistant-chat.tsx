@@ -244,7 +244,7 @@ function Message({ message, respond }: { message: UIMessage; respond: (toolCallI
         if (!label) return null;
         const done = part.state === "output-available" || part.state === "output-error";
         return (
-          <p key={part.toolCallId} className="t-caption flex items-center gap-1.5 px-1" style={{ color: "var(--label-3)" }}>
+          <p key={part.toolCallId} className="t-caption flex items-center gap-1.5 px-1" style={{ color: "var(--label-2)" }}>
             <IconSparkles size={12} /> {done ? label[1] : label[0]}
           </p>
         );

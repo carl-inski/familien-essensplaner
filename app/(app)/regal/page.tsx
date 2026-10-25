@@ -43,7 +43,6 @@ export default function ShelfPage() {
             <span className="t-caption -mt-1 truncate" style={{ color: "var(--label-2)" }}>
               {b.authors[0] ?? (count(b.id) ? `${count(b.id)} Rezept${count(b.id) === 1 ? "" : "e"}` : " ")}
             </span>
-            {b.isbn && <span className="t-caption -mt-1 truncate tabular-nums" style={{ color: "var(--label-3)" }}>{b.isbn}</span>}
           </Link>
         ))}
       </div>

@@ -151,7 +151,7 @@ export default function RecipesPage() {
                     {book.title}{r.cookbook_page ? `, S. ${r.cookbook_page}` : ""}{!r.cookbook_link_confirmed ? " · zu bestätigen" : ""}
                   </p>
                 )}
-                <p className="t-caption mt-auto flex items-center gap-1.5 pt-1" style={{ color: "var(--label-3)" }}>
+                <p className="t-caption mt-auto flex items-center gap-1.5 pt-1" style={{ color: "var(--label-2)" }}>
                   <span className="min-w-0 flex-1 truncate">{lastCookedLabel(stats.get(r.id))}</span>
                   {(r.ep_recipe_notes?.[0]?.count ?? 0) > 0 && (
                     <span className="flex shrink-0 items-center gap-0.5" aria-label={`${r.ep_recipe_notes![0].count} Notizen`}>
