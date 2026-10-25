@@ -357,6 +357,8 @@ body {
 .btn-gray { background: var(--fill); color: var(--label); }
 .btn-plain { color: var(--accent); padding: 0 0.5rem; }
 .btn-sm { min-height: 32px; padding: 0 0.75rem; font-size: 0.875rem; }
+/* Marken-Knöpfe (Bring!, Knuspr) – drei nebeneinander, auch am schmalen Handy */
+.btn-brand { min-width: 0; padding: 0 0.625rem; gap: 0.4rem; }
 .btn:disabled { opacity: 0.4; pointer-events: none; }
 
 .chip {

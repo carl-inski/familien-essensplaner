@@ -6,7 +6,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconCart, IconCheck, IconCopy, IconHome, IconPlus, IconTrash } from "@/components/icons";
+import { BringLogo, KnusprLogo } from "@/components/brand-icons";
+import { IconCheck, IconCopy, IconHome, IconPlus, IconTrash } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { usePantry } from "@/components/pantry";
 import { Sheet } from "@/components/sheet";
@@ -209,21 +210,32 @@ export default function ShoppingPage() {
         subtitle={subtitle}
         ai={{ placeholder: "Frag die KI zum Einkauf …", suggestions: ["Fasse den Einkauf zusammen", "Was fehlt für die geplanten Gerichte?"] }}
       >
-        <div className="mt-4 grid grid-cols-2 gap-2 lg:max-w-md">
+        <div className="mt-4 grid grid-cols-3 gap-2 lg:max-w-lg">
           <a
-            className="btn btn-primary pressable"
+            className="btn btn-brand pressable"
+            style={{ background: "#333e44", color: "#fff", ...(!slug || !total ? { opacity: 0.4, pointerEvents: "none" } : {}) }}
             href={slug && total ? bringDeeplink(shoppingPublicUrl(slug)) : undefined}
             aria-disabled={!slug || !total}
-            style={!slug || !total ? { opacity: 0.4, pointerEvents: "none" } : undefined}
+            aria-label="In Bring! übernehmen"
             target="_blank"
             rel="noopener"
             onClick={() => inBackground(sb.from("ep_shopping_lists").update({ exported_at: new Date().toISOString() }).eq("household_id", household.id).eq("iso_week", isoWeekString(today)), "Bring-Export")}
           >
-            <IconCart size={18} /> In Bring übernehmen
+            <BringLogo size={23} /> Bring!
           </a>
           <button
-            className="btn btn-gray pressable"
+            className="btn btn-brand pressable"
+            style={{ background: "#ff7400", color: "#fff" }}
+            disabled={!uncheckedItems.length && !uncheckedExtras.length}
+            aria-label="Bei Knuspr bestellen"
+            onClick={() => setKnusprOpen(true)}
+          >
+            <KnusprLogo size={22} /> Knuspr
+          </button>
+          <button
+            className="btn btn-gray btn-brand pressable"
             disabled={!total}
+            aria-label="Liste als Text kopieren"
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(text);
@@ -233,10 +245,7 @@ export default function ShoppingPage() {
               }
             }}
           >
-            <IconCopy size={18} /> Als Text
-          </button>
-          <button className="btn btn-tinted pressable col-span-2" disabled={!uncheckedItems.length && !uncheckedExtras.length} onClick={() => setKnusprOpen(true)}>
-            <IconCart size={18} /> Bei Knuspr bestellen
+            <IconCopy size={18} /> Text
           </button>
         </div>
       </PageHeader>
