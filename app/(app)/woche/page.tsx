@@ -19,6 +19,7 @@ import { eaters, effectiveStatus } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
 import type { Meal, Recipe } from "@/lib/types";
 import { inBackground } from "@/lib/background";
+import { haptic } from "@/lib/haptics";
 
 export default function WeekPage() {
   return (
@@ -81,6 +82,7 @@ function Week() {
     const { error } = await upsertSlot(slot.date, slot.meal, { recipe_id: recipe.id, leftover_of: null, status: "geplant" });
     if (error) toast({ text: error.message, tone: "error" });
     else if (hint) toast({ text: hint, tone: "warning" });
+    else haptic("medium");
   }
 
   async function suggest(slot: Slot, avoid: string[] = []) {

@@ -19,6 +19,7 @@ import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { checkBatch, meatRuleHint, type PlannedDish } from "@/lib/suggest";
 import type { Cookbook, MealPlanEntry } from "@/lib/types";
 import { inBackground } from "@/lib/background";
+import { haptic } from "@/lib/haptics";
 
 export interface ToolPart {
   type: string;
@@ -98,7 +99,9 @@ function useAction(respond: Respond) {
   const run = async (fn: () => Promise<Result>) => {
     setBusy(true);
     try {
-      respond(await fn());
+      const result = await fn();
+      if (result.ok) haptic("success");
+      respond(result);
     } catch (e) {
       respond({ ok: false, meldung: `Fehler: ${(e as Error).message}` });
     } finally {

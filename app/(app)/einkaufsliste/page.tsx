@@ -23,6 +23,7 @@ import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry"
 import { buildShoppingList, groupByAisle, needsShopping, servingsFor } from "@/lib/planning";
 import type { ShoppingItem } from "@/lib/types";
 import { inBackground } from "@/lib/background";
+import { haptic } from "@/lib/haptics";
 
 // Abhak-Status während des Einkaufs nur auf diesem Gerät
 function readChecked(key: string): Set<string> {
@@ -160,6 +161,7 @@ export default function ShoppingPage() {
       await reload();
       return;
     }
+    haptic("success");
     const carriedIds = ((ins.data ?? []) as { id: string }[]).map((r) => r.id);
     setChecked(new Set());
     writeChecked(storageKey, new Set());

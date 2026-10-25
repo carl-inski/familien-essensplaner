@@ -9,6 +9,7 @@ import { PantrySection } from "@/components/pantry";
 import { IconChevronRight, IconEdit, IconHistory, IconLogout, IconPlus, IconUpload } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { AvatarPicker } from "@/components/avatar-picker";
+import { haptic, hapticsEnabled, setHapticsEnabled } from "@/lib/haptics";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { Avatar, Section, Segmented } from "@/components/ui";
@@ -23,6 +24,7 @@ export default function HouseholdPage() {
   const [editing, setEditing] = useState<Member | null>(null);
   const [adding, setAdding] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const [vibrate, setVibrate] = useState(hapticsEnabled);
   const [defaultMeal, setDefaultMeal] = useState<Meal>("abend");
   const isAdmin = me.role === "admin";
 
@@ -147,6 +149,20 @@ export default function HouseholdPage() {
           <div className="card mb-2 px-4 py-3">
             <AvatarPicker member={members.find((m) => m.id === me.id) ?? me} />
           </div>
+          <label className="row card mb-2 cursor-pointer lg:hidden">
+            <span className="t-sub flex-1">Leichte Vibration beim Tippen</span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="toggle"
+              checked={vibrate}
+              onChange={(e) => {
+                setHapticsEnabled(e.target.checked);
+                setVibrate(e.target.checked);
+                if (e.target.checked) haptic("medium");
+              }}
+            />
+          </label>
           <button className="row card pressable" onClick={() => setPwOpen(true)}>
             <IconEdit size={20} /> <span className="t-sub">Passwort ändern</span>
           </button>

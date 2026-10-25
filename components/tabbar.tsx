@@ -33,6 +33,7 @@ export function TabBar() {
             <li key={href}>
               <Link
                 href={href}
+                data-tab
                 aria-current={active ? "page" : undefined}
                 className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
                 style={{ color: active ? (href === "/assistent" ? "var(--ai)" : "var(--accent)") : "var(--label-2)" }}
@@ -46,6 +47,7 @@ export function TabBar() {
         <li>
           <Link
             href="/haushalt"
+            data-tab
             aria-current={profileActive ? "page" : undefined}
             className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
             style={{ color: profileActive ? "var(--accent)" : "var(--label-2)" }}

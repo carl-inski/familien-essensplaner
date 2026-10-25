@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { haptic } from "@/lib/haptics";
 
 interface ToastData {
   id: number;
@@ -24,6 +25,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((t: Omit<ToastData, "id">) => {
     if (timer.current) clearTimeout(timer.current);
     const data = { ...t, id: Date.now() };
+    if (t.tone === "error" || t.tone === "warning") haptic(t.tone);
     setToast(data);
     timer.current = setTimeout(() => setToast((cur) => (cur?.id === data.id ? null : cur)), t.action ? 5000 : 3200);
   }, []);
