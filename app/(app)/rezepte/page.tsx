@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconClock, IconHistory, IconNote, IconPlus, IconSearch, IconUpload } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
-import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { IconButton, PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
@@ -88,8 +87,8 @@ export default function RecipesPage() {
     <>
       <PageHeader
         title="Rezepte"
-        icon="🍲"
         width="wide"
+        ai={{ placeholder: "Frag die KI nach Rezepten …", suggestions: ["Was Schnelles für heute Abend?", "Was haben wir lange nicht gegessen?", "Rezept aus einem Foto anlegen"] }}
         subtitle={`${recipes.length} Rezepte in der Sammlung`}
         trailing={
           <>
@@ -122,11 +121,6 @@ export default function RecipesPage() {
             <button className="chip pressable" data-on={filters.never} onClick={() => set({ never: !filters.never })}>Nie gekocht</button>
           </div>
         </div>
-        <AiPromptBar
-          className="mt-4 lg:max-w-3xl"
-          placeholder="Frag die KI nach Rezepten …"
-          suggestions={["Was Schnelles für heute Abend?", "Was haben wir lange nicht gegessen?", "Rezept aus einem Foto anlegen"]}
-        />
         <div className="mt-3 flex items-center justify-between">
           <span className="t-footnote" style={{ color: "var(--label-2)" }}>{list.length} Treffer</span>
           <select className="t-footnote w-auto appearance-none rounded-lg bg-transparent py-1 text-right font-medium" style={{ color: "var(--accent)" }} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sortierung">

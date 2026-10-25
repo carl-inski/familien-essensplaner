@@ -45,7 +45,6 @@ function Assistant() {
     <>
       <PageHeader
         title="KI"
-        icon="✨"
         subtitle={kontext.rezept_titel ? <>Zum Rezept <strong>{kontext.rezept_titel}</strong></> : "Fragt eure Rezepte, plant mit, schreibt Notizen"}
         trailing={
           <>

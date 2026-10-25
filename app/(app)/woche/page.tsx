@@ -6,7 +6,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
 import { AccountButton } from "@/components/account-button";
-import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { IconButton, PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
@@ -129,8 +128,8 @@ function Week() {
     <>
       <PageHeader
         title="Woche"
-        icon="🗓️"
         width="wide"
+        ai={{ placeholder: "Frag die KI zur Woche …", suggestions: ["Füll die offenen Abende dieser Woche", "Was steht diese Woche an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"] }}
         subtitle={`${weekNumberLabel(isoWeek)} · ${formatDateDE(dates[0], { day: "numeric", month: "long" })} – ${formatDateDE(dates[6], { day: "numeric", month: "long" })} · ${plannedCount}/${dates.length * MEALS.length} geplant`}
         trailing={
           <>
@@ -140,8 +139,7 @@ function Week() {
           </>
         }
       >
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-3">
-        <div className="flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, -1))} title="Vorige Woche (←)">
             <IconChevronLeft size={16} /> Vorige
           </button>
@@ -151,12 +149,6 @@ function Week() {
           <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, 1))} title="Nächste Woche (→)">
             Nächste <IconChevronRight size={16} />
           </button>
-        </div>
-        <AiPromptBar
-          className="lg:ml-auto lg:w-full lg:max-w-xl"
-          placeholder="Frag die KI zur Woche …"
-          suggestions={["Füll die offenen Abende dieser Woche", "Was steht diese Woche an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"]}
-        />
         </div>
       </PageHeader>
 
@@ -403,7 +395,7 @@ function Week() {
             return (
               <button
                 key={m.id}
-                className="pressable relative rounded-full"
+                className="pressable relative flex rounded-full"
                 style={{ boxShadow: here ? undefined : "0 0 0 1px var(--separator)" }}
                 aria-pressed={here}
                 aria-label={`${label} – klicken zum Ändern`}
