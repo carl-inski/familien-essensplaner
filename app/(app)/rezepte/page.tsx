@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconClock, IconHistory, IconNote, IconPlus, IconSearch, IconUpload } from "@/components/icons";
-import { AccountButton } from "@/components/account-button";
+import { IconClock, IconNote, IconPlus, IconSearch } from "@/components/icons";
+import { CollectionSwitch } from "@/components/collection-switch";
 import { AiPromptBar } from "@/components/assistant/ai-panel";
-import { IconButton, PageHeader } from "@/components/nav";
+import { PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, lastCookedLabel } from "@/components/ui";
@@ -90,16 +90,10 @@ export default function RecipesPage() {
         title="Rezepte"
         icon="🍲"
         width="wide"
+        tabRoot
         subtitle={`${recipes.length} Rezepte in der Sammlung`}
-        trailing={
-          <>
-            <IconButton label="Lange nicht gegessen" href="/rezepte/lange-nicht"><IconHistory /></IconButton>
-            <IconButton label="Import und Export" href="/rezepte/import"><IconUpload /></IconButton>
-            <IconButton label="Neues Rezept" href="/rezepte/neu"><IconPlus /></IconButton>
-            <AccountButton />
-          </>
-        }
       >
+        <CollectionSwitch active="rezepte" />
         <div className="lg:mt-3 lg:flex lg:items-center lg:gap-3">
           <label className="relative mt-3 block lg:mt-0 lg:w-80 lg:shrink-0">
             <span className="absolute top-1/2 left-3 -translate-y-1/2" style={{ color: "var(--label-3)" }}><IconSearch size={18} /></span>
@@ -136,6 +130,16 @@ export default function RecipesPage() {
       </PageHeader>
 
       <div className="page-wide mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-5 2xl:grid-cols-6">
+        {/* Immer zuerst: schnell ein neues Rezept anlegen – so groß wie die Rezeptkacheln */}
+        <Link href="/rezepte/neu" className="card pressable flex flex-col overflow-hidden" aria-label="Neues Rezept">
+          <span className="flex aspect-[4/3] w-full items-center justify-center" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+            <IconPlus size={36} strokeWidth={2} />
+          </span>
+          <span className="flex flex-1 flex-col gap-1 p-3">
+            <span className="t-sub font-semibold leading-snug">Neues Rezept</span>
+            <span className="t-caption" style={{ color: "var(--label-2)" }}>Von Hand, aus einem Link oder Foto</span>
+          </span>
+        </Link>
         {list.map((r) => {
           const book = r.cookbook_id ? cookbooksById.get(r.cookbook_id) : null;
           return (

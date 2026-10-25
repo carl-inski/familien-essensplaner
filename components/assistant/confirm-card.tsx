@@ -7,15 +7,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useApp } from "@/components/app-data";
-import { IconCalendar, IconCheck, IconEdit, IconNote, IconPeople } from "@/components/icons";
+import { BookCover } from "@/components/book";
+import { IconBook, IconCalendar, IconCheck, IconEdit, IconNote, IconPeople } from "@/components/icons";
 import { DietIcon } from "@/components/ui";
-import { AnwesenheitInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
+import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
 import { extractToDraft } from "@/lib/ai/schemas";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { stashDraft } from "@/lib/draft-handoff";
+import { matchCookbook } from "@/lib/recipe-draft";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { checkBatch, meatRuleHint, type PlannedDish } from "@/lib/suggest";
-import type { MealPlanEntry } from "@/lib/types";
+import type { Cookbook, MealPlanEntry } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 
 export interface ToolPart {
@@ -55,6 +57,8 @@ export function ConfirmCard({ tool, part, respond }: { tool: WriteTool; part: To
       return <NoteCard input={part.input} respond={respond} />;
     case "rezept_entwurf_oeffnen":
       return <DraftCard input={part.input} respond={respond} />;
+    case "buch_hinzufuegen":
+      return <BookCard input={part.input} respond={respond} />;
   }
 }
 
@@ -400,6 +404,94 @@ function DraftCard({ input, respond }: { input: unknown; respond: Respond }) {
       <p className="t-sub" style={{ color: "var(--label-2)" }}>
         {r.ingredients.length} Zutaten · {r.steps.length} Schritte{r.time_min ? ` · ${r.time_min} Min.` : ""}
       </p>
+    </Shell>
+  );
+}
+
+interface IsbnInfo {
+  title: string | null;
+  authors: string[];
+  publisher: string | null;
+  year: number | null;
+  cover_url: string | null;
+}
+
+const normIsbn = (s: string | null) => {
+  const v = (s ?? "").replace(/[^0-9Xx]/g, "").toUpperCase();
+  return v.length === 10 || v.length === 13 ? v : null;
+};
+
+function BookCard({ input, respond }: { input: unknown; respond: Respond }) {
+  const { sb, household, cookbooks, reloadCookbooks } = useApp();
+  const parsed = BuchInput.safeParse(input);
+  const data = parsed.success ? parsed.data : null;
+  const isbn = normIsbn(data?.isbn ?? null);
+  // Mit ISBN: Cover und Angaben nachschlagen (wie „Abfragen“ im Formular)
+  const [info, setInfo] = useState<IsbnInfo | null | undefined>(isbn ? undefined : null);
+  const { busy, run } = useAction(respond);
+
+  useEffect(() => {
+    if (!isbn) return;
+    let alive = true;
+    fetch(`/api/isbn?isbn=${isbn}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((d) => alive && setInfo(d));
+    return () => {
+      alive = false;
+    };
+  }, [isbn]);
+
+  if (!data) return <Invalid text="Der Buchvorschlag war unvollständig." respond={respond} />;
+  const sameIsbn = isbn ? cookbooks.find((c) => normIsbn(c.isbn) === isbn) : undefined;
+  if (sameIsbn) return <Invalid text={`„${sameIsbn.title}“ steht schon im Regal.`} respond={respond} />;
+
+  // Gehört die ISBN wirklich zu diesem Buch? Sonst lieber ohne sie speichern.
+  const fits = !!info?.title && !!matchCookbook(data.titel, [{ title: info.title } as Cookbook]);
+  const lookup = fits ? info : null;
+  const book = {
+    title: data.titel.trim(),
+    authors: lookup?.authors.length ? lookup.authors : data.autoren.map((a) => a.trim()).filter(Boolean),
+    publisher: lookup?.publisher ?? data.verlag?.trim() ?? null,
+    year: lookup?.year ?? data.jahr,
+    isbn: isbn && (fits || info === null) ? isbn : null,
+    cover_url: lookup?.cover_url ?? null,
+  };
+  const similar = matchCookbook(book.title, cookbooks);
+
+  return (
+    <Shell
+      icon={<IconBook size={16} />}
+      title="Ins Regal stellen"
+      actions={
+        <Actions
+          busy={busy || info === undefined}
+          label="Hinzufügen"
+          onNo={() => respond({ ok: false, meldung: "Buch nicht hinzugefügt" })}
+          onYes={() =>
+            run(async () => {
+              const { data: row, error } = await sb.from("ep_cookbooks").insert({ household_id: household.id, ...book, notes: null }).select("id").single();
+              if (error) throw new Error(error.message.includes("duplicate") ? "Diese ISBN steht schon im Regal." : error.message);
+              await reloadCookbooks();
+              return { ok: true, meldung: `„${book.title}“ steht jetzt im Regal (id ${(row as { id: string }).id})` };
+            })
+          }
+        />
+      }
+    >
+      <div className="mt-1 flex gap-3">
+        <BookCover book={book} className="h-24 w-[4.25rem] shrink-0" />
+        <div className="min-w-0">
+          <p className="t-headline">{book.title}</p>
+          {book.authors.length > 0 && <p className="t-sub" style={{ color: "var(--label-2)" }}>{book.authors.join(", ")}</p>}
+          <p className="t-footnote" style={{ color: "var(--label-2)" }}>
+            {[book.publisher, book.year, book.isbn && `ISBN ${book.isbn}`].filter(Boolean).join(" · ")}
+          </p>
+          {info === undefined && <p className="t-footnote mt-1" style={{ color: "var(--label-2)" }}>Sucht Cover und Angaben …</p>}
+          {info?.title && !fits && <p className="t-footnote mt-1" style={{ color: "var(--red)" }}>⚠︎ Die ISBN gehört zu „{info.title}“ – sie wird nicht übernommen.</p>}
+          {similar && <p className="t-footnote mt-1" style={{ color: "var(--accent)" }}>Ähnlich: „{similar.title}“ steht schon im Regal.</p>}
+        </div>
+      </div>
     </Shell>
   );
 }

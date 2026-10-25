@@ -1,15 +1,12 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
-import { AccountButton } from "@/components/account-button";
 import { useAiStatus } from "@/components/ai-status";
 import { AssistantChat } from "@/components/assistant/assistant-chat";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { useApp } from "@/components/app-data";
-import { IconEdit } from "@/components/icons";
-import { IconButton, PageHeader } from "@/components/nav";
+import { PageHeader } from "@/components/nav";
 
 export default function AssistantPage() {
   return (
@@ -20,8 +17,7 @@ export default function AssistantPage() {
 }
 
 function Assistant() {
-  const { chat, kontext, setKontext, reset } = useAssistant();
-  const { messages } = useChat({ chat });
+  const { chat, kontext, setKontext } = useAssistant();
   const { recipesById } = useApp();
   const { status: ai } = useAiStatus();
   const params = useSearchParams();
@@ -46,15 +42,8 @@ function Assistant() {
       <PageHeader
         title="KI"
         icon="✨"
+        tabRoot
         subtitle={kontext.rezept_titel ? <>Zum Rezept <strong>{kontext.rezept_titel}</strong></> : "Fragt eure Rezepte, plant mit, schreibt Notizen"}
-        trailing={
-          <>
-            {messages.length > 0 && (
-              <IconButton label="Neues Gespräch" onClick={reset}><IconEdit /></IconButton>
-            )}
-            <AccountButton />
-          </>
-        }
       />
       <AssistantChat variant="page" />
     </>

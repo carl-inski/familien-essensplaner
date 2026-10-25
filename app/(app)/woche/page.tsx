@@ -5,17 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
-import { AccountButton } from "@/components/account-button";
 import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { useAssistant } from "@/components/assistant/assistant-provider";
-import { IconButton, PageHeader } from "@/components/nav";
+import { PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
 import { useToast } from "@/components/toast";
 import { Avatar, DIET_LABEL, DietIcon, RecipeImage } from "@/components/ui";
 import { useIsDesktop } from "@/components/use-media";
 import { SlotSheet, type Slot } from "@/components/week/slot-sheet";
 import { MEALS, useWeek } from "@/components/week/use-week";
-import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, parseISODate, isoWeekString, shiftWeek, weekNumberLabel, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_LONG, WEEKDAY_SHORT, formatDateDE, parseISODate, isoWeekString, relativeWeekLabel, shiftWeek, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { eaters, effectiveStatus, servingsFor } from "@/lib/planning";
 import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
@@ -131,12 +130,14 @@ function Week() {
         title="Woche"
         icon="🗓️"
         width="wide"
-        subtitle={`${weekNumberLabel(isoWeek)} · ${formatDateDE(dates[0], { day: "numeric", month: "long" })} – ${formatDateDE(dates[6], { day: "numeric", month: "long" })} · ${plannedCount}/${dates.length * MEALS.length} geplant`}
-        trailing={
+        tabRoot
+        subtitle={
           <>
-            <IconButton label="Vorige Woche" onClick={() => go(shiftWeek(isoWeek, -1))}><IconChevronLeft /></IconButton>
-            <IconButton label="Nächste Woche" onClick={() => go(shiftWeek(isoWeek, 1))}><IconChevronRight /></IconButton>
-            <AccountButton />
+            {relativeWeekLabel(isoWeek, today)}
+            <span className="block text-[0.9375rem] font-normal tracking-normal lg:inline" style={{ color: "var(--label-2)" }}>
+              <span className="hidden lg:inline"> · </span>
+              {formatDateDE(dates[0], { day: "numeric", month: "long" })} – {formatDateDE(dates[6], { day: "numeric", month: "long" })} · {plannedCount}/{dates.length * MEALS.length} geplant
+            </span>
           </>
         }
       >
@@ -145,12 +146,12 @@ function Week() {
           <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, -1))} title="Vorige Woche (←)">
             <IconChevronLeft size={16} /> Vorige
           </button>
-          {isoWeek !== isoWeekString(today) && (
-            <button className="chip pressable" data-on="true" onClick={() => go(isoWeekString(today))}>Diese Woche</button>
-          )}
           <button className="chip pressable" onClick={() => go(shiftWeek(isoWeek, 1))} title="Nächste Woche (→)">
             Nächste <IconChevronRight size={16} />
           </button>
+          {isoWeek !== isoWeekString(today) && (
+            <button className="chip pressable" data-on="true" onClick={() => go(isoWeekString(today))}>Diese Woche</button>
+          )}
         </div>
         <AiPromptBar
           className="lg:ml-auto lg:w-full lg:max-w-xl"

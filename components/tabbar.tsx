@@ -9,12 +9,12 @@ import { useAssistant } from "./assistant/assistant-provider";
 import { Avatar } from "./ui";
 import { IconBook, IconCalendar, IconCart, IconHistory, IconPeople, IconPlus, IconShelf, IconSidebar, IconSparkles } from "./icons";
 
+// Handy: fünf Tabs; das Regal steckt unter „Rezepte“, das Profil (Haushalt) sitzt ganz rechts
 const TABS = [
-  { href: "/woche", label: "Woche", Icon: IconCalendar },
-  { href: "/rezepte", label: "Rezepte", Icon: IconBook },
-  { href: "/assistent", label: "KI", Icon: IconSparkles },
-  { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart },
-  { href: "/regal", label: "Regal", Icon: IconShelf },
+  { href: "/woche", label: "Woche", Icon: IconCalendar, also: [] as string[] },
+  { href: "/rezepte", label: "Rezepte", Icon: IconBook, also: ["/regal"] },
+  { href: "/assistent", label: "KI", Icon: IconSparkles, also: [] },
+  { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart, also: [] },
 ];
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
@@ -22,11 +22,13 @@ const isActive = (path: string, href: string) => path === href || path.startsWit
 /** Handy und Tablet: schwebende Tableiste unten */
 export function TabBar() {
   const path = usePathname();
+  const { me } = useApp();
+  const profileActive = isActive(path, "/haushalt");
   return (
     <nav className="material tabbar fixed inset-x-0 bottom-0 z-40 lg:hidden" aria-label="Hauptnavigation">
       <ul className="mx-auto grid max-w-2xl grid-cols-5">
-        {TABS.map(({ href, label, Icon }) => {
-          const active = isActive(path, href);
+        {TABS.map(({ href, label, Icon, also }) => {
+          const active = [href, ...also].some((h) => isActive(path, h));
           return (
             <li key={href}>
               <Link
@@ -41,6 +43,19 @@ export function TabBar() {
             </li>
           );
         })}
+        <li>
+          <Link
+            href="/haushalt"
+            aria-current={profileActive ? "page" : undefined}
+            className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
+            style={{ color: profileActive ? "var(--accent)" : "var(--label-2)" }}
+          >
+            <span className="flex h-[25px] items-center rounded-full" style={{ boxShadow: profileActive ? "0 0 0 2px var(--accent)" : undefined }}>
+              <Avatar member={me} size={25} />
+            </span>
+            <span className="text-[10.5px] font-medium tracking-[0.01em]">Profil</span>
+          </Link>
+        </li>
       </ul>
     </nav>
   );

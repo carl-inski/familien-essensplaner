@@ -8,7 +8,7 @@ import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
 import { buildShoppingList, effectiveStatus, needsShopping, presentMembers } from "@/lib/planning";
 import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
 import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
-import { AnwesenheitInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
+import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
 import type { AiContext } from "./guard";
 
 // Werkzeuge des Assistenten. Lesen läuft hier auf dem Server mit der Session
@@ -166,7 +166,7 @@ export function assistantTools(ctx: AiContext, today: string) {
       execute: async () => {
         const { cookbooks, recipes } = await load();
         return {
-          buecher: cookbooks.map((c) => ({ id: c.id, titel: c.title, autoren: c.authors, rezepte: recipes.filter((r) => r.cookbook_id === c.id).length })),
+          buecher: cookbooks.map((c) => ({ id: c.id, titel: c.title, autoren: c.authors, isbn: c.isbn, rezepte: recipes.filter((r) => r.cookbook_id === c.id).length })),
         };
       },
     }),
@@ -288,6 +288,11 @@ export function assistantTools(ctx: AiContext, today: string) {
     rezept_entwurf_oeffnen: tool({
       description: "Öffnet ein neues Rezept vorbefüllt im Formular, z. B. eine Idee oder ein Rezept aus einem Foto im Chat. Der Nutzer prüft und sichert dort.",
       inputSchema: EntwurfInput,
+    }),
+    buch_hinzufuegen: tool({
+      description:
+        "Schlägt vor, ein Kochbuch ins Regal zu stellen, z. B. nach Titel oder einem Foto vom Cover oder der Rückseite. Vorher mit regal prüfen, ob es schon dasteht. Mit ISBN ergänzt die App Cover und Angaben. Der Nutzer bestätigt.",
+      inputSchema: BuchInput,
     }),
   };
 }

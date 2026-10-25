@@ -83,3 +83,12 @@ export function formatDateDE(date: string, opts: Intl.DateTimeFormatOptions = { 
 export function weekNumberLabel(isoWeek: string): string {
   return `KW ${Number(isoWeek.slice(6))}`;
 }
+
+/** „Aktuelle Woche“, „Nächste Woche“, „Letzte Woche“ – sonst „KW 45“ */
+export function relativeWeekLabel(isoWeek: string, today: string): string {
+  const diff = Math.round(daysBetween(mondayOfIsoWeek(isoWeekString(today)), mondayOfIsoWeek(isoWeek)) / 7);
+  if (diff === 0) return "Aktuelle Woche";
+  if (diff === 1) return "Nächste Woche";
+  if (diff === -1) return "Letzte Woche";
+  return weekNumberLabel(isoWeek);
+}

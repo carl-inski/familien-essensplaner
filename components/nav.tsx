@@ -24,11 +24,16 @@ interface Props {
   cover?: ReactNode;
   /** Bezug für „KI fragen“ oben rechts, z. B. das offene Rezept */
   aiKontext?: AssistantContext;
+  /**
+   * Startseite eines Tabs: auf dem Handy ohne großen Titel und ohne Kopfzeile
+   * (der Tab unten sagt schon, wo man ist) – die Unterzeile wird zur Überschrift.
+   */
+  tabRoot?: boolean;
 }
 
 const PAGE_CLASS = { narrow: "page", medium: "page-medium", wide: "page-wide" } as const;
 
-export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", icon, cover, aiKontext }: Props) {
+export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", icon, cover, aiKontext, tabRoot = false }: Props) {
   const page = PAGE_CLASS[width];
   const sentinel = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -46,6 +51,7 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
       <div
         className={`topbar app-fixed fixed top-0 z-30 transition-[background-color,box-shadow] duration-200 ${compact ? "material navbar-edge" : ""}`}
         data-compact={compact}
+        data-tab-root={tabRoot}
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className={`topbar-row ${page} flex h-11 items-center gap-2 px-2`}>
@@ -85,12 +91,16 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
         </div>
       </div>
       {cover && <div className="page-cover hidden lg:block">{cover}</div>}
-      <header className={`page-header ${page}`} data-cover={!!cover}>
-        <h1 className="t-large-title">
+      <header className={`page-header ${page}`} data-cover={!!cover} data-tab-root={tabRoot}>
+        <h1 className="page-title t-large-title">
           {icon && <span className="page-icon hidden lg:inline" aria-hidden>{icon}</span>}
           {title}
         </h1>
-        {subtitle && <div className="t-sub mt-1" style={{ color: "var(--label-2)" }}>{subtitle}</div>}
+        {subtitle && (
+          <div className={tabRoot ? "page-sub-tab t-sub" : "t-sub mt-1"} style={{ color: "var(--label-2)" }}>
+            {subtitle}
+          </div>
+        )}
         <div ref={sentinel} aria-hidden className="h-px" />
         {children}
       </header>

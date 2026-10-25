@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AiUsageSection } from "@/components/ai-status";
 import { useApp } from "@/components/app-data";
 import { PantrySection } from "@/components/pantry";
-import { IconEdit, IconLogout, IconPlus } from "@/components/icons";
+import { IconChevronRight, IconEdit, IconHistory, IconLogout, IconPlus, IconUpload } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
@@ -47,7 +48,7 @@ export default function HouseholdPage() {
 
   return (
     <>
-      <PageHeader title="Haushalt" icon="🏠" subtitle={household.name} back={{ href: "/woche", label: "Woche" }} width="medium" />
+      <PageHeader title="Haushalt" icon="🏠" subtitle={household.name} width="medium" tabRoot />
       <div className="page-medium lg:columns-2 lg:gap-8 [&>section]:break-inside-avoid lg:[&>section]:mt-0 lg:[&>section]:pt-6">
         <Section title="Kochdienst · letzte 4 Wochen">
           <div className="card flex flex-col gap-2.5 px-4 py-3">
@@ -122,6 +123,19 @@ export default function HouseholdPage() {
             ))}
           </ul>
           {isAdmin && <button className="btn btn-tinted btn-sm pressable mt-2" onClick={() => setAdding(true)}><IconPlus size={16} /> Mitglied</button>}
+        </Section>
+
+        <Section title="Sammlung">
+          <div className="group">
+            <Link className="row pressable" href="/rezepte/lange-nicht">
+              <IconHistory size={20} /> <span className="t-sub flex-1">Rückblick: lange nicht gegessen</span>
+              <IconChevronRight size={18} style={{ color: "var(--label-3)" }} />
+            </Link>
+            <Link className="row pressable" href="/rezepte/import">
+              <IconUpload size={20} /> <span className="t-sub flex-1">Rezepte importieren und exportieren</span>
+              <IconChevronRight size={18} style={{ color: "var(--label-3)" }} />
+            </Link>
+          </div>
         </Section>
 
         <PantrySection />

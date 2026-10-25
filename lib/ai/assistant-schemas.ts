@@ -47,14 +47,23 @@ export const EntwurfInput = z.object({
   rezept: RecipeExtractSchema.omit({ is_recipe: true, cookbook_title: true, cookbook_page: true }),
 });
 
+export const BuchInput = z.object({
+  titel: z.string().trim().min(1).max(200).describe("Titel des Kochbuchs, ohne Untertitel"),
+  autoren: z.array(z.string()).max(6).describe("Autorinnen und Autoren; leer, wenn unbekannt"),
+  isbn: z.string().nullable().describe("ISBN-10 oder ISBN-13, z. B. vom Foto der Rückseite; sonst null"),
+  verlag: z.string().nullable(),
+  jahr: z.number().int().min(1800).max(2100).nullable(),
+});
+
 export type EinplanenInput = z.infer<typeof EinplanenInput>;
 export type MehrereEinplanenInput = z.infer<typeof MehrereEinplanenInput>;
 export type AnwesenheitInput = z.infer<typeof AnwesenheitInput>;
 export type NotizInput = z.infer<typeof NotizInput>;
 export type EntwurfInput = z.infer<typeof EntwurfInput>;
+export type BuchInput = z.infer<typeof BuchInput>;
 
 /** Namen der Werkzeuge, die erst nach „Übernehmen“ im Browser schreiben */
-export const WRITE_TOOLS = ["einplanen", "mehrere_einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen"] as const;
+export const WRITE_TOOLS = ["einplanen", "mehrere_einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen", "buch_hinzufuegen"] as const;
 export type WriteTool = (typeof WRITE_TOOLS)[number];
 
 /** Kontext der Seite, von der aus der Assistent geöffnet wurde */

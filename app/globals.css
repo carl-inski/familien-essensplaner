@@ -409,19 +409,20 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   border-radius: 10px;
   background: var(--fill);
 }
-.segmented button {
+.segmented :is(button, a) {
+  display: flex; align-items: center; justify-content: center;
   min-height: 30px;
   border-radius: 8px;
   font-size: 0.8125rem;
   font-weight: 500;
 }
-.segmented button[data-on="true"] {
+.segmented :is(button, a)[data-on="true"] {
   background: var(--surface);
   font-weight: 600;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 @media (prefers-color-scheme: dark) {
-  .segmented button[data-on="true"] { background: #636366; }
+  .segmented :is(button, a)[data-on="true"] { background: #636366; }
 }
 
 .scroll-x { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
@@ -503,6 +504,20 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 @media (min-width: 64rem) {
   .page-header { padding-top: calc(env(safe-area-inset-top) + 76px); }
   .page-header[data-cover="true"] { padding-top: 1.75rem; }
+}
+
+/* Tab-Startseiten auf dem Handy: kein großer Titel (steht schon in der Tableiste),
+   keine leere Kopfzeile – die Info-Zeile wird zur Überschrift */
+.page-sub-tab { margin-top: 0.25rem; }
+@media (max-width: 63.99rem) {
+  .page-header[data-tab-root="true"] { padding-top: calc(env(safe-area-inset-top) + 14px); }
+  .page-header[data-tab-root="true"] .page-title { display: none; }
+  .page-header[data-tab-root="true"] .page-sub-tab {
+    margin-top: 0;
+    font-size: 1.375rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.018em;
+    color: var(--label) !important;
+  }
+  .topbar[data-tab-root="true"] .topbar-row { display: none; }
 }
 
 /* „denkt nach …“ – drei pulsierende Punkte */
@@ -599,7 +614,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
     .input:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px var(--accent-soft); }
 
     .segmented { border-radius: 6px; }
-    .segmented button { border-radius: 4px; }
+    .segmented :is(button, a) { border-radius: 4px; }
 
     .sheet.sheet-dialog { border-radius: 12px; box-shadow: 0 0 0 1px rgba(15, 15, 15, 0.05), 0 5px 10px rgba(15, 15, 15, 0.1), 0 15px 40px rgba(15, 15, 15, 0.2); }
     .skeleton { border-radius: 6px; }
@@ -901,7 +916,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   [data-theme="kueche"] .chip { border-radius: 999px; }
   [data-theme="kueche"] .input { border-radius: 12px; }
   [data-theme="kueche"] .segmented { border-radius: 10px; }
-  [data-theme="kueche"] .segmented button { border-radius: 8px; }
+  [data-theme="kueche"] .segmented :is(button, a) { border-radius: 8px; }
   [data-theme="kueche"] .card, [data-theme="kueche"] .group { border-radius: var(--radius); box-shadow: var(--card-edge); }
   [data-theme="kueche"] .badge { border-radius: 999px; }
   [data-theme="kueche"] .sheet { border-radius: 22px 22px 0 0; }
@@ -915,5 +930,5 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 }
 @media (prefers-color-scheme: dark) {
   [data-theme="kueche"] .sheet { background: var(--surface); }
-  [data-theme="kueche"] .segmented button[data-on="true"] { background: var(--surface-2); }
+  [data-theme="kueche"] .segmented :is(button, a)[data-on="true"] { background: var(--surface-2); }
 }
