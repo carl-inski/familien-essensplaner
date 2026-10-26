@@ -1,14 +1,18 @@
 "use client";
 
-// Handy: großer Titel, der beim Scrollen in eine schwebende, transluzente Navigationsleiste übergeht.
+// Handy: großer Titel, der beim Scrollen in eine schwebende, transluzente Navigationsleiste übergeht;
+// auf den Tab-Seiten sitzt oben rechts das Konto (Avatar), das das Profil als Fenster öffnet.
 // Computer: ruhige Kopfzeile – links nur der Weg zurück, rechts Aktionen und „KI fragen“;
-// darunter der große Titel, optional ein Titelbild und die KI-Zeile immer an derselben Stelle.
+// darunter der große Titel und optional ein Titelbild.
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AssistantContext } from "@/lib/ai/assistant-schemas";
-import { AiButton, AiPromptBar } from "./assistant/ai-panel";
+import { useApp } from "./app-data";
+import { AiButton } from "./assistant/ai-panel";
+import { useDetailNav } from "./detail-nav";
 import { IconChevronLeft } from "./icons";
+import { Avatar } from "./ui";
 
 interface Props {
   title: string;
@@ -20,20 +24,18 @@ interface Props {
   width?: "narrow" | "medium" | "wide";
   /** Titelbild über dem Titel, nur am Computer */
   cover?: ReactNode;
-  /** Bezug für „KI fragen“ oben rechts und die KI-Zeile, z. B. das offene Rezept */
+  /** Bezug für „KI fragen“ oben rechts (Computer), z. B. das offene Rezept */
   aiKontext?: AssistantContext;
   /**
    * Startseite eines Tabs: auf dem Handy ohne großen Titel und ohne Kopfzeile
    * (der Tab unten sagt schon, wo man ist) – die Unterzeile wird zur Überschrift.
    */
   tabRoot?: boolean;
-  /** KI-Zeile unter dem Titel – auf jeder Seite an derselben Stelle und gleich breit */
-  ai?: { placeholder: string; suggestions: string[] };
 }
 
 const PAGE_CLASS = { narrow: "page", medium: "page-medium", wide: "page-wide" } as const;
 
-export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", cover, aiKontext, ai, tabRoot = false }: Props) {
+export function PageHeader({ title, subtitle, back, trailing, children, width = "narrow", cover, aiKontext, tabRoot = false }: Props) {
   const page = PAGE_CLASS[width];
   const sentinel = useRef<HTMLDivElement>(null);
   const [compact, setCompact] = useState(false);
@@ -87,7 +89,8 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
         </div>
       </div>
       {cover && <div className="page-cover hidden lg:block">{cover}</div>}
-      <header className={`page-header ${page} flex flex-col`} data-cover={!!cover} data-tab-root={tabRoot}>
+      <header className={`page-header ${page} relative flex flex-col`} data-cover={!!cover} data-tab-root={tabRoot}>
+        {tabRoot && <AccountButton />}
         {/* Lange Titel (z. B. Rezepte) eine Stufe kleiner, damit das Bild höher rückt */}
         <h1 className="page-title t-large-title" data-long={title.length > 24 || undefined}>{title}</h1>
         {subtitle && (
@@ -95,8 +98,6 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
             {subtitle}
           </div>
         )}
-        {/* Handy: unter den Bedienelementen der Seite. Computer: direkt unter dem Titel. */}
-        {ai && <AiPromptBar className="page-ai order-last mt-4 lg:order-none" kontext={aiKontext} placeholder={ai.placeholder} suggestions={ai.suggestions} />}
         <div ref={sentinel} aria-hidden className="h-px" />
         {children}
       </header>
@@ -115,6 +116,17 @@ export function IconButton({ label, onClick, children, href, className = "" }: {
   return (
     <button aria-label={label} title={label} className={cls} onClick={onClick}>
       {children}
+    </button>
+  );
+}
+
+/** Handy: Konto oben rechts auf den Tab-Seiten – öffnet Haushalt & Konto als Fenster */
+function AccountButton() {
+  const { me } = useApp();
+  const { open } = useDetailNav();
+  return (
+    <button className="page-account pressable rounded-full lg:hidden" onClick={() => open("profil")} aria-label={`Profil von ${me.name} – Haushalt & Konto`}>
+      <Avatar member={me} size={34} />
     </button>
   );
 }

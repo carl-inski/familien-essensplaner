@@ -1,11 +1,9 @@
 "use client";
 
-// KI am Computer: Seitenpanel rechts (⌘J), Knopf für die obere Leiste und eine
-// Eingabezeile mit passenden Vorschlägen für einzelne Seiten.
+// KI am Computer: Seitenpanel rechts (⌘J) und Knopf für die obere Leiste.
 
 import { useChat } from "@ai-sdk/react";
-import { useState } from "react";
-import { IconArrowUp, IconClose, IconEdit, IconSparkles } from "@/components/icons";
+import { IconClose, IconEdit, IconSparkles } from "@/components/icons";
 import type { AssistantContext } from "@/lib/ai/assistant-schemas";
 import { AssistantChat } from "./assistant-chat";
 import { useAssistant } from "./assistant-provider";
@@ -53,51 +51,5 @@ export function AiButton({ kontext }: { kontext?: AssistantContext }) {
       <span>KI fragen</span>
       <kbd>⌘J</kbd>
     </button>
-  );
-}
-
-/** Eingabezeile „Frag die KI …“ mit Vorschlägen, passend zur Seite */
-export function AiPromptBar({ placeholder, suggestions, kontext, className = "" }: { placeholder: string; suggestions: string[]; kontext?: AssistantContext; className?: string }) {
-  const { ask, aiEnabled } = useAssistant();
-  const [q, setQ] = useState("");
-  if (aiEnabled === false) return null;
-  return (
-    <div className={`ai-bar relative ${className}`}>
-      <form
-        className="ai-bar-field flex items-center gap-2.5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          (document.activeElement as HTMLElement | null)?.blur();
-          if (!q.trim()) return ask(undefined, kontext);
-          ask(q, kontext);
-          setQ("");
-        }}
-      >
-        <span className="ai-orb flex h-7 w-7 shrink-0 items-center justify-center rounded-full"><IconSparkles size={15} /></span>
-        <input className="min-w-0 flex-1 bg-transparent outline-none" value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} aria-label="Frage an die KI" />
-        <button type="submit" className="pressable flex h-7 w-7 shrink-0 items-center justify-center rounded-full disabled:opacity-30" style={{ background: "var(--accent)", color: "var(--on-accent)" }} aria-label="Fragen" disabled={!q.trim()}>
-          <IconArrowUp size={16} strokeWidth={2.4} />
-        </button>
-      </form>
-      {/* Handy: Vorschläge als Zeile darunter. Computer: Menü unter dem Feld, sobald es den Fokus hat (wie Notion AI) */}
-      {suggestions.length > 0 && (
-        <div className="ai-suggestions scroll-x mt-2 flex gap-1.5" role="group" aria-label="Vorschläge für die KI">
-          <p className="ai-suggestions-title hidden">Vorschläge</p>
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              className="ai-chip pressable"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                (document.activeElement as HTMLElement | null)?.blur();
-                ask(s, kontext);
-              }}
-            >
-              <IconSparkles size={12} /> {s}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }

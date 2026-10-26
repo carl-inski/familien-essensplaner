@@ -3,11 +3,11 @@
 // Bestätigungskarten für die Schreib-Werkzeuge des Assistenten.
 // Erst „Übernehmen“ schreibt in die Datenbank; das Ergebnis geht an die KI zurück.
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useApp } from "@/components/app-data";
 import { BookCover } from "@/components/book";
+import { DetailLink } from "@/components/detail-nav";
 import { IconBook, IconCalendar, IconCheck, IconEdit, IconNote, IconPeople, IconTrash } from "@/components/icons";
 import { DietIcon } from "@/components/ui";
 import { AnwesenheitInput, BuchInput, EinplanenInput, GerichteEntfernenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
@@ -163,7 +163,7 @@ function PlanCard({ input, respond }: { input: unknown; respond: Respond }) {
         />
       }
     >
-      <Link href={`/rezepte/${recipe.id}`} className="t-headline flex items-center gap-1.5"><DietIcon diet={recipe.diet} size={16} /> {recipe.title}</Link>
+      <DetailLink kind="r" id={recipe.id} className="t-headline flex items-center gap-1.5"><DietIcon diet={recipe.diet} size={16} /> {recipe.title}</DetailLink>
       <p className="t-sub" style={{ color: "var(--label-2)" }}>{dayText(data.datum)} · {MEAL_LABEL[data.mahlzeit]}essen</p>
       {data.begruendung && <p className="t-footnote mt-1" style={{ color: "var(--label-2)" }}>{data.begruendung}</p>}
       {currentTitle && <p className="t-footnote mt-1" style={{ color: "var(--orange, var(--accent))" }}>Ersetzt „{currentTitle}“</p>}

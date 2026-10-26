@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { DetailLink } from "@/components/detail-nav";
 import { useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronRight, IconSparkles, IconTrash } from "@/components/icons";
@@ -74,7 +74,7 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
       <Section title="Gericht">
         <div className="group">
           {recipe ? (
-            <Link href={`/rezepte/${recipe.id}`} className="row pressable">
+            <DetailLink kind="r" id={recipe.id} className="row pressable">
               <RecipeImage recipe={recipe} className="h-12 w-12 shrink-0 text-sm" rounded={10} />
               <span className="min-w-0 flex-1">
                 <span className="t-headline flex items-center gap-1.5"><span className="truncate">{recipe.title}</span><DietIcon diet={recipe.diet} size={15} /></span>
@@ -83,7 +83,7 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
                 </span>
               </span>
               <IconChevronRight size={18} style={{ color: "var(--label-3)" }} />
-            </Link>
+            </DetailLink>
           ) : entry?.leftover_of ? (
             <div className="row t-sub">Reste von {(() => {
               const src = plan.find((p) => p.id === entry.leftover_of);

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconChevronLeft, IconChevronRight, IconChef, IconCheck, IconLeftovers, IconPeople, IconPlus, IconSparkles, IconWarning } from "@/components/icons";
-import { AiPromptBar } from "@/components/assistant/ai-panel";
 import { useAssistant } from "@/components/assistant/assistant-provider";
 import { PageHeader } from "@/components/nav";
 import { RecipePicker } from "@/components/recipe-picker";
@@ -21,11 +20,6 @@ import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } fro
 import type { Meal, Recipe } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 import { haptic } from "@/lib/haptics";
-
-const WEEK_AI = {
-  placeholder: "Frag die KI zur Woche …",
-  suggestions: ["Füll die offenen Abende der nächsten Tage", "Was steht die nächsten Tage an?", "Wer kocht wann?", "Was haben wir lange nicht gegessen?"],
-};
 
 export default function WeekPage() {
   return (
@@ -129,8 +123,6 @@ function Week() {
         title="Woche"
         width="wide"
         tabRoot
-        // Handy: KI-Zeile erst unter dem ersten Tag, damit heute ganz oben steht
-        ai={desktop ? WEEK_AI : undefined}
         subtitle={
           <>
             {startLabel(start, today)}
@@ -170,7 +162,7 @@ function Week() {
         <motion.div key={start} {...enter} className="page mt-4 flex flex-col gap-3">
           {!week.loaded
             ? dates.map((d) => <div key={d} className="skeleton h-72" style={{ borderRadius: 14 }} />)
-            : dates.flatMap((date, i) => (i === 0 ? [dayCard(date), <AiPromptBar key="ai" className="page-ai" {...WEEK_AI} />] : [dayCard(date)]))}
+            : dates.map((date) => dayCard(date))}
         </motion.div>
       )}
 

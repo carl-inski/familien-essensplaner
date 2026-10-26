@@ -9,56 +9,55 @@ import { useAssistant } from "./assistant/assistant-provider";
 import { Avatar } from "./ui";
 import { IconBook, IconCalendar, IconCart, IconHistory, IconPeople, IconPlus, IconShelf, IconSidebar, IconSparkles } from "./icons";
 
-// Handy: fünf Tabs; das Regal steckt unter „Rezepte“, das Profil (Haushalt) sitzt ganz rechts
+// Handy: Tableiste im Liquid-Glass-Stil von iOS – links eine Glaskapsel mit
+// Woche, Rezepte (inkl. Regal) und Einkauf, rechts die KI als eigener runder Knopf.
+// Das Konto sitzt oben rechts auf den Tab-Seiten (PageHeader).
 const TABS = [
   { href: "/woche", label: "Woche", Icon: IconCalendar, also: [] as string[] },
   { href: "/rezepte", label: "Rezepte", Icon: IconBook, also: ["/regal"] },
-  { href: "/assistent", label: "KI", Icon: IconSparkles, also: [] },
   { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart, also: [] },
 ];
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
 
-/** Handy und Tablet: schwebende Tableiste unten */
+/** Handy und Tablet: schwebende Glas-Tableiste unten */
 export function TabBar() {
   const path = usePathname();
-  const { me } = useApp();
-  const profileActive = isActive(path, "/haushalt");
+  const reduce = useReducedMotion();
+  const kiActive = isActive(path, "/assistent");
+  const spring = reduce ? { duration: 0 } : { type: "spring" as const, bounce: 0.2, duration: 0.4 };
   return (
-    <nav className="material tabbar fixed inset-x-0 bottom-0 z-40 lg:hidden" aria-label="Hauptnavigation">
-      <ul className="mx-auto grid max-w-2xl grid-cols-5">
+    <nav className="tabbar-dock fixed inset-x-0 z-40 flex items-end justify-center gap-3 px-4 lg:hidden" aria-label="Hauptnavigation">
+      <ul className="glass tabbar-pill flex min-w-0 max-w-md flex-1 items-stretch rounded-full p-1">
         {TABS.map(({ href, label, Icon, also }) => {
           const active = [href, ...also].some((h) => isActive(path, h));
           return (
-            <li key={href}>
+            <li key={href} className="relative flex-1">
               <Link
                 href={href}
                 data-tab
                 aria-current={active ? "page" : undefined}
-                className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
-                style={{ color: active ? (href === "/assistent" ? "var(--ai)" : "var(--accent)") : "var(--label-2)" }}
+                className="tabbar-item relative flex h-[54px] flex-col items-center justify-center gap-0.5 rounded-full"
+                style={{ color: active ? "var(--accent)" : "var(--label)" }}
               >
-                <Icon size={25} strokeWidth={active ? 2.1 : 1.7} />
-                <span className="text-[10.5px] font-medium tracking-[0.01em]">{label}</span>
+                {active && <motion.span layoutId="tabbar-active" className="tabbar-active absolute inset-0 rounded-full" transition={spring} aria-hidden />}
+                <Icon size={24} strokeWidth={active ? 2.1 : 1.8} className="relative" />
+                <span className="relative text-[10.5px] font-semibold tracking-[0.01em]">{label}</span>
               </Link>
             </li>
           );
         })}
-        <li>
-          <Link
-            href="/haushalt"
-            data-tab
-            aria-current={profileActive ? "page" : undefined}
-            className="pressable flex flex-col items-center gap-0.5 pt-2 pb-1.5"
-            style={{ color: profileActive ? "var(--accent)" : "var(--label-2)" }}
-          >
-            <span className="flex h-[25px] items-center rounded-full" style={{ boxShadow: profileActive ? "0 0 0 2px var(--accent)" : undefined }}>
-              <Avatar member={me} size={25} />
-            </span>
-            <span className="text-[10.5px] font-medium tracking-[0.01em]">Profil</span>
-          </Link>
-        </li>
       </ul>
+      <Link
+        href="/assistent"
+        data-tab
+        aria-label="KI"
+        aria-current={kiActive ? "page" : undefined}
+        className="glass tabbar-ai flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-full"
+        data-active={kiActive}
+      >
+        <IconSparkles size={26} strokeWidth={kiActive ? 2.1 : 1.8} />
+      </Link>
     </nav>
   );
 }

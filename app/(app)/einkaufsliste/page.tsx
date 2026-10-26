@@ -214,7 +214,6 @@ export default function ShoppingPage() {
         width="wide"
         tabRoot
         subtitle={subtitle}
-        ai={{ placeholder: "Frag die KI zum Einkauf …", suggestions: ["Fasse den Einkauf zusammen", "Was fehlt für die geplanten Gerichte?"] }}
       >
         <div className="mt-4 grid grid-cols-3 gap-2 lg:max-w-lg">
           <a

@@ -1,18 +1,17 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useApp } from "@/components/app-data";
 import { BookCover, BookSheet } from "@/components/book";
 import { IconPlus } from "@/components/icons";
 import { CollectionSwitch } from "@/components/collection-switch";
+import { DetailLink, useDetailNav } from "@/components/detail-nav";
 import { PageHeader } from "@/components/nav";
 import { presentCookbook } from "@/lib/medien";
 
 export default function ShelfPage() {
   const { cookbooks, recipes } = useApp();
-  const router = useRouter();
+  const { open } = useDetailNav();
   const [adding, setAdding] = useState(false);
   const count = (id: string) => recipes.filter((r) => r.cookbook_id === id).length;
   const shelf = cookbooks.map(presentCookbook);
@@ -37,16 +36,16 @@ export default function ShelfPage() {
           <span className="t-caption -mt-1" style={{ color: "var(--label-2)" }}>per ISBN oder von Hand</span>
         </button>
         {shelf.map((b) => (
-          <Link key={b.id} href={`/regal/${b.id}`} className="pressable flex flex-col gap-1.5">
+          <DetailLink key={b.id} kind="b" id={b.id} className="pressable flex flex-col gap-1.5">
             <BookCover book={b} className="aspect-[2/3] w-full" />
             <span className="t-footnote line-clamp-2 font-medium leading-tight">{b.title}</span>
             <span className="t-caption -mt-1 truncate" style={{ color: "var(--label-2)" }}>
               {b.authors[0] ?? (count(b.id) ? `${count(b.id)} Rezept${count(b.id) === 1 ? "" : "e"}` : " ")}
             </span>
-          </Link>
+          </DetailLink>
         ))}
       </div>
-      <BookSheet open={adding} onClose={() => setAdding(false)} onSaved={(id) => router.push(`/regal/${id}`)} />
+      <BookSheet open={adding} onClose={() => setAdding(false)} onSaved={(id) => open("b", id)} />
     </>
   );
 }

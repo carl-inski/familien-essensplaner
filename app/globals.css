@@ -143,10 +143,63 @@ body {
   .material { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
-.tabbar {
-  border-top: 0.5px solid var(--material-edge);
-  padding-bottom: env(safe-area-inset-bottom);
+/* Liquid Glass (iOS 26): durchscheinend, stark weichgezeichnet, Lichtkante oben,
+   weiche Schatten – die Tableiste schwebt als Kapsel über dem Inhalt */
+:root {
+  --dock-bottom: max(calc(env(safe-area-inset-bottom) - 6px), 12px);
+  --dock-h: 62px;
+  --glass-bg: rgba(255, 255, 255, 0.56);
+  --glass-shadow:
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.9),
+    inset 0 -0.5px 0.5px rgba(255, 255, 255, 0.35),
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.12);
+  --glass-active: rgba(60, 45, 30, 0.08);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-bg: rgba(44, 40, 36, 0.52);
+    --glass-shadow:
+      inset 0 1px 0.5px rgba(255, 255, 255, 0.16),
+      inset 0 -0.5px 0.5px rgba(255, 255, 255, 0.05),
+      0 0 0 0.5px rgba(255, 255, 255, 0.07),
+      0 10px 30px rgba(0, 0, 0, 0.45);
+    --glass-active: rgba(255, 255, 255, 0.12);
+  }
+}
+.glass {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(190%) brightness(1.04);
+  backdrop-filter: blur(16px) saturate(190%) brightness(1.04);
+  box-shadow: var(--glass-shadow);
+}
+/* Spiegelung: heller Schimmer oben links, wie Licht auf gewölbtem Glas */
+.glass::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 42%, rgba(255, 255, 255, 0) 70%, rgba(255, 255, 255, 0.14));
+}
+@media (prefers-color-scheme: dark) {
+  .glass::before { background: linear-gradient(140deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 45%); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.tabbar-dock { bottom: var(--dock-bottom); }
+.tabbar-item { -webkit-tap-highlight-color: transparent; }
+.tabbar-item:active { transform: scale(0.94); transition: transform 0.1s; }
+.tabbar-active { background: var(--glass-active); }
+.tabbar-ai { color: var(--ai); }
+.tabbar-ai:active { transform: scale(0.94); transition: transform 0.1s; }
+.tabbar-ai[data-active="true"] {
+  color: #fff;
+  background: radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--ai) 60%, #fff), var(--ai) 62%);
+}
+
+/* Konto oben rechts auf den Tab-Seiten (Handy) */
+.page-account { position: absolute; right: 1rem; top: calc(env(safe-area-inset-top) + 8px); z-index: 1; }
 
 .navbar-edge { box-shadow: 0 0.5px 0 var(--material-edge); }
 
@@ -358,6 +411,11 @@ body {
 .btn-gray { background: var(--fill); color: var(--label); }
 .btn-plain { color: var(--accent); padding: 0 0.5rem; }
 .btn-sm { min-height: 32px; padding: 0 0.75rem; font-size: 0.875rem; }
+/* iPhone-Haptik: unsichtbares Etikett über dem Element, versteckter Schalter darin */
+.haptic-label { position: absolute; inset: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; border-radius: inherit; }
+.haptic-switch { position: absolute; width: 1px; height: 1px; margin: 0; visibility: hidden; }
+:root[data-haptics="off"] .haptic-label { display: none; }
+
 /* Schalter im iOS-Stil */
 .toggle { appearance: none; position: relative; flex-shrink: 0; width: 51px; height: 31px; border-radius: 999px; background: var(--fill); transition: background-color 0.2s; cursor: pointer; }
 .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 999px; background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / 0.18); transition: transform 0.2s; }
@@ -487,15 +545,34 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 }
 
 /* Platz unter der schwebenden Tableiste */
-.pb-tabbar { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.pb-tabbar { padding-bottom: calc(var(--dock-bottom) + var(--dock-h) + 28px); }
 @media (min-width: 64rem) { .pb-tabbar { padding-bottom: 4rem; } }
 
 /* Toasts über der Tableiste, am Computer unten in der Inhaltsfläche */
-.toast-dock { left: 0; right: var(--panel-w); bottom: calc(92px + env(safe-area-inset-bottom)); }
+.toast-dock { left: 0; right: var(--panel-w); bottom: calc(var(--dock-bottom) + var(--dock-h) + 12px); }
 @media (min-width: 64rem) { .toast-dock { left: var(--sidebar-w); bottom: 1.5rem; } }
 
 /* Eingabe des Assistenten: über der Tableiste, am Computer am unteren Rand neben der Seitenleiste */
-.composer-dock { left: 0; right: var(--panel-w); bottom: calc(56px + env(safe-area-inset-bottom)); }
+.composer-dock { left: 0; right: var(--panel-w); bottom: calc(var(--dock-bottom) + var(--dock-h) + 8px); }
+/* Handy: Eingabe als schwebende Glaskapsel über der Tableiste */
+@media (max-width: 63.99rem) {
+  .composer-dock .ai-composer {
+    padding: 6px; border-radius: 26px;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(16px) saturate(190%) brightness(1.04);
+    backdrop-filter: blur(16px) saturate(190%) brightness(1.04);
+    box-shadow: var(--glass-shadow);
+  }
+  .composer-dock .ai-composer textarea { background: transparent; }
+}
+@media (min-width: 64rem) {
+  .composer-dock {
+    background: var(--material);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 -0.5px 0 var(--material-edge);
+  }
+}
 @media (min-width: 64rem) { .composer-dock { left: var(--sidebar-w); bottom: 0; padding-bottom: 0.5rem; } }
 
 /* Seitenkopf: Platz für die Kopfzeile, am Computer mit Titelbild */
@@ -522,6 +599,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   .page-header[data-tab-root="true"] .page-title { display: none; }
   .page-header[data-tab-root="true"] .page-sub-tab {
     margin-top: 0;
+    padding-right: 3rem;
     font-size: 1.375rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.018em;
     color: var(--label) !important;
   }
@@ -736,15 +814,15 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   --fill: rgba(60, 45, 30, 0.06);
   --fill-strong: rgba(60, 45, 30, 0.1);
   --label: var(--k-ink);
-  --label-2: rgba(31, 27, 24, 0.6);
-  --label-3: rgba(31, 27, 24, 0.38);
+  --label-2: rgba(31, 27, 24, 0.68);        /* 5,9:1 auf Karte, 5,6:1 auf Grund */
+  --label-3: rgba(31, 27, 24, 0.38);        /* nur Deko und Platzhalter */
   --separator: rgba(60, 45, 30, 0.1);
-  --accent: var(--k-red);
-  --accent-soft: rgba(210, 69, 43, 0.1);
+  --accent: #c63f26;                        /* Zinnoberrot, eine Spur dunkler: Text und weiße Schrift ≥ 4,5:1 */
+  --accent-soft: rgba(198, 63, 38, 0.1);
   --on-accent: #ffffff;
   --blue: var(--k-cobalt);
-  --ai: var(--k-cobalt);
-  --ai-soft: rgba(43, 120, 212, 0.1);
+  --ai: #2269c0;                            /* Kobalt, Text ≥ 4,8:1 */
+  --ai-soft: rgba(34, 105, 192, 0.1);
   --on-ai: #ffffff;
   --material: rgba(250, 247, 242, 0.72);
   --material-edge: rgba(60, 45, 30, 0.08);
@@ -776,6 +854,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
     --label-2: rgba(245, 240, 234, 0.62);
     --label-3: rgba(245, 240, 234, 0.38);
     --separator: rgba(255, 245, 235, 0.09);
+    --accent: var(--k-red);
     --accent-soft: rgba(238, 100, 72, 0.16);
     --ai: var(--k-cobalt);
     --ai-soft: rgba(93, 157, 240, 0.16);

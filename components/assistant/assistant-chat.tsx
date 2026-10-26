@@ -203,7 +203,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
     <>
       <div className="page pb-24"><div className="measure">{thread}</div></div>
       {composer && (
-        <div className="composer-dock material fixed z-30" style={{ boxShadow: "0 -0.5px 0 var(--material-edge)" }}>
+        <div className="composer-dock fixed z-30">
           {composer}
         </div>
       )}

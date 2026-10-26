@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconClock, IconNote, IconPlus, IconSearch } from "@/components/icons";
 import { CollectionSwitch } from "@/components/collection-switch";
+import { DetailLink } from "@/components/detail-nav";
 import { PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
@@ -89,7 +90,6 @@ export default function RecipesPage() {
         title="Rezepte"
         width="wide"
         tabRoot
-        ai={{ placeholder: "Frag die KI nach Rezepten …", suggestions: ["Was Schnelles für heute Abend?", "Was haben wir lange nicht gegessen?", "Rezept aus einem Foto anlegen"] }}
         subtitle={`${recipes.length} Rezepte in der Sammlung`}
       >
         <CollectionSwitch active="rezepte" />
@@ -137,7 +137,7 @@ export default function RecipesPage() {
         {list.map((r) => {
           const book = r.cookbook_id ? cookbooksById.get(r.cookbook_id) : null;
           return (
-            <Link key={r.id} href={`/rezepte/${r.id}`} className="card pressable flex flex-col overflow-hidden">
+            <DetailLink key={r.id} kind="r" id={r.id} className="card pressable flex flex-col overflow-hidden">
               <RecipeImage recipe={r} className="aspect-[4/3] w-full text-3xl" rounded={0} />
               <div className="flex flex-1 flex-col gap-1 p-3">
                 <h3 className="t-sub line-clamp-2 font-semibold leading-snug">{r.title}</h3>
@@ -160,7 +160,7 @@ export default function RecipesPage() {
                   )}
                 </p>
               </div>
-            </Link>
+            </DetailLink>
           );
         })}
       </div>

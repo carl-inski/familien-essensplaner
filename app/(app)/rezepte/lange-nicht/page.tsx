@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
+import { DetailLink } from "@/components/detail-nav";
 import { IconCalendar } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { PlanSheet } from "@/components/plan-sheet";
@@ -25,12 +25,12 @@ export default function LongNotEatenPage() {
     const b = r.cookbook_id ? cookbooksById.get(r.cookbook_id) : null;
     return (
       <li key={r.id} className="row">
-        <Link href={`/rezepte/${r.id}`} className="min-w-0 flex-1">
+        <DetailLink kind="r" id={r.id} className="min-w-0 flex-1">
           <span className="t-sub flex items-center gap-1.5 font-medium"><span className="truncate">{r.title}</span><DietIcon diet={r.diet} size={14} /></span>
           <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>
             {s ? `${formatDateDE(s.last_cooked_on)} · ${s.times_cooked}×` : b ? b.title : "noch nie gekocht"}
           </span>
-        </Link>
+        </DetailLink>
         {s && <span className="t-headline shrink-0 tabular-nums" style={{ color: s.days_since > 60 ? "var(--accent)" : "var(--label-2)" }}>{s.days_since} T.</span>}
         <button className="pressable shrink-0 p-2" style={{ color: "var(--accent)" }} aria-label={`${r.title} einplanen`} onClick={() => setPlanFor(r)}><IconCalendar size={20} /></button>
       </li>
