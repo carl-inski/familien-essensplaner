@@ -20,12 +20,45 @@ const TABS = [
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
 
+// Tippen: Solange ein Textfeld den Fokus hat (Tastatur offen), taucht die Tableiste ab
+// und die KI-Eingabe rückt an die Tastatur – wie in iOS-Apps. Auswahlfelder, Schalter
+// & Co. öffnen keine Tastatur und zählen nicht.
+const NO_KEYBOARD = /^(checkbox|radio|button|submit|reset|file|range|color|image|hidden)$/;
+function syncKeyboard() {
+  const el = document.activeElement;
+  const typing =
+    (el instanceof HTMLInputElement && !NO_KEYBOARD.test(el.type)) ||
+    el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLElement && el.isContentEditable);
+  if (typing) document.documentElement.dataset.keyboard = "open";
+  else delete document.documentElement.dataset.keyboard;
+}
+
 /** Handy und Tablet: schwebende Glas-Tableiste unten */
 export function TabBar() {
   const path = usePathname();
   const reduce = useReducedMotion();
   const kiActive = isActive(path, "/assistent");
   const spring = reduce ? { duration: 0 } : { type: "spring" as const, bounce: 0.2, duration: 0.4 };
+
+  useEffect(() => {
+    if (!matchMedia("(pointer: coarse)").matches) return;
+    // Beim Wechsel zwischen Feldern (Pfeile über der Tastatur) nicht kurz aufblitzen
+    const later = () => setTimeout(syncKeyboard, 0);
+    const vv = window.visualViewport;
+    document.addEventListener("focusin", syncKeyboard);
+    document.addEventListener("focusout", later);
+    // Feld verschwindet mit Fokus (Speichern, Seitenwechsel): die Tastatur geht zu, der Viewport wächst
+    vv?.addEventListener("resize", syncKeyboard);
+    return () => {
+      document.removeEventListener("focusin", syncKeyboard);
+      document.removeEventListener("focusout", later);
+      vv?.removeEventListener("resize", syncKeyboard);
+      delete document.documentElement.dataset.keyboard;
+    };
+  }, []);
+  useEffect(syncKeyboard, [path]);
+
   return (
     <nav className="tabbar-dock fixed inset-x-0 z-40 flex items-end justify-center gap-3 px-4 lg:hidden" aria-label="Hauptnavigation">
       <ul className="glass tabbar-pill flex min-w-0 max-w-md flex-1 items-stretch rounded-full p-1">

@@ -162,6 +162,7 @@ export function AssistantChat({ variant }: { variant: "page" | "panel" }) {
           className="input max-h-32 flex-1 resize-none !rounded-[18px] !py-1.5"
           style={{ minHeight: 36, height: input ? undefined : 36 }}
           rows={1}
+          enterKeyHint="send"
           placeholder={pendingConfirm ? "Erst Vorschlag bestätigen" : "Frag etwas …"}
           value={input}
           disabled={pendingConfirm}
