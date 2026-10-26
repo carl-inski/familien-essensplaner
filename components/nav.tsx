@@ -54,7 +54,7 @@ export function PageHeader({ title, subtitle, back, trailing, children, width = 
         className={`topbar app-fixed fixed top-0 z-30 transition-[background-color,box-shadow] duration-200 ${compact ? "material navbar-edge" : ""}`}
         data-compact={compact}
         data-tab-root={tabRoot}
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        style={{ paddingTop: "var(--top-inset)" }}
       >
         <div className={`topbar-row ${page} flex h-11 items-center gap-2 px-2`}>
           {/* Handy: Zurück-Link links, Titel erscheint beim Scrollen in der Mitte */}
