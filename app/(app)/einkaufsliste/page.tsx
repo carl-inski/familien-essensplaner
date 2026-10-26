@@ -45,6 +45,12 @@ function writeChecked(key: string, set: Set<string>) {
 }
 
 const itemKey = (i: Pick<ShoppingItem, "name" | "unit">) => `${i.name}|${i.unit ?? ""}`;
+// Kurzer Fingerabdruck der Liste: neue Bring!-URL, sobald sich etwas ändert (Bring! merkt sich Links)
+function listVersion(texts: string[]): string {
+  let h = 5381;
+  for (const ch of texts.join("\n")) h = ((h * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return h.toString(36);
+}
 const dayShort = (d: string) => `${WEEKDAY_SHORT[weekdayIndex(d)]} ${formatDateDE(d, { day: "numeric", month: "numeric" })}`;
 
 export default function ShoppingPage() {
@@ -63,6 +69,8 @@ export default function ShoppingPage() {
   const [busy, setBusy] = useState(false);
   const [extraText, setExtraText] = useState("");
   const [slug, setSlug] = useState<string | null>(null);
+  // Welcher Listenstand gerade öffentlich für Bring! bereitliegt
+  const [savedVersion, setSavedVersion] = useState<string | null>(null);
 
   const open = useMemo(
     () =>
@@ -91,12 +99,19 @@ export default function ShoppingPage() {
   const groups = useMemo(() => groupByAisle(items), [items]);
   const missingIngredients = included.filter((p) => !(recipesById.get(p.recipe_id!)?.ep_recipe_ingredients ?? []).length);
 
-  // Für Bring! und „Als Text“: Zutaten plus „Noch offen“
+  // Für Bring!, Knuspr und „Text“: Zutaten plus „Noch offen“ – ohne das schon Abgehakte
   const exportItems: ShoppingItem[] = useMemo(
-    () => [...extras.map((x) => ({ name: x.text, amount: null, unit: null, text: x.text, aisle: x.aisle ?? aisleFor(x.text), recipes: [] })), ...items],
-    [extras, items],
+    () => [
+      ...extras
+        .filter((x) => !checked.has(`x:${x.id}`))
+        .map((x) => ({ name: x.text, amount: null, unit: null, text: x.text, aisle: x.aisle ?? aisleFor(x.text), recipes: [] })),
+      ...items.filter((i) => !checked.has(itemKey(i))),
+    ],
+    [extras, items, checked],
   );
   const total = exportItems.length;
+  const version = useMemo(() => listVersion(exportItems.map((i) => i.text)), [exportItems]);
+  const bringReady = !!slug && !!total && savedVersion === version;
 
   const toggle = (key: string) =>
     setChecked((cur) => {
@@ -116,10 +131,12 @@ export default function ShoppingPage() {
         .upsert({ household_id: household.id, iso_week: isoWeekString(today), items: exportItems }, { onConflict: "household_id,iso_week" })
         .select("public_slug")
         .single();
-      if (!error) setSlug((data as { public_slug: string }).public_slug);
-    }, 400);
+      if (error) return;
+      setSlug((data as { public_slug: string }).public_slug);
+      setSavedVersion(version);
+    }, 300);
     return () => clearTimeout(t);
-  }, [loaded, exportItems, today, household.id, sb]);
+  }, [loaded, exportItems, version, today, household.id, sb]);
 
   async function keepAtHome(name: string) {
     const names = await pantry.add(pantryEntriesToAdd(name));
@@ -197,8 +214,7 @@ export default function ShoppingPage() {
   }
 
   const text = exportItems.map((i) => i.text).join("\n");
-  // Nur, was noch nicht abgehakt ist
-  const knuspr = knusprPrompt([...uncheckedExtras.map((x) => x.text), ...uncheckedItems.map((i) => i.text)]);
+  const knuspr = knusprPrompt(exportItems.map((i) => i.text));
   const subtitle = !loaded
     ? "Lädt …"
     : open.length
@@ -218,9 +234,9 @@ export default function ShoppingPage() {
         <div className="mt-4 grid grid-cols-3 gap-2 lg:max-w-lg">
           <a
             className="btn btn-brand pressable"
-            style={{ background: "#333e44", color: "#fff", ...(!slug || !total ? { opacity: 0.4, pointerEvents: "none" } : {}) }}
-            href={slug && total ? bringDeeplink(shoppingPublicUrl(slug)) : undefined}
-            aria-disabled={!slug || !total}
+            style={{ background: "#333e44", color: "#fff", ...(!bringReady ? { opacity: 0.4, pointerEvents: "none" } : {}) }}
+            href={bringReady ? bringDeeplink(`${shoppingPublicUrl(slug)}?v=${version}`) : undefined}
+            aria-disabled={!bringReady}
             aria-label="In Bring! übernehmen"
             target="_blank"
             rel="noopener"
@@ -231,7 +247,7 @@ export default function ShoppingPage() {
           <button
             className="btn btn-brand pressable"
             style={{ background: "#ff7400", color: "#fff" }}
-            disabled={!uncheckedItems.length && !uncheckedExtras.length}
+            disabled={!total}
             aria-label="Bei Knuspr bestellen"
             onClick={() => setKnusprOpen(true)}
           >
