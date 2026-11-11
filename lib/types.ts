@@ -6,6 +6,26 @@ export type PlanStatus = "geplant" | "gekocht" | "ausgefallen";
 export interface Household {
   id: string;
   name: string;
+  /** Einladungscode zum Beitreten (8 Zeichen) */
+  invite_code?: string;
+}
+
+/** Eine Familie, zu der das Konto gehört */
+export interface Membership {
+  member_id: string;
+  household_id: string;
+  household_name: string;
+  role: "admin" | "member";
+  member_count: number;
+  active: boolean;
+}
+
+export interface RecipeFolder {
+  id: string;
+  household_id: string;
+  name: string;
+  emoji: string | null;
+  position: number;
 }
 
 export type DefaultWeek = Partial<Record<WeekdayKey, Partial<Record<Meal, AttendanceStatus>>>>;
@@ -72,6 +92,8 @@ export interface Recipe {
   cookbook_page: number | null;
   cookbook_link_confirmed: boolean;
   tags: string[];
+  /** Ordner in der Sammlung (höchstens einer) */
+  folder_id?: string | null;
   image_url: string | null;
   variant_of: string | null;
   extra_meta: Record<string, string> | null;

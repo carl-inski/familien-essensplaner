@@ -3,14 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconClock, IconNote, IconPlus, IconSearch } from "@/components/icons";
+import { IconClock, IconEdit, IconNote, IconPlus, IconSearch } from "@/components/icons";
+import { FolderForm, folderLabel } from "@/components/organize";
 import { CollectionSwitch } from "@/components/collection-switch";
 import { DetailLink } from "@/components/detail-nav";
 import { PageHeader } from "@/components/nav";
 import { matchesQuery } from "@/components/recipe-picker";
 import { Sheet } from "@/components/sheet";
 import { DIET_LABEL, DietIcon, Empty, RecipeImage, lastCookedLabel } from "@/components/ui";
-import type { Diet, Recipe } from "@/lib/types";
+import type { Diet, Recipe, RecipeFolder } from "@/lib/types";
 
 type Sort = "az" | "zuletzt" | "laengst" | "haeufig" | "neu";
 const SORTS: { value: Sort; label: string }[] = [
@@ -22,7 +23,12 @@ const SORTS: { value: Sort; label: string }[] = [
 ];
 const TIMES = [20, 30, 60];
 
+/** Ordner-ID, „ohne“ für Rezepte ohne Ordner oder null für alle */
+type FolderFilter = string | null;
+const NO_FOLDER = "ohne";
+
 interface Filters {
+  folder: FolderFilter;
   category: string | null;
   tag: string | null;
   diet: Diet | null;
@@ -31,10 +37,12 @@ interface Filters {
   never: boolean;
   notWeeks: number | null;
 }
-const EMPTY: Filters = { category: null, tag: null, diet: null, maxTime: null, cookbook: null, never: false, notWeeks: null };
+const EMPTY: Filters = { folder: null, category: null, tag: null, diet: null, maxTime: null, cookbook: null, never: false, notWeeks: null };
 
 export default function RecipesPage() {
-  const { sb, recipes, stats, cookbooks, cookbooksById } = useApp();
+  const { sb, recipes, stats, cookbooks, cookbooksById, folders } = useApp();
+  // Ordner bearbeiten: ein Ordner, „neu“ oder zu
+  const [folderEdit, setFolderEdit] = useState<RecipeFolder | "neu" | null>(null);
   const [q, setQ] = useState("");
   const [server, setServer] = useState<{ term: string; ids: Set<string> } | null>(null);
   const serverHits = server && server.term === q.trim() ? server.ids : null;
@@ -60,6 +68,7 @@ export default function RecipesPage() {
     const f = filters;
     const l = recipes.filter((r) => {
       if (q.trim() && !(matchesQuery(r, q) || serverHits?.has(r.id))) return false;
+      if (f.folder === NO_FOLDER ? !!r.folder_id : f.folder && r.folder_id !== f.folder) return false;
       if (f.category && !r.categories.includes(f.category)) return false;
       if (f.tag && !r.tags.includes(f.tag)) return false;
       if (f.diet && r.diet !== f.diet) return false;
@@ -81,7 +90,15 @@ export default function RecipesPage() {
     return l.sort((a, b) => cmp[sort](a, b) || a.title.localeCompare(b.title, "de"));
   }, [recipes, q, serverHits, filters, sort, stats]);
 
-  const active = Object.entries(filters).filter(([, v]) => v !== null && v !== false).length;
+  // Der Ordner hat seine eigene Leiste und zählt nicht als „Filter“
+  const active = Object.entries(filters).filter(([k, v]) => k !== "folder" && v !== null && v !== false).length;
+  const folderCount = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const r of recipes) if (r.folder_id) c.set(r.folder_id, (c.get(r.folder_id) ?? 0) + 1);
+    return c;
+  }, [recipes]);
+  const unfiled = recipes.filter((r) => !r.folder_id).length;
+  const currentFolder = folders.find((f) => f.id === filters.folder);
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
 
   return (
@@ -115,6 +132,27 @@ export default function RecipesPage() {
             <button className="chip pressable" data-on={filters.never} onClick={() => set({ never: !filters.never })}>Nie gekocht</button>
           </div>
         </div>
+        {/* Ordner: eine Leiste zum Durchwischen; der gewählte Ordner lässt sich daneben bearbeiten */}
+        <div className="scroll-x -mx-4 mt-3 flex items-center gap-2 px-4 lg:mx-0 lg:flex-wrap lg:px-0" role="radiogroup" aria-label="Ordner">
+          <button role="radio" aria-checked={filters.folder === null} className="chip pressable shrink-0" data-on={filters.folder === null} onClick={() => set({ folder: null })}>Alle · {recipes.length}</button>
+          {folders.map((f) => (
+            <button key={f.id} role="radio" aria-checked={filters.folder === f.id} className="chip pressable shrink-0" data-on={filters.folder === f.id} onClick={() => set({ folder: filters.folder === f.id ? null : f.id })}>
+              {folderLabel(f)} · {folderCount.get(f.id) ?? 0}
+            </button>
+          ))}
+          {folders.length > 0 && unfiled > 0 && (
+            <button role="radio" aria-checked={filters.folder === NO_FOLDER} className="chip pressable shrink-0" data-on={filters.folder === NO_FOLDER} onClick={() => set({ folder: filters.folder === NO_FOLDER ? null : NO_FOLDER })}>Ohne Ordner · {unfiled}</button>
+          )}
+          {currentFolder && (
+            <button className="chip pressable shrink-0" aria-label={`Ordner ${currentFolder.name} bearbeiten`} onClick={() => setFolderEdit(currentFolder)}><IconEdit size={15} /></button>
+          )}
+          <button className="chip pressable shrink-0" style={{ color: "var(--accent)" }} onClick={() => setFolderEdit("neu")}><IconPlus size={15} /> Ordner</button>
+        </div>
+        {filters.tag && (
+          <div className="mt-2">
+            <button className="chip pressable" data-on="true" onClick={() => set({ tag: null })}>#{filters.tag} ✕</button>
+          </div>
+        )}
         <div className="mt-3 flex items-center justify-between">
           <span className="t-footnote" style={{ color: "var(--label-2)" }}>{list.length} Treffer</span>
           <select className="t-footnote w-auto appearance-none rounded-lg bg-transparent py-1 text-right font-medium" style={{ color: "var(--accent)" }} value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sortierung">
@@ -164,9 +202,22 @@ export default function RecipesPage() {
           );
         })}
       </div>
-      {!list.length && <Empty title="Keine Rezepte gefunden" text="Suche oder Filter anpassen." action={active ? <button className="btn btn-tinted pressable" onClick={() => setFilters(EMPTY)}>Filter zurücksetzen</button> : undefined} />}
+      {!list.length && <Empty title="Keine Rezepte gefunden" text="Suche oder Filter anpassen." action={active || filters.folder ? <button className="btn btn-tinted pressable" onClick={() => setFilters(EMPTY)}>Filter zurücksetzen</button> : undefined} />}
 
-      <Sheet open={filterOpen} onClose={() => setFilterOpen(false)} title="Filter" action={<button className="btn-plain t-sub pressable font-semibold" onClick={() => setFilters(EMPTY)}>Zurücksetzen</button>}>
+      <Sheet open={folderEdit !== null} onClose={() => setFolderEdit(null)} title={folderEdit === "neu" ? "Neuer Ordner" : "Ordner bearbeiten"}>
+        {folderEdit !== null && (
+          <FolderForm
+            folder={folderEdit === "neu" ? null : folderEdit}
+            onDone={(id) => {
+              // neu angelegt → gleich hineinschauen; gelöscht → zurück zu allen
+              set({ folder: id ?? null });
+              setFolderEdit(null);
+            }}
+          />
+        )}
+      </Sheet>
+
+      <Sheet open={filterOpen} onClose={() => setFilterOpen(false)} title="Filter" action={<button className="btn-plain t-sub pressable font-semibold" onClick={() => setFilters({ ...EMPTY, folder: filters.folder })}>Zurücksetzen</button>}>
         <FilterBlock label="Kategorie">
           {categories.map((c) => <button key={c} className="chip pressable" data-on={filters.category === c} onClick={() => set({ category: filters.category === c ? null : c })}>{c}</button>)}
         </FilterBlock>

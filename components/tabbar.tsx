@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "./app-data";
 import { useAssistant } from "./assistant/assistant-provider";
 import { Avatar } from "./ui";
-import { IconBook, IconCalendar, IconCart, IconHistory, IconPeople, IconPlus, IconShelf, IconSidebar, IconSparkles } from "./icons";
+import { IconBook, IconCalendar, IconCart, IconDice, IconHistory, IconPeople, IconPlus, IconShelf, IconSidebar, IconSparkles } from "./icons";
 
 // Handy: Tableiste im Liquid-Glass-Stil von iOS – links eine Glaskapsel mit
 // Woche, Rezepte (inkl. Regal) und Einkauf, rechts die KI als eigener runder Knopf.
@@ -16,6 +16,7 @@ const TABS = [
   { href: "/woche", label: "Woche", Icon: IconCalendar, also: [] as string[] },
   { href: "/rezepte", label: "Rezepte", Icon: IconBook, also: ["/regal"] },
   { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart, also: [] },
+  { href: "/entscheiden", label: "Spielen", Icon: IconDice, also: [] },
 ];
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
@@ -102,6 +103,7 @@ const GROUPS = [
     label: "Planen",
     items: [
       { href: "/woche", label: "Woche", Icon: IconCalendar },
+      { href: "/entscheiden", label: "Entscheiden", Icon: IconDice },
       { href: "/einkaufsliste", label: "Einkauf", Icon: IconCart },
     ],
   },

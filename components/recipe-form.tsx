@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { useApp } from "./app-data";
 import { IconArrowDown, IconArrowUp, IconCamera, IconPlus, IconTrash } from "./icons";
 import { PageHeader } from "./nav";
+import { FolderPicker, TagInput } from "./organize";
 import { useToast } from "./toast";
 import { DIET_LABEL, RecipeImage, Section, Segmented } from "./ui";
 import { parseNutrition, parseTimeMinutes, slugifyTag, type RecipeDraft } from "@/lib/markdown";
@@ -33,7 +34,8 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
   const [subtitle, setSubtitle] = useState(recipe?.subtitle ?? d?.subtitle ?? "");
   const [source, setSource] = useState(recipe?.source ?? d?.source ?? "");
   const [categories, setCategories] = useState((recipe?.categories ?? d?.categories)?.join(" / ") ?? "");
-  const [tags, setTags] = useState((recipe?.tags ?? d?.tags)?.join(", ") ?? "");
+  const [tags, setTags] = useState<string[]>(recipe?.tags ?? d?.tags ?? []);
+  const [folderId, setFolderId] = useState<string | null>(recipe?.folder_id ?? null);
   const [diet, setDiet] = useState<Diet>(recipe?.diet ?? d?.diet ?? "vegetarisch");
   const [timeText, setTimeText] = useState(recipe?.time_text ?? d?.time_text ?? "");
   const [timeMin, setTimeMin] = useState((recipe?.time_min ?? d?.time_min)?.toString() ?? "");
@@ -89,7 +91,8 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
       subtitle: subtitle.trim() || null,
       source: source.trim() || null,
       categories: cats,
-      tags: tags.trim() ? tags.split(",").map(slugifyTag).filter(Boolean) : cats.map(slugifyTag),
+      tags: tags.length ? tags : cats.map(slugifyTag),
+      folder_id: folderId,
       diet,
       time_text: timeText.trim() || null,
       time_min: timeMin.trim() ? Number.parseInt(timeMin, 10) : parseTimeMinutes(timeText),
@@ -159,9 +162,16 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
             <input className="input" placeholder="Untertitel (optional)" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} aria-label="Untertitel" />
             <input className="input" placeholder="Quelle: URL oder Text (optional)" value={source} onChange={(e) => setSource(e.target.value)} aria-label="Quelle" />
             <input className="input" placeholder="Kategorien, getrennt mit / (z. B. Pasta / Fisch / One-Pot)" value={categories} onChange={(e) => setCategories(e.target.value)} aria-label="Kategorien" />
-            <input className="input" placeholder="Tags, mit Komma (leer = aus Kategorien)" value={tags} onChange={(e) => setTags(e.target.value)} aria-label="Tags" />
             <Segmented<Diet> label="Ernährung" value={diet} onChange={setDiet} options={(["vegetarisch", "fisch", "fleisch"] as Diet[]).map((d) => ({ value: d, label: DIET_LABEL[d] }))} />
           </div>
+        </Section>
+
+        <Section title="Ordner">
+          <FolderPicker value={folderId} onChange={setFolderId} />
+        </Section>
+
+        <Section title="Tags" footer="Mit Enter oder Komma bestätigen. Leer = aus den Kategorien.">
+          <TagInput value={tags} onChange={setTags} />
         </Section>
 
         <Section title="Zeit & Portionen">

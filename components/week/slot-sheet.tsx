@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { DetailLink } from "@/components/detail-nav";
 import { useState } from "react";
 import { useApp } from "@/components/app-data";
-import { IconChevronRight, IconSparkles, IconTrash } from "@/components/icons";
+import { IconChevronRight, IconDice, IconSparkles, IconTrash } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
 import { useToast } from "@/components/toast";
 import { Avatar, DietIcon, RecipeImage, Section, Segmented, Stepper } from "@/components/ui";
@@ -95,6 +96,7 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
           <div className="flex flex-wrap gap-2 px-4 py-3">
             <button className="btn btn-tinted btn-sm pressable" onClick={() => onChangeRecipe(slot)}>{recipe ? "Ändern" : "Rezept wählen"}</button>
             <button className="btn btn-gray btn-sm pressable" onClick={() => onSuggest(slot)}><IconSparkles size={16} /> Vorschlag</button>
+            {date >= today && <Link className="btn btn-gray btn-sm pressable" href={`/entscheiden?datum=${date}&mahlzeit=${meal}`}><IconDice size={16} /> Ausspielen</Link>}
             {(recipe || entry?.leftover_of) && (
               <button className="btn btn-gray btn-sm pressable" style={{ color: "var(--red)" }} onClick={() => save({ recipe_id: null, leftover_of: null, status: "geplant", servings_override: null })}>
                 <IconTrash size={16} /> Entfernen

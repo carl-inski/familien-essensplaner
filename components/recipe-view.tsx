@@ -7,6 +7,7 @@ import { useApp } from "@/components/app-data";
 import { BookCover } from "@/components/book";
 import { IconCalendar, IconCart, IconClock, IconDownload, IconEdit, IconPeople, IconTrash } from "@/components/icons";
 import { IconButton, PageHeader } from "@/components/nav";
+import { OrganizeBar } from "@/components/organize";
 import { PlanSheet } from "@/components/plan-sheet";
 import { RecipeNotes } from "@/components/recipe-notes";
 import { Sheet } from "@/components/sheet";
@@ -138,6 +139,7 @@ export function RecipeView({ id, inSheet = false, onDone }: { id: string; inShee
             .filter((c) => !recipe.diet || c.trim().toLowerCase() !== DIET_LABEL[recipe.diet].toLowerCase())
             .map((c) => <span key={c} className="chip">{c}</span>)}
         </div>
+        <OrganizeBar recipe={recipe} />
 
         {book && (
           <Link href={`/regal/${book.id}`} className="card pressable mt-3 flex items-center gap-3 px-4 py-3">
