@@ -1,6 +1,7 @@
 import { AppDataProvider } from "@/components/app-data";
 import { AiPanel } from "@/components/assistant/ai-panel";
 import { AssistantProvider } from "@/components/assistant/assistant-provider";
+import { DecideInvite } from "@/components/decide/invite-banner";
 import { DetailSheets } from "@/components/detail-sheets";
 import { Sidebar, TabBar } from "@/components/tabbar";
 import { Haptics } from "@/components/haptics";
@@ -16,6 +17,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
           <TabBar />
           <AiPanel />
           <DetailSheets />
+          <DecideInvite />
           <Haptics />
         </AssistantProvider>
       </AppDataProvider>

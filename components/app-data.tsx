@@ -9,7 +9,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { todayBerlin } from "@/lib/dates";
 import { cookStatsFromHistory } from "@/lib/history";
 import { supabase } from "@/lib/supabase/client";
-import type { Cookbook, CookingHistoryEntry, CookStats, Household, Member, Recipe } from "@/lib/types";
+import { Onboarding } from "./onboarding";
+import type { Cookbook, CookingHistoryEntry, CookStats, Household, Member, Membership, Recipe, RecipeFolder } from "@/lib/types";
 
 interface AppData {
   sb: SupabaseClient;
@@ -17,6 +18,9 @@ interface AppData {
   household: Household;
   me: Member;
   members: Member[];
+  /** Alle Familien dieses Kontos (die aktive ist `household`) */
+  memberships: Membership[];
+  folders: RecipeFolder[];
   recipes: Recipe[];
   recipesById: Map<string, Recipe>;
   cookbooks: Cookbook[];
@@ -28,6 +32,8 @@ interface AppData {
   reloadCookbooks: () => Promise<void>;
   reloadHistory: () => Promise<void>;
   reloadMembers: () => Promise<void>;
+  reloadFolders: () => Promise<void>;
+  reloadHousehold: () => Promise<void>;
 }
 
 const Ctx = createContext<AppData | null>(null);
@@ -44,7 +50,7 @@ type State =
   | { phase: "loading" }
   | { phase: "no-access"; email: string | null }
   | { phase: "error"; message: string }
-  | { phase: "ready"; user: User; household: Household; me: Member };
+  | { phase: "ready"; user: User; household: Household; me: Member; memberships: Membership[] };
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const sb = supabase();
@@ -54,6 +60,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [cookbooks, setCookbooks] = useState<Cookbook[]>([]);
   const [history, setHistory] = useState<CookingHistoryEntry[]>([]);
+  const [folders, setFolders] = useState<RecipeFolder[]>([]);
   const today = todayBerlin();
 
   const reloadRecipes = useCallback(async () => {
@@ -81,6 +88,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setMembers((data ?? []) as Member[]);
   }, [sb]);
 
+  const reloadFolders = useCallback(async () => {
+    const { data } = await sb.from("ep_recipe_folders").select("*").order("position").order("name");
+    setFolders((data ?? []) as RecipeFolder[]);
+  }, [sb]);
+
+  const reloadHousehold = useCallback(async () => {
+    const { data } = await sb.from("ep_households").select("id, name, invite_code").single();
+    if (data) setState((s) => (s.phase === "ready" ? { ...s, household: data as Household } : s));
+  }, [sb]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -89,27 +106,37 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         router.replace("/login");
         return;
       }
-      const { data: linked, error } = await sb.rpc("ep_link_member");
+      const { data: list, error } = await sb.rpc("ep_my_memberships");
       if (cancelled) return;
       if (error) {
         setState({ phase: "error", message: error.message });
         return;
       }
-      const me = (linked as Member[] | null)?.[0];
-      if (!me) {
+      const memberships = (list ?? []) as Membership[];
+      const active = memberships.find((m) => m.active) ?? memberships[0];
+      if (!active) {
         setState({ phase: "no-access", email: auth.user.email ?? null });
         return;
       }
-      const { data: hh } = await sb.from("ep_households").select("id, name").eq("id", me.household_id).single();
+      // RLS zeigt nur die aktive Familie – darum reichen Abfragen ohne Familien-Filter
+      const [{ data: mine }, { data: hh }] = await Promise.all([
+        sb.from("ep_members").select("*").eq("id", active.member_id).single(),
+        sb.from("ep_households").select("id, name, invite_code").eq("id", active.household_id).single(),
+      ]);
+      const me = mine as Member | null;
+      if (!me || !hh) {
+        setState({ phase: "error", message: "Die Familie konnte nicht geladen werden." });
+        return;
+      }
       // Vergangene Gerichte gelten als gekocht – vor dem Laden der Historie verbuchen
       await sb.rpc("ep_mark_past_cooked");
-      await Promise.all([reloadMembers(), reloadRecipes(), reloadCookbooks(), reloadHistory()]);
-      if (!cancelled) setState({ phase: "ready", user: auth.user, household: hh as Household, me });
+      await Promise.all([reloadMembers(), reloadRecipes(), reloadCookbooks(), reloadHistory(), reloadFolders()]);
+      if (!cancelled) setState({ phase: "ready", user: auth.user, household: hh as Household, me, memberships });
     })();
     return () => {
       cancelled = true;
     };
-  }, [sb, router, reloadMembers, reloadRecipes, reloadCookbooks, reloadHistory]);
+  }, [sb, router, reloadMembers, reloadRecipes, reloadCookbooks, reloadHistory, reloadFolders]);
 
   // Kochhistorie live halten (Änderungen von anderen Geräten)
   useEffect(() => {
@@ -132,6 +159,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       household: state.household,
       me,
       members,
+      memberships: state.memberships,
+      folders,
       recipes,
       recipesById: new Map(recipes.map((r) => [r.id, r])),
       cookbooks,
@@ -143,19 +172,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       reloadCookbooks,
       reloadHistory,
       reloadMembers,
+      reloadFolders,
+      reloadHousehold,
     };
-  }, [state, sb, members, recipes, cookbooks, history, today, reloadRecipes, reloadCookbooks, reloadHistory, reloadMembers]);
+  }, [state, sb, members, folders, recipes, cookbooks, history, today, reloadRecipes, reloadCookbooks, reloadHistory, reloadMembers, reloadFolders, reloadHousehold]);
 
   if (state.phase === "loading") return <LoadingScreen />;
   if (state.phase === "error") return <Message title="Etwas ist schiefgelaufen" text={state.message} />;
-  if (state.phase === "no-access")
-    return (
-      <Message
-        title="Noch kein Zugang"
-        text={`Die E-Mail ${state.email ?? ""} ist keinem Haushalt zugeordnet. Bitte Carl, dich unter „Haushalt“ mit dieser Adresse einzutragen, und melde dich danach erneut an.`}
-        logout
-      />
-    );
+  if (state.phase === "no-access") return <Onboarding email={state.email} />;
   return <Ctx value={value}>{children}</Ctx>;
 }
 

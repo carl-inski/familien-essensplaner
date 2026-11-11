@@ -1,6 +1,6 @@
 # Familien-Essensplaner
 
-Web-App (PWA) für die Familie (Paul, Anton, Carl, Vroni, Christian): Wochenübersicht, wer zuhause ist, Essensplan, Kochdienst, Rezeptsammlung, Kochbücher, Kochhistorie und Wocheneinkauf mit Übergabe an Bring!.
+Web-App (PWA) für Familien: Wochenübersicht, wer zuhause ist, Essensplan, Kochdienst, Rezeptsammlung mit Ordnern und Tags, Kochbücher, Kochhistorie, Wocheneinkauf mit Übergabe an Bring! – und „Entscheiden“: kleine Spiele, mit denen alle am eigenen Handy zusammen ein Gericht finden. Jede Familie hat ihren eigenen Bereich; ein Konto kann zu mehreren Familien gehören.
 
 Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), die Startdaten in [`data/rezeptsammlung.md`](data/rezeptsammlung.md).
 
@@ -16,11 +16,12 @@ Der vollständige Bau-Auftrag steht in [`docs/BRIEFING.md`](docs/BRIEFING.md), d
 | Bereich | Was geht |
 | --- | --- |
 | Woche | Tag × Mittag + Abend, Anwesenheit pro Mahlzeit mit einem Tipp, Gäste, Standardwoche (je Mahlzeit), Esserzahl, Rezept einplanen (2 Tipps), „Vorschlag“ (regelbasiert), Reste-Slots, Kochdienst (nur Anwesende, sonst „Koch fehlt“), gekocht ✓ / Rückgängig, Realtime |
-| Rezepte | Karten, Suche (deutscher Volltext + Trigramm + Zutaten), kombinierbare Filter und Sortierung, Detail mit Portionswähler, Bring!-Export, Historie, Anlegen/Bearbeiten mit Foto, Markdown-Import mit Duplikat-Erkennung und Export |
+| Entscheiden | Vier Spiele für eine Mahlzeit, allein oder live mit der Familie (jede Person am eigenen Handy, Realtime): **Swipen** (erstes gemeinsames Ja gewinnt), **Duell** (Turnier), **Glücksrad** (Lose gewichten die Felder), **Löffel** (fünf Löffel verteilen; es gewinnt, was allen schmeckt). Es gewinnt nie ein Gericht, das jemand abgelehnt hat (Aussieben bzw. Finale mit n + 1 Gerichten). Der Sieger wird direkt in den Wochenplan eingetragen. Regeln als reine Funktionen in `lib/decide.ts` |
+| Rezepte | Ordner (ein Rezept liegt in höchstens einem) und Tags als Chips mit Vorschlägen, Karten, Suche (deutscher Volltext + Trigramm + Zutaten), kombinierbare Filter und Sortierung, Detail mit Portionswähler, Bring!-Export, Historie, Anlegen/Bearbeiten mit Foto, Markdown-Import mit Duplikat-Erkennung und Export |
 | Lange nicht gegessen | sortiert nach Tagen seit dem letzten Kochen, darunter „Noch nie gekocht“, direkt einplanbar |
 | Regal | Kochbücher als Cover-Raster, ISBN-Abfrage (Open Library → Google Books), Rezept-Verknüpfungen mit Seite, „zu bestätigen“, reine Verweis-Rezepte |
 | Einkauf | Alle kommenden Gerichte ab heute, über Wochengrenzen hinweg, skaliert und summiert, in Gang-Reihenfolge; wählbar „bis Tag X“ oder pro Gericht. „Einkauf erledigt“ merkt pro Gericht `shopped_at` – beim nächsten Einkauf fehlen diese Zutaten, im Wochenplan steht „eingekauft ✓“; wird ein Gericht getauscht, kommt es von selbst zurück. Nicht Abgehaktes kann unter „Noch offen“ bleiben, dort lässt sich auch frei dazuschreiben (`ep_shopping_extra`). „Immer zu Hause“ blendet Vorrat wie Salz und Pfeffer aus (`ep_pantry`); US-Maße werden fest umgerechnet – alles ohne KI. „In Bring übernehmen“, als Text kopieren |
-| Haushalt | Mitglieder und Einladungen per E-Mail, Standardwoche, Kochdienst-Zähler (4 Wochen) |
+| Haushalt | Familie anlegen, umbenennen, per Einladungscode oder -link beitreten (`/beitreten?code=…`), zwischen Familien wechseln, verlassen; Mitglieder, Standardwoche, Kochdienst-Zähler (4 Wochen) |
 | Öffentlich | `/r/<slug>` und `/einkauf/<slug>` mit schema.org/Recipe-JSON-LD für den Bring!-Import, `noindex` |
 
 KI-Funktionen (Briefing Abschnitt 6) entstehen in Stufen, siehe „KI“ unten. Ohne API-Schlüssel zeigt die App „KI noch nicht eingerichtet“.
@@ -42,12 +43,16 @@ Alle Tabellen tragen das Präfix `ep_`, weil die App sich ein Supabase-Projekt m
 - Startdaten: `npx tsx scripts/seed.ts > supabase/seed.sql`, dann `supabase/seed.sql` im SQL-Editor ausführen und die Admin-E-Mail setzen:
   `update ep_members set email = '<mail>' where name = 'Carl';`
 
-Zugang: Login mit E-Mail und Passwort, ohne Mailversand. Admins legen unter „Haushalt“ für jedes Mitglied E-Mail und Passwort fest (RPC `ep_admin_set_password`), jede Person kann ihr Passwort danach selbst ändern. Wer nicht eingetragen ist, sieht nichts.
+### Konten und Familien
 
-Den ersten Admin richtet man im SQL-Editor ein:
-`select ep_admin_set_password((select id from ep_members where name = 'Carl'), '<passwort>');`
+Jede Person erstellt ihr Konto selbst (E-Mail + Passwort, Supabase Auth) und legt danach eine Familie an oder tritt mit dem achtstelligen Einladungscode bei. Ein Konto kann zu mehreren Familien gehören und sieht immer nur die **aktive**: `ep_my_household_ids()` liefert genau diese eine ID, darum kommen alle Abfragen ohne Familien-Filter aus (RLS). Gewechselt wird über die RPC `ep_switch_household`.
 
-Optional (Phase 2): Magic Link über `/auth/confirm` – dafür in Supabase unter Authentication → URL Configuration die Domain als Redirect-URL eintragen.
+- RPCs: `ep_my_memberships`, `ep_create_household`, `ep_invite_preview`, `ep_join_household`, `ep_switch_household`, `ep_leave_household`, `ep_regenerate_invite` (Migration `20261111120000_mehrere_familien.sql`).
+- In eine Familie kommt man **nur mit dem Code**. Das frühere automatische Verknüpfen über die E-Mail-Adresse gibt es nicht mehr – mit offener Registrierung hätte sich sonst jeder mit einer fremden Adresse in deren Familie anmelden können. Hat ein Admin die Person vorab mit ihrer E-Mail eingetragen, übernimmt sie beim Beitreten diesen Platz.
+- Für Kinder ohne eigene E-Mail-Adresse können Admins weiterhin ein Konto mit Passwort anlegen (`ep_admin_set_password`). Das geht nur für Konten, die die Familie selbst angelegt hat – nie für ein Konto, das sich jemand selbst erstellt hat.
+- **Supabase-Einstellungen:** Authentication → Sign In / Providers → „Allow new users to sign up“ muss an sein. Ist „Confirm email“ an, verschickt Supabase Bestätigungsmails; dafür unter URL Configuration die Domain als Redirect-URL eintragen (Ziel `/auth/confirm`). Dasselbe gilt für „Passwort vergessen“.
+- Den ersten Admin einer per Seed angelegten Familie richtet man weiter im SQL-Editor ein:
+  `select ep_admin_set_password((select id from ep_members where name = 'Carl'), '<passwort>');`
 
 ## Deployment (Vercel)
 
