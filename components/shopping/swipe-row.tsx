@@ -1,15 +1,25 @@
 "use client";
 
-// Listenzeile mit verstecktem Aktionsknopf wie in iOS: nach links wischen (oder lange
-// drücken) zeigt „Immer zu Hause“, ganz durchwischen löst es direkt aus.
-// Am Computer steht der Knopf wie gehabt rechts in der Zeile.
+// Listenzeile mit versteckten Aktionsknöpfen wie in iOS: nach links wischen (oder lange
+// drücken) zeigt „Ist noch da“ und „Immer zu Hause“, ganz durchwischen löst die
+// Hauptaktion (rechts außen) direkt aus. Am Computer stehen die Knöpfe rechts in der Zeile.
 
 import { animate, motion, useMotionValue, useReducedMotion } from "motion/react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
-const ACTION_W = 104;
-const FULL_SWIPE = 200;
+const ONE_W = 104;
+const TWO_W = 176;
+const FULL_SWIPE = 240;
+
+export interface RowAction {
+  /** für Screenreader und Tooltip */
+  label: string;
+  /** kurzer Text unter dem Symbol */
+  short: string;
+  icon: ReactNode;
+  run: () => void;
+}
 
 // Nur eine Zeile gleichzeitig offen
 const openers = new Set<(id: string) => void>();
@@ -18,16 +28,22 @@ const announceOpen = (id: string) => openers.forEach((f) => f(id));
 export function SwipeRow({
   children,
   actionLabel,
+  actionShort = "Immer da",
   actionIcon,
   onAction,
+  secondary,
   desktop,
 }: {
   children: (opts: { onClick: (fn: () => void) => () => void }) => ReactNode;
   actionLabel: string;
+  actionShort?: string;
   actionIcon: ReactNode;
   onAction: () => void;
+  /** zweite Aktion links neben der Hauptaktion */
+  secondary?: RowAction;
   desktop: boolean;
 }) {
+  const ACTION_W = secondary ? TWO_W : ONE_W;
   const id = useId();
   const x = useMotionValue(0);
   const reduce = useReducedMotion();
@@ -56,6 +72,11 @@ export function SwipeRow({
     return (
       <li className="flex items-stretch">
         {children({ onClick: (fn) => fn })}
+        {secondary && (
+          <button className="pressable flex w-11 shrink-0 items-center justify-center" style={{ color: "var(--label-2)" }} aria-label={secondary.label} title={secondary.label} onClick={secondary.run}>
+            {secondary.icon}
+          </button>
+        )}
         <button className="pressable flex w-12 shrink-0 items-center justify-center" style={{ color: "var(--label-2)" }} aria-label={actionLabel} title={actionLabel} onClick={onAction}>
           {actionIcon}
         </button>
@@ -66,9 +87,26 @@ export function SwipeRow({
 
   return (
     <li className="relative overflow-hidden">
+      {secondary && (
+        <button
+          className="absolute inset-y-0 flex flex-col items-center justify-center gap-0.5 text-[12px] font-semibold"
+          style={{ right: ACTION_W / 2, width: ACTION_W / 2, background: "var(--green)", color: "#fff" }}
+          aria-label={secondary.label}
+          tabIndex={open ? 0 : -1}
+          onFocus={reveal}
+          onClick={() => {
+            haptic("medium");
+            close();
+            secondary.run();
+          }}
+        >
+          {secondary.icon}
+          <span>{secondary.short}</span>
+        </button>
+      )}
       <button
         className="absolute inset-y-0 right-0 flex flex-col items-center justify-center gap-0.5 text-[12px] font-semibold"
-        style={{ width: ACTION_W, background: "var(--accent)", color: "var(--on-accent)" }}
+        style={{ width: secondary ? ACTION_W / 2 : ACTION_W, background: "var(--accent)", color: "var(--on-accent)" }}
         aria-label={actionLabel}
         tabIndex={open ? 0 : -1}
         onFocus={reveal}
@@ -79,7 +117,7 @@ export function SwipeRow({
         }}
       >
         {actionIcon}
-        <span>Immer da</span>
+        <span>{actionShort}</span>
       </button>
       <motion.div
         className="relative"

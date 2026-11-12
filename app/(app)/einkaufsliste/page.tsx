@@ -19,7 +19,7 @@ import { Empty, Section } from "@/components/ui";
 import { aisleFor } from "@/lib/aisles";
 import { bringDeeplink, shoppingPublicUrl } from "@/lib/bring";
 import { knusprLinks, knusprPrompt } from "@/lib/knuspr";
-import { WEEKDAY_SHORT, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
+import { WEEKDAY_SHORT, formatDateDE, formatStampDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry";
 import { buildShoppingList, servingsFor } from "@/lib/planning";
@@ -151,6 +151,12 @@ export default function ShoppingPage() {
     if (done) return undo([done]);
     haptic("light");
     buy([{ client_id: newId(), household_id: household.id, meal_plan_id: null, item_key: key, name: x.text, amount: null, unit: null, bought_by: me.id }]);
+  }
+
+  /** Nicht kaufen, weil es zu Hause noch da ist – deckt den Bedarf wie ein Kauf */
+  function stillThere(item: OpenItem) {
+    const ids = buy(purchasesFor(item, household.id, me.id, newId, "vorrat"));
+    toast({ text: `${item.name}: ist noch da`, action: { label: "Rückgängig", run: () => undo(ids) } });
   }
 
   /** „Ist noch da“ stimmt nicht mehr: Käufe verwerfen, damit die Zutat wieder auf der Liste landet */
@@ -442,7 +448,7 @@ export default function ShoppingPage() {
                 <Section
                   key={aisle}
                   title={aisle}
-                  footer={gi === 0 && !desktop ? "Tipp: Nach links wischen oder lange drücken, wenn du etwas immer zu Hause hast – dann steht es nicht mehr auf der Liste." : undefined}
+                  footer={gi === 0 && !desktop ? "Tipp: Nach links wischen oder lange drücken – „Noch da“, wenn ihr es gerade zu Hause habt, „Immer da“, wenn es nie auf die Liste soll." : undefined}
                 >
                   <ul className="group">
                     {list.open.map((i) => (
@@ -452,6 +458,7 @@ export default function ShoppingPage() {
                         actionLabel={`${i.name}: immer zu Hause`}
                         actionIcon={<IconHome size={19} />}
                         onAction={() => void keepAtHome(i.name)}
+                        secondary={{ label: `${i.name}: ist noch da`, short: "Noch da", icon: <IconCheck size={19} />, run: () => stillThere(i) }}
                       >
                         {({ onClick }) => (
                           <button className="row pressable min-w-0 flex-1" onClick={onClick(() => check(i))} aria-pressed={false}>
@@ -472,8 +479,10 @@ export default function ShoppingPage() {
                           <CheckDot done />
                           <span className="min-w-0 flex-1 text-left" style={{ opacity: 0.45 }}>
                             <span className="t-sub block" style={{ textDecoration: "line-through" }}>{keepCompoundTogether(b.text)}</span>
-                            {b.by && b.by !== me.id && (
-                              <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>von {members.find((m) => m.id === b.by)?.name ?? "jemandem"}</span>
+                            {(b.fromStock || (b.by && b.by !== me.id)) && (
+                              <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>
+                                {[b.fromStock ? "war noch da" : null, b.by && b.by !== me.id ? `von ${members.find((m) => m.id === b.by)?.name ?? "jemandem"}` : null].filter(Boolean).join(" · ")}
+                              </span>
                             )}
                           </span>
                         </button>
@@ -484,11 +493,14 @@ export default function ShoppingPage() {
               ))}
 
               {state.stock.length > 0 && (
-                <Section title="Ist noch da" footer="Gekauft, aber gerade für kein Gericht gebraucht – weil eins ausgefallen ist oder weniger mitessen. Zählt beim nächsten passenden Gericht mit.">
+                <Section title="Ist noch da" footer="Zu Hause, aber gerade für kein Gericht gebraucht. Zählt beim nächsten passenden Gericht mit. Mehr eintragen: Haushalt → Vorrat.">
                   <ul className="group">
                     {state.stock.map((x) => (
                       <li key={x.key} className="row">
-                        <span className="t-sub min-w-0 flex-1">{keepCompoundTogether(x.text)}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="t-sub block">{keepCompoundTogether(x.text)}</span>
+                          <span className="t-caption block" style={{ color: "var(--label-2)" }}>seit {formatStampDE(x.since)}</span>
+                        </span>
                         <button className="btn-plain t-footnote pressable font-semibold" onClick={() => usedUp(x)} aria-label={`${x.name} ist nicht mehr da`}>Nicht mehr da</button>
                       </li>
                     ))}

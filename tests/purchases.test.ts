@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseAmount } from "../lib/quantity";
-import { extraKey, purchasesFor, shoppingState, type NewPurchase, type Purchase } from "../lib/shopping";
+import { extraKey, purchasesFor, shoppingState, stockEntryFromText, type NewPurchase, type Purchase } from "../lib/shopping";
 import type { Attendance, Ingredient, MealPlanEntry, Member, Recipe } from "../lib/types";
 
 const TODAY = "2026-11-11";
@@ -173,5 +173,55 @@ describe("Übergang und Sonderfälle", () => {
   it("Reste und Vergangenes brauchen keinen Einkauf", () => {
     const s = state([entry("gestern", "2026-11-10", "gn"), entry("rest", "2026-11-14", null, { leftover_of: "fr" })], []);
     expect(s.open).toEqual([]);
+  });
+});
+
+describe("Vorrat: ist noch da", () => {
+  const friday = entry("fr", "2026-11-13", "gn"); // 450 g Gnocchi, 300 g Tomaten, Basilikum
+  const stockOf = (...texts: string[]) => store(texts.map((t) => stockEntryFromText(t, "h", "a", newId)!), "2026-11-09T08:00:00Z");
+
+  it("liest Einträge von Hand und rechnet in die Einheit der Liste um", () => {
+    expect(stockEntryFromText("1,5 kg Tomaten", "h", "a", newId)).toMatchObject({ name: "Tomaten", amount: 1500, unit: "g", meal_plan_id: null, source: "vorrat" });
+    expect(stockEntryFromText("0,5 l Milch", "h", "a", newId)).toMatchObject({ name: "Milch", amount: 500, unit: "ml" });
+    expect(stockEntryFromText("Eier", "h", "a", newId)).toMatchObject({ name: "Eier", amount: null, unit: null });
+    expect(stockEntryFromText("3 Eier", "h", "a", newId)).toMatchObject({ name: "Eier", amount: 3, unit: null });
+    expect(stockEntryFromText("   ", "h", "a", newId)).toBeNull();
+  });
+
+  it("eingetragener Vorrat wird vom Bedarf abgezogen", () => {
+    const s = state([friday], stockOf("200 g Tomaten"));
+    expect(texts(s)).toEqual(["100 g Tomaten", "450 g Gnocchi", "Basilikum"].sort());
+    expect(s.open.find((i) => i.name === "Tomaten")!.usedStock).toBe(true);
+  });
+
+  it("ohne Menge heißt: genug da, in jeder Einheit", () => {
+    const s = state([friday], stockOf("Tomaten", "Basilikum"));
+    expect(texts(s)).toEqual(["450 g Gnocchi"]);
+  });
+
+  it("was nichts mit dem Plan zu tun hat, steht einfach im Vorrat – mit Datum", () => {
+    const s = state([friday], stockOf("500 g Reis"));
+    expect(s.stock).toEqual([expect.objectContaining({ name: "Reis", text: "500 g Reis", since: "2026-11-09T08:00:00Z" })]);
+    expect(s.open).toHaveLength(3);
+  });
+
+  it("von Hand eingetragener Vorrat erscheint nicht als abgehakte Zeile", () => {
+    const s = state([friday], store([stockEntryFromText("500 g Reis", "h", "a", newId)!], NOW));
+    expect(s.bought).toEqual([]);
+    expect(s.stock).toHaveLength(1);
+  });
+
+  it("mehrere Einträge derselben Zutat zählen zusammen, der älteste gibt das Datum", () => {
+    const s = state([], [...stockOf("200 g Reis"), ...store([stockEntryFromText("300 g Reis", "h", "a", newId)!], NOW)]);
+    expect(s.stock).toEqual([expect.objectContaining({ text: "500 g Reis", since: "2026-11-09T08:00:00Z" })]);
+  });
+
+  it("auf der Liste als „noch da“ markiert: deckt den Bedarf, wird aber nicht als Kauf gezählt", () => {
+    const s = state([friday], []);
+    const rows = store(purchasesFor(s.open.find((i) => i.name === "Tomaten")!, "h", "a", newId, "vorrat"));
+    const after = state([friday], rows);
+    expect(texts(after)).toEqual(["450 g Gnocchi", "Basilikum"]);
+    expect(after.bought).toEqual([expect.objectContaining({ name: "Tomaten", fromStock: true })]);
+    expect(after.stock).toEqual([]); // ist dem Gericht zugeordnet, also nicht „übrig“
   });
 });

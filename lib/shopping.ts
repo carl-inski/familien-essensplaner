@@ -11,7 +11,7 @@
 
 import { aisleFor, aisleRank } from "./aisles";
 import { buildShoppingList, mergeUnits, shoppingLine } from "./planning";
-import { shoppingKey } from "./quantity";
+import { displayName, parseAmount, shoppingKey, splitIngredientLine } from "./quantity";
 import type { Attendance, MealPlanEntry, Member, Recipe, ShoppingItem } from "./types";
 
 export interface Purchase {
@@ -27,6 +27,8 @@ export interface Purchase {
   unit: string | null;
   bought_by: string | null;
   bought_at: string;
+  /** kauf = im Laden abgehakt, vorrat = „ist noch da“ (bestätigt, nicht gekauft) */
+  source?: "kauf" | "vorrat";
 }
 
 /** Offener Bedarf einer Zutat in einer Einheit; `parts` sagt, welches Gericht wie viel davon braucht */
@@ -52,6 +54,8 @@ export interface StockItem {
   unit: string | null;
   text: string;
   purchaseIds: string[];
+  /** seit wann (frühester Eintrag, ISO) */
+  since: string;
 }
 
 /** Vor Kurzem abgehakt – bleibt durchgestrichen stehen, damit man es zurücknehmen kann */
@@ -62,6 +66,8 @@ export interface BoughtItem {
   aisle: string;
   purchaseIds: string[];
   by: string | null;
+  /** nicht gekauft, sondern als „ist noch da“ bestätigt */
+  fromStock: boolean;
 }
 
 export interface ShoppingState {
@@ -119,12 +125,16 @@ export function shoppingState({ plan, recipes, members, attendance, pantry = new
   const covered = new Set<string>();
   const missingByDish = new Map<string, string[]>();
 
+  const boughtAt = new Map(purchases.map((p) => [p.id, p.bought_at]));
   const addStock = (key: string, name: string, amount: number | null, unit: string | null, ids: string[]) => {
+    const since = ids.map((id) => boughtAt.get(id) ?? now).sort()[0] ?? now;
     const cur = stock.get(key);
     if (cur) {
-      if (cur.amount !== null && amount !== null) cur.amount = round(cur.amount + amount);
+      // „ist da, Menge unbekannt“ schlägt jede Zahl
+      cur.amount = cur.amount !== null && amount !== null ? round(cur.amount + amount) : null;
       cur.purchaseIds.push(...ids);
-    } else stock.set(key, { key, name, amount, unit, text: "", purchaseIds: [...ids] });
+      if (since < cur.since) cur.since = since;
+    } else stock.set(key, { key, name, amount, unit, text: "", purchaseIds: [...ids], since });
   };
 
   for (const dish of dishes) {
@@ -181,8 +191,10 @@ export function shoppingState({ plan, recipes, members, attendance, pantry = new
 
   // Was noch da ist, zuerst verbrauchen. Die Käufe selbst bleiben unverändert – die Rechnung
   // zieht sie bei jedem Aufbau der Liste neu ab.
+  // „Reis ist da“ ohne Menge deckt Reis in jeder Einheit
+  const anyAmount = new Map([...stock.values()].filter((s) => s.amount === null).map((s) => [shoppingKey(s.name), s]));
   for (const [key, row] of open) {
-    const have = stock.get(key);
+    const have = stock.get(key) ?? anyAmount.get(shoppingKey(row.name));
     if (!have) continue;
     row.usedStock = true;
     if (row.amount === null || have.amount === null) {
@@ -209,6 +221,8 @@ export function shoppingState({ plan, recipes, members, attendance, pantry = new
   const recent = new Map<string, { name: string; purchases: Purchase[] }>();
   for (const p of purchases) {
     if (isExtraKey(p.item_key) || Date.parse(p.bought_at) < recentMs) continue;
+    // Von Hand eingetragener Vorrat ist kein Haken auf der Liste
+    if (p.source === "vorrat" && !p.meal_plan_id) continue;
     const k = shoppingKey(p.name);
     const cur = recent.get(k);
     if (cur) cur.purchases.push(p);
@@ -226,7 +240,7 @@ export function shoppingState({ plan, recipes, members, attendance, pantry = new
       }
       const parts = [...units.entries()].map(([u, a]) => ({ name, amount: a, unit: u || null }));
       const amounts = parts.filter((x) => x.amount !== null).map((x) => shoppingLine({ ...x, name: "" }).trim());
-      return { key, name, text: amounts.length ? `${amounts.join(" + ")} ${name}` : name, aisle: aisleFor(name), purchaseIds: mine.map((p) => p.id), by: mine[0].bought_by };
+      return { key, name, text: amounts.length ? `${amounts.join(" + ")} ${name}` : name, aisle: aisleFor(name), purchaseIds: mine.map((p) => p.id), by: mine[0].bought_by, fromStock: mine.every((p) => p.source === "vorrat") };
     });
 
   const byAisle = <T extends { aisle: string; name: string }>(a: T, b: T) => aisleRank(a.aisle) - aisleRank(b.aisle) || a.name.localeCompare(b.name, "de");
@@ -251,13 +265,34 @@ export interface NewPurchase {
   amount: number | null;
   unit: string | null;
   bought_by: string | null;
+  source?: "kauf" | "vorrat";
+}
+
+const TO_BASE: Record<string, [string, number]> = { kg: ["g", 1000], l: ["ml", 1000] };
+
+/**
+ * Von Hand eingetragener Vorrat: „500 g Reis“, „1 kg Mehl“ oder nur „Eier“.
+ * Mengen landen in der Einheit der Einkaufsliste (g, ml), damit sie sich verrechnen lassen.
+ */
+export function stockEntryFromText(text: string, householdId: string, memberId: string | null, newId: () => string): NewPurchase | null {
+  const line = splitIngredientLine(text.trim());
+  const name = displayName(line.name).trim();
+  if (!name) return null;
+  let { amount, unit } = parseAmount(line.amount_text);
+  if (amount !== null && unit && TO_BASE[unit]) {
+    amount = round(amount * TO_BASE[unit][1]);
+    unit = TO_BASE[unit][0];
+  }
+  if (amount !== null && amount <= 0) amount = null;
+  if (amount === null) unit = null;
+  return { client_id: newId(), household_id: householdId, meal_plan_id: null, item_key: purchaseKey({ name, unit }), name, amount, unit, bought_by: memberId, source: "vorrat" };
 }
 
 /**
  * Zeile abhaken: Käufe über genau die offene Menge, verteilt auf die beteiligten Gerichte.
  * Deckt der Vorrat einen Teil, wird nur der Rest gekauft.
  */
-export function purchasesFor(item: OpenItem, householdId: string, memberId: string | null, newId: () => string): NewPurchase[] {
+export function purchasesFor(item: OpenItem, householdId: string, memberId: string | null, newId: () => string, source: "kauf" | "vorrat" = "kauf"): NewPurchase[] {
   const out: NewPurchase[] = [];
   for (const row of item.rows) {
     let left = row.amount;
@@ -265,7 +300,7 @@ export function purchasesFor(item: OpenItem, householdId: string, memberId: stri
       const amount = left === null || part.amount === null ? null : round(Math.min(part.amount, left));
       if (amount !== null && amount <= 0) continue;
       if (left !== null && amount !== null) left = round(left - amount);
-      out.push({ client_id: newId(), household_id: householdId, meal_plan_id: part.entryId, item_key: row.key, name: row.name, amount, unit: row.unit, bought_by: memberId });
+      out.push({ client_id: newId(), household_id: householdId, meal_plan_id: part.entryId, item_key: row.key, name: row.name, amount, unit: row.unit, bought_by: memberId, source });
     }
   }
   return out;

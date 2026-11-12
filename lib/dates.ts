@@ -24,6 +24,11 @@ export function todayBerlin(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
+/** „12. Nov.“ für einen Zeitpunkt (ISO), nach deutscher Zeit */
+export function formatStampDE(iso: string): string {
+  return formatDateDE(todayBerlin(new Date(iso)), { day: "numeric", month: "short" });
+}
+
 export function addDays(date: string, days: number): string {
   const d = parseISODate(date);
   d.setUTCDate(d.getUTCDate() + days);

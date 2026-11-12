@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysFrom, startLabel } from "../lib/dates";
+import { daysFrom, formatStampDE, startLabel } from "../lib/dates";
 
 describe("Planansicht ab heute", () => {
   const today = "2026-10-25"; // Sonntag
@@ -12,5 +12,13 @@ describe("Planansicht ab heute", () => {
     expect(startLabel("2026-10-26", today)).toBe("Ab morgen");
     expect(startLabel("2026-11-01", today)).toBe("Ab Sonntag, 1. November");
     expect(startLabel("2026-10-18", today)).toBe("Ab Sonntag, 18. Oktober");
+  });
+});
+
+describe("Zeitpunkte", () => {
+  it("zeigt den Tag nach deutscher Zeit, auch kurz nach Mitternacht", () => {
+    // 23:15 UTC am 12. ist in Berlin schon der 13.
+    expect(formatStampDE("2026-11-12T23:15:00Z")).toBe("13. Nov.");
+    expect(formatStampDE("2026-11-12T12:00:00Z")).toBe("12. Nov.");
   });
 });

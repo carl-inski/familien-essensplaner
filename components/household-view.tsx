@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AiUsageSection } from "@/components/ai-status";
 import { useApp } from "@/components/app-data";
-import { PantrySection } from "@/components/pantry";
+import { PantrySection, StockSection } from "@/components/pantry";
 import { IconCheck, IconChevronRight, IconCopy, IconEdit, IconHistory, IconLogout, IconPlus, IconShare, IconUpload } from "@/components/icons";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { CreateFamilyForm, JoinFamilyForm, enterFamily, inviteUrl, prettyCode } from "@/components/family-forms";
@@ -229,6 +229,8 @@ export function HouseholdView({ inSheet = false }: { inSheet?: boolean }) {
             </Link>
           </div>
         </Section>
+
+        <StockSection />
 
         <PantrySection />
 
