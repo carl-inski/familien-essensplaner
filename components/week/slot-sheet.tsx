@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { DetailLink } from "@/components/detail-nav";
 import { useState } from "react";
+import { PlanChangeSheet, type ChangeIntent } from "./plan-change";
 import { useApp } from "@/components/app-data";
 import { IconChevronRight, IconDice, IconSparkles, IconTrash } from "@/components/icons";
 import { Sheet } from "@/components/sheet";
@@ -48,6 +49,9 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
   const recipe = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
   const present = presentMembers(members, attendance, date, meal);
   const book = recipe?.cookbook_id ? cookbooksById.get(recipe.cookbook_id) : null;
+  const [changing, setChanging] = useState<ChangeIntent | null>(null);
+  // Verschieben und Auswärts: nur für geplante Gerichte ab heute
+  const movable = !!entry && (!!recipe || !!entry.leftover_of) && date >= today && entry.status !== "ausgefallen";
   const [note, setNote] = useState(entry?.note ?? "");
   const [noteFor, setNoteFor] = useState(entry?.note);
   if (noteFor !== entry?.note) {
@@ -97,6 +101,12 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
             <button className="btn btn-tinted btn-sm pressable" onClick={() => onChangeRecipe(slot)}>{recipe ? "Ändern" : "Rezept wählen"}</button>
             <button className="btn btn-gray btn-sm pressable" onClick={() => onSuggest(slot)}><IconSparkles size={16} /> Vorschlag</button>
             {date >= today && <Link className="btn btn-gray btn-sm pressable" href={`/entscheiden?datum=${date}&mahlzeit=${meal}`}><IconDice size={16} /> Ausspielen</Link>}
+            {movable && (
+              <>
+                <button className="btn btn-gray btn-sm pressable" onClick={() => setChanging({ kind: "verschieben", from: slot })}>Verschieben</button>
+                <button className="btn btn-gray btn-sm pressable" onClick={() => setChanging({ kind: "auswaerts", slot })}>Auswärts</button>
+              </>
+            )}
             {(recipe || entry?.leftover_of) && (
               <button className="btn btn-gray btn-sm pressable" style={{ color: "var(--red)" }} onClick={() => save({ recipe_id: null, leftover_of: null, status: "geplant", servings_override: null })}>
                 <IconTrash size={16} /> Entfernen
@@ -214,6 +224,8 @@ function SlotContent({ slot, week, onChangeRecipe, onSuggest }: Omit<Props, "slo
           </Section>
         </>
       )}
+
+      <PlanChangeSheet intent={changing} onClose={() => setChanging(null)} onDone={() => { setChanging(null); void week.reload(); }} />
 
       <Section title="Notiz">
         <textarea

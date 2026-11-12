@@ -125,7 +125,8 @@ export function useShopping() {
     let alive = true;
     fetchAll().then((d) => alive && apply(d));
     const channel = sb
-      .channel("ep-shopping")
+      // eigener Name je Nutzung: Liste, Planänderung und KI-Karte können gleichzeitig offen sein
+      .channel(`ep-shopping-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ep_meal_plan" }, () => void reload())
       .on("postgres_changes", { event: "*", schema: "public", table: "ep_attendance" }, () => void reload())
       .on("postgres_changes", { event: "*", schema: "public", table: "ep_shopping_extra" }, () => void reload())

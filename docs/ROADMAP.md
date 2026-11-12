@@ -8,10 +8,10 @@ Reihenfolge nach [gnocchi-startup-bericht.md](gnocchi-startup-bericht.md): erst 
 | Mehrere Familien, Einladungscode | gebaut | behalten |
 | Rezepte, Ordner, Tags, Import Link/Foto | vorhanden | behalten |
 | Abstimmspiele | gebaut | behalten, kein fünftes Spiel |
-| Einkauf passt sich an Planänderung an | **Schritt 1** | Käufe je Gericht und Zutat (`ep_purchases`, `lib/shopping.ts`) |
-| Gemeinsames Abhaken, Rückgängig, Offline-Status | **Schritt 1** | |
-| „Heute auswärts“, Verschieben mit Vorschau | Schritt 2 | eine Karte „Was ändert sich?“ für Mensch und KI |
-| KI: Plan per Text ändern | Schritt 2 | nutzt dieselbe Vorschau, Server prüft neu |
+| Einkauf passt sich an Planänderung an | **Schritt 1**, gebaut | Käufe je Gericht und Zutat (`ep_purchases`, `lib/shopping.ts`) |
+| Gemeinsames Abhaken, Rückgängig, Offline-Status | **Schritt 1**, gebaut | |
+| „Heute auswärts“, Verschieben mit Vorschau | **Schritt 2**, gebaut | eine Karte „Was ändert sich?“ für Mensch und KI (`lib/plan-change.ts`, `ep_plan_move`) |
+| KI: Plan per Text ändern | **Schritt 2**, gebaut, mit echtem Modell ungetestet | Werkzeug `plan_aendern`, dieselbe Vorschau; offen: Testset mit 30–50 Fällen, sobald ein KI-Schlüssel eingerichtet ist |
 | Vorrat | Schritt 3 | „Ist noch da“ sichtbar; Scanner, Ablaufdaten später |
 | Launch-Fundament | Schritt 4 | eigenes Supabase-Projekt, Landingpage, Messung, Rechtliches |
 | Wrapped | Schritt 5 | drei belegte Fakten nach vier Wochen |
