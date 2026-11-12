@@ -129,7 +129,7 @@ const SPOON_ML: Record<string, number> = { EL: 15, TL: 5 };
  * - ohne Menge („Olivenöl“) hängt sich an eine Angabe mit Menge an
  * - was sich nicht umrechnen lässt, steht nebeneinander: „16 + 1 Bund Frühlingszwiebeln“
  */
-function mergeUnits(items: ShoppingItem[]): ShoppingItem[] {
+export function mergeUnits(items: ShoppingItem[]): ShoppingItem[] {
   const groups = new Map<string, ShoppingItem[]>();
   for (const raw of items) {
     const clove = raw.amount !== null && raw.unit === null ? raw.name.match(/^(.+?)zehen?$/iu) : null;

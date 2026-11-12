@@ -73,8 +73,9 @@ function SwipeDeck({ deck, get, onSubmit }: { deck: string[]; get: Lookup; onSub
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-5">
-      <div className="relative aspect-[3/4] w-full">
+    <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
+      {/* Höhe begrenzt: Karte, Zähler und Knöpfe passen über die Tableiste, auch auf kleinen Handys */}
+      <div className="relative w-full" style={{ height: "min(26rem, calc(100dvh - 25rem))", minHeight: "14rem" }}>
         {next && (
           <div key={next} className="card absolute inset-0 overflow-hidden" style={{ transform: "scale(0.94) translateY(14px)", opacity: 0.7 }} aria-hidden>
             <Picture recipe={get(next)} className="h-full w-full text-5xl" />

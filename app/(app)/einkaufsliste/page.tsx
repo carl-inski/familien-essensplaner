@@ -1,8 +1,9 @@
 "use client";
 
-// Einkauf über Wochengrenzen: alle kommenden Gerichte, für die noch nicht
-// eingekauft wurde. „Einkauf erledigt“ merkt sich das pro Gericht, damit beim
-// nächsten Einkauf nichts doppelt gekauft wird.
+// Einkauf über Wochengrenzen: was für die kommenden Gerichte noch fehlt.
+// Jeder Haken ist ein Kauf in der Datenbank (ep_purchases) – alle im Laden sehen
+// denselben Stand, und ändert sich der Plan, bleibt nur die Differenz offen
+// (Rechnung in lib/shopping.ts).
 
 import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/app-data";
@@ -21,30 +22,30 @@ import { knusprLinks, knusprPrompt } from "@/lib/knuspr";
 import { WEEKDAY_SHORT, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry";
-import { buildShoppingList, groupByAisle, needsShopping, servingsFor } from "@/lib/planning";
+import { buildShoppingList, servingsFor } from "@/lib/planning";
+import { extraKey, isShoppable, purchasesFor, shoppingState, type BoughtItem, type NewPurchase, type OpenItem, type StockItem } from "@/lib/shopping";
 import type { ShoppingItem } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 import { keepCompoundTogether } from "@/lib/text";
 import { useIsDesktop } from "@/components/use-media";
 import { haptic } from "@/lib/haptics";
 
-// Abhak-Status während des Einkaufs nur auf diesem Gerät
-function readChecked(key: string): Set<string> {
+// „Einkauf erledigt“ räumt die durchgestrichenen Zeilen weg – gemerkt je Gerät
+function readCleared(key: string): string {
   try {
-    return new Set(JSON.parse(localStorage.getItem(key) ?? "[]"));
+    return localStorage.getItem(key) ?? "";
   } catch {
-    return new Set();
+    return "";
   }
 }
-function writeChecked(key: string, set: Set<string>) {
+function writeCleared(key: string, at: string) {
   try {
-    localStorage.setItem(key, JSON.stringify([...set]));
+    localStorage.setItem(key, at);
   } catch {
-    // privater Modus – Abhaken gilt dann nur bis zum Neuladen
+    // privater Modus – gilt dann nur bis zum Neuladen
   }
 }
 
-const itemKey = (i: Pick<ShoppingItem, "name" | "unit">) => `${i.name}|${i.unit ?? ""}`;
 // Kurzer Fingerabdruck der Liste: neue Bring!-URL, sobald sich etwas ändert (Bring! merkt sich Links)
 function listVersion(texts: string[]): string {
   let h = 5381;
@@ -56,10 +57,16 @@ const dayShort = (d: string) => `${WEEKDAY_SHORT[weekdayIndex(d)]} ${formatDateD
 export default function ShoppingPage() {
   const { today, sb, household, me, recipesById, members } = useApp();
   const toast = useToast();
-  const { plan, attendance, extras, loaded, reload } = useShopping();
+  const { plan, attendance, extras, purchases, sync, loaded, reload, buy, undo } = useShopping();
   const pantry = usePantry();
-  const storageKey = `einkauf-${household.id}`;
-  const [checked, setChecked] = useState<Set<string>>(() => readChecked(storageKey));
+  const storageKey = `einkauf-erledigt-${household.id}`;
+  const [clearedAt, setClearedAt] = useState(() => readCleared(storageKey));
+  // „Jetzt“ für „vor Kurzem abgehakt“ – jede Minute frisch
+  const [now, setNow] = useState(() => new Date().toISOString());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date().toISOString()), 60000);
+    return () => clearInterval(t);
+  }, []);
   // Bis zu welchem Tag eingekauft wird (null = alle) und einzeln abgewählte Gerichte
   const [until, setUntil] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
@@ -72,55 +79,87 @@ export default function ShoppingPage() {
   // Welcher Listenstand gerade öffentlich für Bring! bereitliegt
   const [savedVersion, setSavedVersion] = useState<string | null>(null);
 
-  const open = useMemo(
-    () =>
-      plan
-        .filter((p) => needsShopping(p, today) && recipesById.has(p.recipe_id!))
-        .sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal))),
+  const dishes = useMemo(
+    () => plan.filter((p) => isShoppable(p, today) && recipesById.has(p.recipe_id!)).sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal))),
     [plan, today, recipesById],
   );
-  const shopped = useMemo(
-    () =>
-      plan
-        .filter((p) => p.shopped_at && p.recipe_id && !p.leftover_of && p.status === "geplant" && recipesById.has(p.recipe_id))
-        .sort((a, b) => slotKey(a.date, a.meal).localeCompare(slotKey(b.date, b.meal))),
-    [plan, recipesById],
+  // Erst ohne Auswahl rechnen: welche Gerichte sind schon ganz eingekauft?
+  const overall = useMemo(
+    () => shoppingState({ plan, recipes: recipesById, members, attendance, pantry: pantry.set, purchases, today, now }),
+    [plan, recipesById, members, attendance, pantry.set, purchases, today, now],
   );
+  const open = useMemo(() => dishes.filter((p) => !overall.covered.has(p.id)), [dishes, overall]);
+  const shopped = useMemo(() => dishes.filter((p) => overall.covered.has(p.id)), [dishes, overall]);
   const days = useMemo(() => [...new Set(open.map((p) => p.date))], [open]);
   const included = useMemo(() => open.filter((p) => !excluded.has(p.id) && (!until || p.date <= until)), [open, excluded, until]);
   const includedIds = useMemo(() => new Set(included.map((p) => p.id)), [included]);
 
+  const state = useMemo(
+    () => shoppingState({ plan, recipes: recipesById, members, attendance, pantry: pantry.set, purchases, today, now, include: (e) => includedIds.has(e.id) }),
+    [plan, recipesById, members, attendance, pantry.set, purchases, today, now, includedIds],
+  );
+  const items = state.open;
+  const clientIdsOf = (ids: string[]) => purchases.filter((p) => ids.includes(p.id)).map((p) => p.client_id);
+  // Durchgestrichen bleibt, was seit dem letzten „Einkauf erledigt“ abgehakt wurde
+  const bought = useMemo(
+    () => state.bought.filter((b) => purchases.some((p) => b.purchaseIds.includes(p.id) && p.bought_at > clearedAt)),
+    [state.bought, purchases, clearedAt],
+  );
+  const groups = useMemo(() => {
+    const byAisle = new Map<string, { open: OpenItem[]; done: BoughtItem[] }>();
+    const slot = (aisle: string) => byAisle.get(aisle) ?? byAisle.set(aisle, { open: [], done: [] }).get(aisle)!;
+    for (const i of items) slot(i.aisle).open.push(i);
+    for (const b of bought) slot(b.aisle).done.push(b);
+    return [...byAisle.entries()];
+  }, [items, bought]);
   const all = useMemo(
     () => buildShoppingList(plan, recipesById, members, attendance, pantry.set, (e) => includedIds.has(e.id)),
     [plan, recipesById, members, attendance, pantry.set, includedIds],
   );
-  const items = useMemo(() => all.filter((i) => !i.pantry), [all]);
   const atHome = useMemo(() => [...new Set(all.filter((i) => i.pantry).flatMap((i) => pantryEntriesFor(i.name, pantry.set)))].sort((a, b) => a.localeCompare(b, "de")), [all, pantry.set]);
-  const groups = useMemo(() => groupByAisle(items), [items]);
   const missingIngredients = included.filter((p) => !(recipesById.get(p.recipe_id!)?.ep_recipe_ingredients ?? []).length);
 
-  // Für Bring!, Knuspr und „Text“: Zutaten plus „Noch offen“ – ohne das schon Abgehakte
+  const extraDone = useMemo(() => new Map(purchases.filter((p) => p.item_key.startsWith("x:")).map((p) => [p.item_key, p.client_id])), [purchases]);
+  const uncheckedExtras = extras.filter((x) => !extraDone.has(extraKey(x.id)));
+
+  // Für Bring!, Knuspr und „Text“: was noch fehlt, plus „Noch offen“ – ohne das schon Abgehakte
   const exportItems: ShoppingItem[] = useMemo(
     () => [
       ...extras
-        .filter((x) => !checked.has(`x:${x.id}`))
+        .filter((x) => !extraDone.has(extraKey(x.id)))
         .map((x) => ({ name: x.text, amount: null, unit: null, text: x.text, aisle: x.aisle ?? aisleFor(x.text), recipes: [] })),
-      ...items.filter((i) => !checked.has(itemKey(i))),
+      ...items.map(({ name, amount, unit, text, aisle, recipes }) => ({ name, amount, unit, text, aisle, recipes })),
     ],
-    [extras, items, checked],
+    [extras, items, extraDone],
   );
   const total = exportItems.length;
   const version = useMemo(() => listVersion(exportItems.map((i) => i.text)), [exportItems]);
   const bringReady = !!slug && !!total && savedVersion === version;
 
-  const toggle = (key: string) =>
-    setChecked((cur) => {
-      const next = new Set(cur);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      writeChecked(storageKey, next);
-      return next;
-    });
+  const newId = () => crypto.randomUUID();
+
+  /** Zeile abhaken: als Kauf für die beteiligten Gerichte sichern */
+  function check(item: OpenItem) {
+    haptic("light");
+    const ids = buy(purchasesFor(item, household.id, me.id, newId));
+    toast({ text: `${item.name} abgehakt`, action: { label: "Rückgängig", run: () => undo(ids) } });
+  }
+
+  function toggleExtra(x: ShoppingExtra) {
+    const key = extraKey(x.id);
+    const done = extraDone.get(key);
+    if (done) return undo([done]);
+    haptic("light");
+    buy([{ client_id: newId(), household_id: household.id, meal_plan_id: null, item_key: key, name: x.text, amount: null, unit: null, bought_by: me.id }]);
+  }
+
+  /** „Ist noch da“ stimmt nicht mehr: Käufe verwerfen, damit die Zutat wieder auf der Liste landet */
+  function usedUp(item: StockItem) {
+    const rows = purchases.filter((p) => item.purchaseIds.includes(p.id));
+    undo(rows.map((p) => p.client_id));
+    const again: NewPurchase[] = rows.map(({ household_id, meal_plan_id, item_key, name, amount, unit, bought_by }) => ({ client_id: newId(), household_id, meal_plan_id, item_key, name, amount, unit, bought_by }));
+    toast({ text: `${item.name}: nicht mehr da`, action: { label: "Rückgängig", run: () => void buy(again) } });
+  }
 
   // Snapshot für die öffentliche Bring!-Seite aktuell halten
   useEffect(() => {
@@ -157,46 +196,52 @@ export default function ShoppingPage() {
     await reload();
   }
 
-  const uncheckedItems = items.filter((i) => !checked.has(itemKey(i)));
-  const uncheckedExtras = extras.filter((x) => !checked.has(`x:${x.id}`));
+  const uncheckedItems = items;
 
-  /** Einkauf abschließen: Gerichte als eingekauft merken, Fehlendes ggf. auf „Noch offen“ */
+  /**
+   * Einkauf abschließen. keepMissing: Was nicht abgehakt ist, bleibt einfach offen.
+   * Sonst gilt alles als gekauft („habe alles, nur nicht abgehakt“).
+   */
   async function finish(keepMissing: boolean) {
     setBusy(true);
-    const ids = included.map((p) => p.id);
+    const boughtIds = keepMissing ? [] : buy(items.flatMap((i) => purchasesFor(i, household.id, me.id, newId)));
+    const doneExtras = keepMissing ? extras.filter((x) => extraDone.has(extraKey(x.id))) : extras;
+    const extraPurchases = doneExtras.map((x) => extraDone.get(extraKey(x.id))).filter((id): id is string => !!id);
+    // Für die bisherige App-Version: ganz eingekaufte Gerichte auch dort als erledigt markieren
+    const ids = (keepMissing ? dishes.filter((p) => state.covered.has(p.id)) : [...included, ...shopped]).filter((p) => !p.shopped_at).map((p) => p.id);
     const stamp = new Date().toISOString();
-    const keptExtras = keepMissing ? uncheckedExtras : [];
-    const doneExtras = extras.filter((x) => !keptExtras.includes(x));
-    const carry = keepMissing ? uncheckedItems.map((i) => ({ household_id: household.id, member_id: me.id, text: i.text, aisle: i.aisle, carried: true })) : [];
 
-    const [upd, ins, del] = await Promise.all([
+    undo(extraPurchases);
+    const [upd, del] = await Promise.all([
       ids.length ? sb.from("ep_meal_plan").update({ shopped_at: stamp }).in("id", ids) : Promise.resolve({ error: null }),
-      carry.length ? sb.from("ep_shopping_extra").insert(carry).select("id") : Promise.resolve({ data: [], error: null }),
       doneExtras.length ? sb.from("ep_shopping_extra").delete().in("id", doneExtras.map((x) => x.id)) : Promise.resolve({ error: null }),
     ]);
     setBusy(false);
     setFinishOpen(false);
-    const error = upd.error ?? ins.error ?? del.error;
+    const error = upd.error ?? del.error;
     if (error) {
       toast({ text: error.message, tone: "error" });
       await reload();
       return;
     }
     haptic("success");
-    const carriedIds = ((ins.data ?? []) as { id: string }[]).map((r) => r.id);
-    setChecked(new Set());
-    writeChecked(storageKey, new Set());
+    const before = clearedAt;
+    const left = keepMissing ? items.length : 0;
+    setClearedAt(stamp);
+    writeCleared(storageKey, stamp);
     setUntil(null);
     setExcluded(new Set());
     await reload();
     toast({
-      text: ids.length ? `Eingekauft für ${ids.length} ${ids.length === 1 ? "Gericht" : "Gerichte"}` : "Einkauf erledigt",
+      text: left ? `Erledigt – ${left} ${left === 1 ? "Posten bleibt" : "Posten bleiben"} offen` : "Einkauf erledigt",
       action: {
         label: "Rückgängig",
         run: async () => {
+          undo(boughtIds);
+          setClearedAt(before);
+          writeCleared(storageKey, before);
           await Promise.all([
             ids.length ? sb.from("ep_meal_plan").update({ shopped_at: null }).in("id", ids) : null,
-            carriedIds.length ? sb.from("ep_shopping_extra").delete().in("id", carriedIds) : null,
             doneExtras.length
               ? sb.from("ep_shopping_extra").insert(doneExtras.map((x) => ({ household_id: household.id, member_id: me.id, text: x.text, aisle: x.aisle, carried: x.carried })))
               : null,
@@ -207,7 +252,9 @@ export default function ShoppingPage() {
     });
   }
 
+  /** Gericht zurück auf die Liste: seine Käufe verwerfen */
   async function backOnList(id: string) {
+    undo(purchases.filter((p) => p.meal_plan_id === id).map((p) => p.client_id));
     const { error } = await sb.from("ep_meal_plan").update({ shopped_at: null }).eq("id", id);
     if (error) toast({ text: error.message, tone: "error" });
     await reload();
@@ -217,6 +264,8 @@ export default function ShoppingPage() {
   const knuspr = knusprPrompt(exportItems.map((i) => i.text));
   const subtitle = !loaded
     ? "Lädt …"
+    : sync === "offline"
+      ? "Offline – deine Haken werden nachgeholt"
     : open.length
       ? `${included.length} von ${open.length} Gerichten · ${total} Posten`
       : extras.length
@@ -272,7 +321,7 @@ export default function ShoppingPage() {
       </PageHeader>
 
       <div className="page-wide">
-        {loaded && !open.length && !extras.length && !shopped.length ? (
+        {loaded && !open.length && !extras.length && !shopped.length && !state.stock.length ? (
           <Empty title="Nichts einzukaufen" text="Plane Gerichte in der Woche – ihre Zutaten landen automatisch hier, passend zur Zahl der Esser. Auch Gerichte der nächsten Wochen." />
         ) : (
           <div className="lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
@@ -337,7 +386,7 @@ export default function ShoppingPage() {
               )}
 
               {shopped.length > 0 && (
-                <Section title="Schon eingekauft" footer="Diese Gerichte stehen nicht mehr auf der Liste. Wird ein Gericht im Plan getauscht, kommt es von selbst zurück.">
+                <Section title="Schon eingekauft" footer="Für diese Gerichte ist alles da. Kommen Esser dazu, steht nur die Differenz wieder auf der Liste.">
                   <ul className="group">
                     {shopped.map((p) => (
                       <li key={p.id} className="row">
@@ -360,11 +409,10 @@ export default function ShoppingPage() {
               <Section title="Noch offen" footer={extras.some((x) => x.carried) ? "Beim letzten Einkauf nicht abgehakt – oder von Hand dazugeschrieben." : undefined}>
                 <ul className="group">
                   {extras.map((x) => {
-                    const key = `x:${x.id}`;
-                    const done = checked.has(key);
+                    const done = extraDone.has(extraKey(x.id));
                     return (
                       <li key={x.id} className="flex items-stretch">
-                        <button className="row pressable min-w-0 flex-1" onClick={() => toggle(key)} aria-pressed={done}>
+                        <button className="row pressable min-w-0 flex-1" onClick={() => toggleExtra(x)} aria-pressed={done}>
                           <CheckDot done={done} />
                           <span className="t-sub min-w-0 flex-1 text-left" style={{ opacity: done ? 0.45 : 1, textDecoration: done ? "line-through" : undefined }}>{x.text}</span>
                         </button>
@@ -397,32 +445,56 @@ export default function ShoppingPage() {
                   footer={gi === 0 && !desktop ? "Tipp: Nach links wischen oder lange drücken, wenn du etwas immer zu Hause hast – dann steht es nicht mehr auf der Liste." : undefined}
                 >
                   <ul className="group">
-                    {list.map((i) => {
-                      const key = itemKey(i);
-                      const done = checked.has(key);
-                      return (
-                        <SwipeRow
-                          key={key}
-                          desktop={desktop}
-                          actionLabel={`${i.name}: immer zu Hause`}
-                          actionIcon={<IconHome size={19} />}
-                          onAction={() => void keepAtHome(i.name)}
-                        >
-                          {({ onClick }) => (
-                            <button className="row pressable min-w-0 flex-1" onClick={onClick(() => toggle(key))} aria-pressed={done}>
-                              <CheckDot done={done} />
-                              <span className="min-w-0 flex-1" style={{ opacity: done ? 0.45 : 1 }}>
-                                <span className="t-sub block" style={{ textDecoration: done ? "line-through" : undefined }}>{keepCompoundTogether(i.text)}</span>
-                                <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>{i.recipes.join(", ")}</span>
+                    {list.open.map((i) => (
+                      <SwipeRow
+                        key={i.key}
+                        desktop={desktop}
+                        actionLabel={`${i.name}: immer zu Hause`}
+                        actionIcon={<IconHome size={19} />}
+                        onAction={() => void keepAtHome(i.name)}
+                      >
+                        {({ onClick }) => (
+                          <button className="row pressable min-w-0 flex-1" onClick={onClick(() => check(i))} aria-pressed={false}>
+                            <CheckDot done={false} />
+                            <span className="min-w-0 flex-1">
+                              <span className="t-sub block">{keepCompoundTogether(i.text)}</span>
+                              <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>
+                                {i.usedStock ? "Rest ist noch da · " : ""}{i.recipes.join(", ")}
                               </span>
-                            </button>
-                          )}
-                        </SwipeRow>
-                      );
-                    })}
+                            </span>
+                          </button>
+                        )}
+                      </SwipeRow>
+                    ))}
+                    {list.done.map((b) => (
+                      <li key={`done-${b.key}`}>
+                        <button className="row pressable w-full" onClick={() => undo(clientIdsOf(b.purchaseIds))} aria-pressed aria-label={`${b.text} – abgehakt, antippen zum Zurücknehmen`}>
+                          <CheckDot done />
+                          <span className="min-w-0 flex-1 text-left" style={{ opacity: 0.45 }}>
+                            <span className="t-sub block" style={{ textDecoration: "line-through" }}>{keepCompoundTogether(b.text)}</span>
+                            {b.by && b.by !== me.id && (
+                              <span className="t-caption block truncate" style={{ color: "var(--label-2)" }}>von {members.find((m) => m.id === b.by)?.name ?? "jemandem"}</span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 </Section>
               ))}
+
+              {state.stock.length > 0 && (
+                <Section title="Ist noch da" footer="Gekauft, aber gerade für kein Gericht gebraucht – weil eins ausgefallen ist oder weniger mitessen. Zählt beim nächsten passenden Gericht mit.">
+                  <ul className="group">
+                    {state.stock.map((x) => (
+                      <li key={x.key} className="row">
+                        <span className="t-sub min-w-0 flex-1">{keepCompoundTogether(x.text)}</span>
+                        <button className="btn-plain t-footnote pressable font-semibold" onClick={() => usedUp(x)} aria-label={`${x.name} ist nicht mehr da`}>Nicht mehr da</button>
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+              )}
 
               {atHome.length > 0 && (
                 <Section title="Immer zu Hause" footer="Steht nicht auf der Liste und geht nicht an Bring!. Antippen, um es wieder einzukaufen.">
@@ -447,7 +519,7 @@ export default function ShoppingPage() {
                 </button>
                 <p className="t-footnote mt-2 px-4 text-center" style={{ color: "var(--label-2)" }}>
                   {included.length
-                    ? `${included.length === 1 ? "Das ausgewählte Gericht verschwindet" : `Die ${included.length} ausgewählten Gerichte verschwinden`} danach von der Liste – beim nächsten Einkauf kaufst du nichts doppelt.`
+                    ? "Räumt Abgehaktes weg. Jeder Haken ist sofort für alle gesichert – auch ohne diesen Knopf."
                     : "Abgehakte Posten verschwinden danach von der Liste."}
                 </p>
               </div>
@@ -462,7 +534,7 @@ export default function ShoppingPage() {
         </p>
         <p className="t-sub mt-2">{[...uncheckedExtras.map((x) => x.text), ...uncheckedItems.map((i) => i.text)].slice(0, 12).join(" · ")}{uncheckedItems.length + uncheckedExtras.length > 12 ? " …" : ""}</p>
         <div className="mt-5 flex flex-col gap-2">
-          <button className="btn btn-primary pressable" disabled={busy} onClick={() => finish(true)}>Fehlendes auf der Liste lassen</button>
+          <button className="btn btn-primary pressable" disabled={busy} onClick={() => finish(true)}>Fehlendes bleibt auf der Liste</button>
           <button className="btn btn-gray pressable" disabled={busy} onClick={() => finish(false)}>Habe alles, nur nicht abgehakt</button>
         </div>
       </Sheet>
