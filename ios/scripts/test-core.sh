@@ -1,6 +1,8 @@
 #!/bin/sh
 # Testet die Logik (GnocchiCore) auf dem Mac – auch ohne volles Xcode.
 set -e
+# Xcode ohne „sudo xcode-select“ verwenden, wenn es am Standardort liegt
+[ -d /Applications/Xcode.app ] && export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 cd "$(dirname "$0")/../Packages/GnocchiCore"
 if xcodebuild -version >/dev/null 2>&1; then
   swift test
