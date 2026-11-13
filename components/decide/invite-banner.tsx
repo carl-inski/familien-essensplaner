@@ -10,7 +10,6 @@ import { Suspense, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { IconClose } from "@/components/icons";
 import { GAMES } from "@/lib/decide";
-import { MEAL_LABEL } from "@/lib/meals";
 import { useOpenSessions } from "./use-open-sessions";
 
 export function DecideInvite() {
@@ -51,7 +50,7 @@ function Banner() {
             <span className="text-2xl" aria-hidden>{game?.emoji ?? "🎲"}</span>
             <span className="min-w-0 flex-1">
               <span className="t-sub block truncate font-semibold">{host} will entscheiden</span>
-              <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>{game?.title} · {MEAL_LABEL[invite.meal]}essen</span>
+              <span className="t-footnote block truncate" style={{ color: "var(--label-2)" }}>{game?.title} · Steig ein</span>
             </span>
             <Link href={`/entscheiden?s=${invite.id}`} className="btn btn-primary btn-sm pressable">Mitspielen</Link>
             <button className="pressable flex h-8 w-8 items-center justify-center rounded-full" aria-label="Hinweis schließen" onClick={() => setDismissed((d) => [...d, invite.id])}>

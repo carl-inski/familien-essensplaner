@@ -32,7 +32,7 @@ function Login() {
   const rawNext = params.get("next") ?? "/woche";
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/woche";
   // Wer über einen Einladungslink kommt, hat meist noch kein Konto
-  const [mode, setMode] = useState<Mode>(next.startsWith("/beitreten") ? "neu" : "anmelden");
+  const [mode, setMode] = useState<Mode>(next.startsWith("/beitreten") || params.get("konto") === "neu" ? "neu" : "anmelden");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

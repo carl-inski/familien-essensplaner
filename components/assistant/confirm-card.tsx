@@ -10,7 +10,9 @@ import { BookCover } from "@/components/book";
 import { DetailLink } from "@/components/detail-nav";
 import { IconBook, IconCalendar, IconCheck, IconEdit, IconNote, IconPeople, IconTrash } from "@/components/icons";
 import { DietIcon } from "@/components/ui";
-import { AnwesenheitInput, BuchInput, EinplanenInput, GerichteEntfernenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, type WriteTool } from "@/lib/ai/assistant-schemas";
+import { ChangeLines, usePlanChange } from "@/components/week/plan-change";
+import { AnwesenheitInput, BuchInput, EinplanenInput, GerichteEntfernenInput, EntwurfInput, MehrereEinplanenInput, NotizInput, PlanAendernInput, type WriteTool } from "@/lib/ai/assistant-schemas";
+import type { PlanChange } from "@/lib/plan-change";
 import { extractToDraft } from "@/lib/ai/schemas";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { stashDraft } from "@/lib/draft-handoff";
@@ -62,6 +64,8 @@ export function ConfirmCard({ tool, part, respond }: { tool: WriteTool; part: To
       return <BookCard input={part.input} respond={respond} />;
     case "gerichte_entfernen":
       return <RemoveCard input={part.input} respond={respond} />;
+    case "plan_aendern":
+      return <ChangeCard input={part.input} respond={respond} />;
   }
 }
 
@@ -497,6 +501,45 @@ function BookCard({ input, respond }: { input: unknown; respond: Respond }) {
           {similar && <p className="t-footnote mt-1" style={{ color: "var(--accent)" }}>Ähnlich: „{similar.title}“ steht schon im Regal.</p>}
         </div>
       </div>
+    </Shell>
+  );
+}
+
+/** Verschieben oder Auswärts: dieselbe Vorschau wie im Wochenplan */
+function ChangeCard({ input, respond }: { input: unknown; respond: Respond }) {
+  const change = useMemo<PlanChange | null>(() => {
+    const parsed = PlanAendernInput.safeParse(input);
+    if (!parsed.success) return null;
+    const d = parsed.data;
+    const from = { date: d.datum, meal: d.mahlzeit };
+    if (d.aktion === "auswaerts") return { kind: "auswaerts", slot: from };
+    return d.ziel_datum ? { kind: "verschieben", from, to: { date: d.ziel_datum, meal: d.ziel_mahlzeit ?? d.mahlzeit } } : null;
+  }, [input]);
+  const { preview, commit } = usePlanChange(change);
+  const { busy, run } = useAction(respond);
+
+  if (!change) return <Invalid text="Der Vorschlag war unvollständig." respond={respond} />;
+  if (preview?.problem) return <Invalid text={preview.problem} respond={respond} />;
+  return (
+    <Shell
+      icon={<IconCalendar size={16} />}
+      title={change.kind === "auswaerts" ? "Auswärts essen" : "Gericht verschieben"}
+      actions={
+        <Actions
+          busy={busy || !preview}
+          label="Übernehmen"
+          onNo={() => respond({ ok: false, meldung: "Nicht geändert" })}
+          onYes={() =>
+            run(async () => {
+              const error = await commit();
+              if (error) return { ok: false, meldung: error };
+              return { ok: true, meldung: [...(preview?.plan ?? []), ...(preview?.shopping ?? [])].join(" ") };
+            })
+          }
+        />
+      }
+    >
+      <ChangeLines preview={preview} />
     </Shell>
   );
 }

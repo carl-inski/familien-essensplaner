@@ -253,3 +253,70 @@ describe("Rundenabgaben", () => {
     expect(roundSubmissions([], 0)).toBeNull();
   });
 });
+
+describe("Tellerjagd", () => {
+  it("nach dem Aussieben fliegen höchstens sechs Gerichte", () => {
+    const next = advance("jagd", initialState("jagd", ids(SIEVE_SIZE)), [{ out: [] }], ids(SIEVE_SIZE), 1, 0);
+    expect(next.done).toBe(false);
+    if (!next.done) expect(next.state).toMatchObject({ phase: "jagd" });
+    if (!next.done && next.state.phase === "jagd") expect(next.state.options).toHaveLength(6);
+  });
+
+  it("es gewinnt, was alle geschnappt haben, nicht der Rekord eines Einzelnen", () => {
+    const state: DecideState = { phase: "jagd", options: ["a", "b", "c"] };
+    const subs = [{ caught: { a: 4, b: 1 } }, { caught: { a: 4, b: 1 } }, { caught: { b: 1, c: 4 } }];
+    const r = advance("jagd", state, subs, ["a", "b", "c"], 1, 1);
+    expect(r.done && r.winner).toBe("b");
+    if (r.done && r.state.phase === "fertig" && r.state.reveal.kind === "jagd") {
+      expect(r.state.reveal.totals).toEqual([8, 3, 4]);
+      expect(r.state.reveal.mins).toEqual([0, 1, 0]);
+    }
+  });
+
+  it("mehr Fänge als Auftritte zählen nicht", () => {
+    const r = advance("jagd", { phase: "jagd", options: ["a", "b"] }, [{ caught: { a: 99, b: 2 } }], ["a", "b"], 1, 1);
+    if (r.done && r.state.phase === "fertig" && r.state.reveal.kind === "jagd") expect(r.state.reveal.totals).toEqual([4, 2]);
+  });
+
+  it("was jemand gestrichen hat, fliegt gar nicht erst vorbei", () => {
+    const next = advance("jagd", initialState("jagd", ids(SIEVE_SIZE)), [{ out: ["r1", "r2"] }, { out: ["r3"] }], ids(SIEVE_SIZE), 1, 0);
+    if (!next.done && next.state.phase === "jagd") expect(next.state.options).not.toEqual(expect.arrayContaining(["r1"]));
+    if (!next.done && next.state.phase === "jagd") for (const id of ["r1", "r2", "r3"]) expect(next.state.options).not.toContain(id);
+  });
+});
+
+describe("Tauziehen", () => {
+  it("spielt ein Turnier; die meisten Taps der ganzen Familie ziehen weiter", () => {
+    const candidates = ids(SIEVE_SIZE);
+    const stages: number[] = [];
+    const { winner, state } = playOut("zug", candidates, 2, (s, p) => {
+      if (s.phase === "sieb") return { out: [] };
+      if (s.phase !== "zug") throw new Error("unerwartet");
+      if (p === 0) stages.push(s.pairs.length);
+      // Person 0 tippt wie wild für die kleinere Nummer, Person 1 etwas weniger für die größere
+      return { taps: s.pairs.map(([a, b]) => {
+        const small = Number(a.slice(1)) < Number(b.slice(1)) ? 0 : 1;
+        const t: [number, number] = [0, 0];
+        if (p === 0) t[small] = 40;
+        else t[1 - small] = 30;
+        return t;
+      }) };
+    });
+    expect(stages).toEqual([4, 2, 1]);
+    expect(Number(winner.slice(1))).toBeLessThanOrEqual(5);
+    expect(state).toMatchObject({ phase: "fertig", reveal: { kind: "zug" } });
+  });
+
+  it("begrenzt unmögliche Tap-Zahlen", () => {
+    const state: DecideState = { phase: "zug", pairs: [["a", "b"]], stage: 2 };
+    // 5 s × 14 Taps = höchstens 70; 10.000 für a zählen wie 70, b gewinnt mit 2 × 60
+    const r = advance("zug", state, [{ taps: [[10000, 60]] }, { taps: [[0, 60]] }], ["a", "b"], 1, 3);
+    expect(r.done && r.winner).toBe("b");
+  });
+
+  it("niemand tippt: der Zufall der Runde entscheidet, auf allen Geräten gleich", () => {
+    const state: DecideState = { phase: "zug", pairs: [["a", "b"]], stage: 0 };
+    const one = advance("zug", state, [{ taps: [] }], ["a", "b"], 42, 1);
+    expect(advance("zug", state, [{ taps: [] }], ["a", "b"], 42, 1)).toEqual(one);
+  });
+});

@@ -8,7 +8,7 @@ import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
 import { buildShoppingList, effectiveStatus, needsShopping, presentMembers } from "@/lib/planning";
 import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
 import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
-import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, GerichteEntfernenInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
+import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, GerichteEntfernenInput, PlanAendernInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
 import type { AiContext } from "./guard";
 
 // Werkzeuge des Assistenten. Lesen läuft hier auf dem Server mit der Session
@@ -291,6 +291,11 @@ export function assistantTools(ctx: AiContext, today: string) {
     rezept_entwurf_oeffnen: tool({
       description: "Öffnet ein neues Rezept vorbefüllt im Formular, z. B. eine Idee oder ein Rezept aus einem Foto im Chat. Der Nutzer prüft und sichert dort.",
       inputSchema: EntwurfInput,
+    }),
+    plan_aendern: tool({
+      description:
+        "Schlägt vor, ein geplantes Gericht zu verschieben („Gnocchi lieber am Freitag“) oder ausfallen zu lassen, weil auswärts gegessen wird („heute gehen wir essen“). Die Karte zeigt dem Nutzer, was sich an Plan, Portionen und Einkaufsliste ändert; schon Gekauftes bleibt erhalten. Beides zusammen („heute auswärts, das Gericht auf Freitag“) ist ein einziges verschieben. Der Nutzer bestätigt.",
+      inputSchema: PlanAendernInput,
     }),
     gerichte_entfernen: tool({
       description: "Schlägt vor, geplante Gerichte aus dem Plan zu nehmen (z. B. „lösch die Gerichte vom nächsten Montag“). Koch und Notiz der Mahlzeit bleiben. Der Nutzer bestätigt.",

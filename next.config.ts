@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Nur Entwicklung: Startseite ohne Anmeldung unter 127.0.0.1 testen (eigene Cookies)
+  allowedDevOrigins: ["127.0.0.1"],
   turbopack: {
     rules: {
       "*.css": {

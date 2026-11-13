@@ -4,10 +4,10 @@
 // Abgabe auf. Was eine Abgabe bedeutet, steht in lib/decide.ts.
 
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconCheck, IconClock, IconClose, IconMinus, IconPlus } from "@/components/icons";
 import { DIET_LABEL, DietIcon, RecipeImage } from "@/components/ui";
-import { SPOONS, SPOONS_PER_DISH, TICKETS, type DecideState } from "@/lib/decide";
+import { JAGD_SECONDS, JAGD_SHOWS, JAGD_VISIBLE_MS, SPOONS, SPOONS_PER_DISH, TICKETS, ZUG_MAX_TPS, ZUG_SECONDS, type DecideState } from "@/lib/decide";
 import { haptic } from "@/lib/haptics";
 import type { Recipe } from "@/lib/types";
 
@@ -45,6 +45,10 @@ export function GameBoard({ state, get, onSubmit }: { state: DecideState; get: L
       return <Allocate options={state.options} get={get} total={TICKETS} perDish={TICKETS} unit="🎟️" noun={["Los", "Lose"]} onSubmit={(v) => onSubmit({ tickets: v })} />;
     case "loeffel":
       return <Allocate options={state.options} get={get} total={SPOONS} perDish={SPOONS_PER_DISH} unit="🥄" noun={["Löffel", "Löffel"]} onSubmit={(v) => onSubmit({ spoons: v })} />;
+    case "jagd":
+      return <PlateHunt options={state.options} get={get} onSubmit={onSubmit} />;
+    case "zug":
+      return <TugOfWar key={state.stage} pairs={state.pairs} get={get} onSubmit={onSubmit} />;
     case "fertig":
       return null;
   }
@@ -73,8 +77,9 @@ function SwipeDeck({ deck, get, onSubmit }: { deck: string[]; get: Lookup; onSub
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-5">
-      <div className="relative aspect-[3/4] w-full">
+    <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-3">
+      {/* Höhe begrenzt: Karte, Zähler und Knöpfe passen über die Tableiste, auch auf kleinen Handys */}
+      <div className="relative w-full" style={{ height: "min(26rem, calc(100dvh - 25rem))", minHeight: "14rem" }}>
         {next && (
           <div key={next} className="card absolute inset-0 overflow-hidden" style={{ transform: "scale(0.94) translateY(14px)", opacity: 0.7 }} aria-hidden>
             <Picture recipe={get(next)} className="h-full w-full text-5xl" />
@@ -370,6 +375,308 @@ function Finale({ options, get, onSubmit }: { options: string[]; get: Lookup; on
       <button className="btn btn-primary pressable w-full" onClick={() => onSubmit({ strike })}>
         {strike ? <>Gestrichen – weiter</> : <><IconCheck size={18} /> Mir ist alles recht</>}
       </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Countdown vor den Reaktionsspielen
+// ---------------------------------------------------------------------------
+
+/** 3 – 2 – 1 – Los, dann onGo. Groß in der Mitte, damit alle gleichzeitig starten. */
+function Countdown({ onGo }: { onGo: () => void }) {
+  const [n, setN] = useState(3);
+  const reduce = useReducedMotion();
+  const go = useRef(onGo);
+  useEffect(() => {
+    go.current = onGo;
+  }, [onGo]);
+  useEffect(() => {
+    if (n === 0) {
+      const t = setTimeout(() => go.current(), 450);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      haptic(n === 1 ? "medium" : "light");
+      setN(n - 1);
+    }, 650);
+    return () => clearTimeout(t);
+  }, [n]);
+  return (
+    <div className="flex h-56 items-center justify-center" role="status" aria-live="assertive">
+      <AnimatePresence mode="popLayout">
+        <motion.span
+          key={n}
+          className="text-7xl font-extrabold tabular-nums"
+          style={{ color: "var(--accent)" }}
+          initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.6 }}
+          transition={{ type: "spring", bounce: 0.4, duration: 0.4 }}
+        >
+          {n === 0 ? "Los!" : n}
+        </motion.span>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function TimeBar({ total, left }: { total: number; left: number }) {
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--fill)" }} role="timer" aria-label={`Noch ${Math.ceil(left)} Sekunden`}>
+      <div className="h-full rounded-full transition-[width] duration-100 ease-linear" style={{ width: `${Math.max(0, (left / total) * 100)}%`, background: left < total * 0.25 ? "var(--red)" : "var(--accent)" }} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tellerjagd: Teller fliegen vorbei, schnapp dir, worauf du Lust hast
+// ---------------------------------------------------------------------------
+
+interface Spawn {
+  key: number;
+  id: string;
+  at: number;
+  x: number;
+  y: number;
+  drift: number;
+}
+
+function makeSpawns(options: string[]): Spawn[] {
+  const order = options.flatMap((id) => Array.from({ length: JAGD_SHOWS }, () => id));
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const step = (JAGD_SECONDS * 1000 - JAGD_VISIBLE_MS) / order.length;
+  return order.map((id, i) => ({ key: i, id, at: i * step + Math.random() * step * 0.4, x: 4 + Math.random() * 62, y: 4 + Math.random() * 62, drift: (Math.random() - 0.5) * 60 }));
+}
+
+function PlateHunt({ options, get, onSubmit }: { options: string[]; get: Lookup; onSubmit: Submit }) {
+  const reduce = useReducedMotion();
+  const [phase, setPhase] = useState<"ready" | "count" | "play" | "done">("ready");
+  const [elapsed, setElapsed] = useState(0);
+  const [caught, setCaught] = useState<Record<string, number>>({});
+  const [gone, setGone] = useState<Set<number>>(new Set());
+  const [pops, setPops] = useState<{ key: number; x: number; y: number }[]>([]);
+  const startedAt = useRef(0);
+  const sent = useRef(false);
+
+  // Jedes Gericht fliegt gleich oft vorbei, in zufälliger Reihenfolge und an zufälligen Stellen
+  const [spawns] = useState(() => makeSpawns(options));
+
+  useEffect(() => {
+    if (phase !== "play") return;
+    startedAt.current = performance.now();
+    const t = setInterval(() => {
+      const ms = performance.now() - startedAt.current;
+      setElapsed(ms);
+      if (ms >= JAGD_SECONDS * 1000) setPhase("done");
+    }, 80);
+    return () => clearInterval(t);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "done" || sent.current) return;
+    sent.current = true;
+    haptic("success");
+    const t = setTimeout(() => onSubmit({ caught }), 900);
+    return () => clearTimeout(t);
+  }, [phase, caught, onSubmit]);
+
+  const total = Object.values(caught).reduce((a, b) => a + b, 0);
+  const visible = phase === "play" ? spawns.filter((s) => !gone.has(s.key) && elapsed >= s.at && elapsed < s.at + JAGD_VISIBLE_MS) : [];
+
+  // Schon geschnappt? Zweiter Tipp auf denselben Teller zählt nicht
+  const grabbed = useRef(new Set<number>());
+  function grab(s: Spawn) {
+    if (phase !== "play" || grabbed.current.has(s.key)) return;
+    grabbed.current.add(s.key);
+    haptic("light");
+    setGone((g) => new Set(g).add(s.key));
+    setCaught((c) => ({ ...c, [s.id]: Math.min(JAGD_SHOWS, (c[s.id] ?? 0) + 1) }));
+    setPops((p) => [...p.slice(-6), { key: s.key, x: s.x, y: s.y }]);
+  }
+
+  if (phase === "ready")
+    return (
+      <div className="mx-auto flex max-w-sm flex-col items-center gap-4 text-center">
+        <p className="t-sub" style={{ color: "var(--label-2)" }}>Diese Teller fliegen gleich vorbei. Tipp an, was du heute essen willst, so oft du es erwischst.</p>
+        <ul className="flex flex-wrap justify-center gap-2">
+          {options.map((id) => <li key={id} className="chip">{titleOf(get, id)}</li>)}
+        </ul>
+        <button className="btn btn-primary pressable mt-2 w-full" onClick={() => setPhase("count")}>Bereit</button>
+      </div>
+    );
+  if (phase === "count") return <Countdown onGo={() => setPhase("play")} />;
+
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+      <TimeBar total={JAGD_SECONDS} left={phase === "done" ? 0 : JAGD_SECONDS - elapsed / 1000} />
+      <div
+        className="relative w-full touch-manipulation overflow-hidden rounded-[22px] select-none"
+        style={{ height: "min(26rem, calc(100dvh - 20rem))", minHeight: "16rem", background: "var(--fill)" }}
+        aria-label="Spielfeld"
+      >
+        <AnimatePresence>
+          {visible.map((s) => {
+            const recipe = get(s.id);
+            return (
+              <motion.button
+                key={s.key}
+                className="absolute flex w-[34%] flex-col items-center gap-1"
+                style={{ left: `${s.x}%`, top: `${s.y}%` }}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.3, rotate: -20 }}
+                animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, rotate: 0, x: s.drift }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.5 }}
+                transition={reduce ? { duration: 0.15 } : { opacity: { duration: 0.15 }, scale: { type: "spring", bounce: 0.5, duration: 0.4 }, rotate: { type: "spring", bounce: 0.5, duration: 0.4 }, x: { duration: JAGD_VISIBLE_MS / 1000, ease: "linear" } }}
+                onPointerDown={() => grab(s)}
+                aria-label={`${titleOf(get, s.id)} schnappen`}
+              >
+                <span className="aspect-square w-full overflow-hidden rounded-full" style={{ boxShadow: "0 0 0 5px var(--surface), 0 8px 22px rgba(0,0,0,.18)" }}>
+                  <RecipeImage recipe={recipe ?? { title: "?", image_url: null, diet: null }} className="h-full w-full text-2xl" rounded={999} />
+                </span>
+                <span className="t-caption line-clamp-2 rounded-full px-2 py-0.5 text-center leading-tight font-semibold" style={{ background: "var(--surface)" }}>{titleOf(get, s.id)}</span>
+              </motion.button>
+            );
+          })}
+        </AnimatePresence>
+        <AnimatePresence>
+          {pops.map((p) => (
+            <motion.span
+              key={`pop-${p.key}`}
+              className="pointer-events-none absolute text-2xl font-extrabold"
+              style={{ left: `${p.x + 12}%`, top: `${p.y + 8}%`, color: "var(--accent)" }}
+              initial={{ opacity: 1, y: 0 }}
+              animate={{ opacity: 0, y: reduce ? 0 : -40 }}
+              transition={{ duration: 0.7 }}
+              onAnimationComplete={() => setPops((cur) => cur.filter((x) => x.key !== p.key))}
+              aria-hidden
+            >
+              +1
+            </motion.span>
+          ))}
+        </AnimatePresence>
+        {phase === "done" && (
+          <div className="absolute inset-0 flex items-center justify-center" role="status">
+            <span className="t-title">Abpfiff!</span>
+          </div>
+        )}
+      </div>
+      <p className="t-sub text-center tabular-nums" aria-live="polite">{total} Teller geschnappt</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tauziehen: zwei Gerichte, fünf Sekunden, so schnell tippen wie möglich
+// ---------------------------------------------------------------------------
+
+function TugOfWar({ pairs, get, onSubmit }: { pairs: [string, string][]; get: Lookup; onSubmit: Submit }) {
+  const reduce = useReducedMotion();
+  const [index, setIndex] = useState(0);
+  const [phase, setPhase] = useState<"count" | "pull" | "pause">("count");
+  const [left, setLeft] = useState(0);
+  const [right, setRight] = useState(0);
+  const [results, setResults] = useState<[number, number][]>([]);
+  const [remaining, setRemaining] = useState(ZUG_SECONDS);
+  const cap = ZUG_SECONDS * ZUG_MAX_TPS;
+  const pair = pairs[index];
+
+  useEffect(() => {
+    if (phase !== "pull") return;
+    const start = performance.now();
+    const t = setInterval(() => {
+      const r = ZUG_SECONDS - (performance.now() - start) / 1000;
+      setRemaining(Math.max(0, r));
+      if (r <= 0) setPhase("pause");
+    }, 80);
+    return () => clearInterval(t);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "pause") return;
+    haptic("success");
+    const all = [...results, [left, right] as [number, number]];
+    const t = setTimeout(() => {
+      if (all.length === pairs.length) return onSubmit({ taps: all });
+      setResults(all);
+      setLeft(0);
+      setRight(0);
+      setRemaining(ZUG_SECONDS);
+      setIndex(index + 1);
+      setPhase("count");
+    }, 1100);
+    return () => clearTimeout(t);
+    // nur beim Wechsel in die Pause
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  if (!pair) return <p className="t-headline py-16 text-center" style={{ color: "var(--label-2)" }}>Abgegeben!</p>;
+
+  // Seil: -1 ganz links, +1 ganz rechts
+  const balance = left + right === 0 ? 0 : (right - left) / Math.max(10, left + right);
+  const pull = (side: "l" | "r") => {
+    if (phase !== "pull") return;
+    if (side === "l") setLeft((n) => Math.min(cap, n + 1));
+    else setRight((n) => Math.min(cap, n + 1));
+    haptic("light");
+  };
+
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+      {pairs.length > 1 && <p className="t-footnote text-center tabular-nums" style={{ color: "var(--label-2)" }}>Duell {index + 1} von {pairs.length}</p>}
+      {phase === "count" ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            {pair.map((id) => <p key={id} className="t-headline line-clamp-2">{titleOf(get, id)}</p>)}
+          </div>
+          <Countdown onGo={() => setPhase("pull")} />
+        </>
+      ) : (
+        <>
+          <TimeBar total={ZUG_SECONDS} left={phase === "pause" ? 0 : remaining} />
+          {/* Seil mit Knoten: wandert zur Seite, auf die du mehr tippst */}
+          <div className="relative h-8" aria-hidden>
+            <div className="absolute top-1/2 right-0 left-0 h-1.5 -translate-y-1/2 rounded-full" style={{ background: "repeating-linear-gradient(90deg, #b88a55 0 10px, #9c7142 10px 14px)" }} />
+            <div className="absolute top-0 left-1/2 h-8 w-0.5 -translate-x-1/2" style={{ background: "var(--label-3)" }} />
+            <motion.div
+              className="absolute top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ background: "var(--accent)", boxShadow: "0 0 0 3px var(--surface)" }}
+              animate={{ left: `${50 + balance * 42}%` }}
+              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {pair.map((id, side) => {
+              const n = side === 0 ? left : right;
+              return (
+                // Kein Motion-Tap hier: der fängt schnelle Folgetipps ab. Rückmeldung per CSS (:active)
+                <button
+                  key={id}
+                  className="card flex touch-manipulation flex-col overflow-hidden text-left transition-transform duration-75 select-none active:scale-[0.96]"
+                  style={{ opacity: phase === "pause" ? 0.6 : 1 }}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    pull(side === 0 ? "l" : "r");
+                  }}
+                  aria-label={`Für ${titleOf(get, id)} ziehen`}
+                  disabled={phase !== "pull"}
+                >
+                  <Picture recipe={get(id)} className="aspect-[4/3] w-full text-3xl" />
+                  <span className="flex flex-col gap-0.5 p-2.5">
+                    <span className="t-sub line-clamp-2 min-h-[2.5em] leading-tight font-semibold">{titleOf(get, id)}</span>
+                    <span className="text-2xl font-extrabold tabular-nums" style={{ color: "var(--accent)" }}>{n}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="t-sub text-center" style={{ color: "var(--label-2)" }} aria-live="polite">
+            {phase === "pause" ? "Gesichert. Gleich geht es weiter." : "Tippen, tippen, tippen!"}
+          </p>
+        </>
+      )}
     </div>
   );
 }

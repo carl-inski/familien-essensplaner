@@ -55,6 +55,14 @@ export const GerichteEntfernenInput = z.object({
     .describe("die Mahlzeiten, deren Gericht aus dem Plan soll"),
 });
 
+export const PlanAendernInput = z.object({
+  aktion: z.enum(["verschieben", "auswaerts"]).describe("verschieben: Gericht auf eine andere Mahlzeit legen (tauscht, wenn dort schon etwas steht). auswaerts: Gericht fällt aus, weil auswärts gegessen wird."),
+  datum: date,
+  mahlzeit: meal,
+  ziel_datum: date.nullable().describe("nur bei verschieben: wohin; sonst null"),
+  ziel_mahlzeit: meal.nullable().describe("nur bei verschieben; sonst null"),
+});
+
 export const BuchInput = z.object({
   titel: z.string().trim().min(1).max(200).describe("Titel des Kochbuchs, ohne Untertitel"),
   autoren: z.array(z.string()).max(6).describe("Autorinnen und Autoren; leer, wenn unbekannt"),
@@ -70,9 +78,10 @@ export type NotizInput = z.infer<typeof NotizInput>;
 export type EntwurfInput = z.infer<typeof EntwurfInput>;
 export type BuchInput = z.infer<typeof BuchInput>;
 export type GerichteEntfernenInput = z.infer<typeof GerichteEntfernenInput>;
+export type PlanAendernInput = z.infer<typeof PlanAendernInput>;
 
 /** Namen der Werkzeuge, die erst nach „Übernehmen“ im Browser schreiben */
-export const WRITE_TOOLS = ["einplanen", "mehrere_einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen", "buch_hinzufuegen", "gerichte_entfernen"] as const;
+export const WRITE_TOOLS = ["einplanen", "mehrere_einplanen", "anwesenheit_setzen", "notiz_hinzufuegen", "rezept_entwurf_oeffnen", "buch_hinzufuegen", "gerichte_entfernen", "plan_aendern"] as const;
 export type WriteTool = (typeof WRITE_TOOLS)[number];
 
 /** Kontext der Seite, von der aus der Assistent geöffnet wurde */

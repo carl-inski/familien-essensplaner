@@ -16,13 +16,15 @@
 import { isDinnerCandidate, suggestionCandidates, weight, type PlannedDish } from "./suggest";
 import type { CookStats, Diet, Meal } from "./types";
 
-export type Game = "swipe" | "duell" | "rad" | "loeffel";
+export type Game = "swipe" | "duell" | "rad" | "loeffel" | "jagd" | "zug";
 
 export const GAMES: { id: Game; emoji: string; title: string; text: string }[] = [
   { id: "swipe", emoji: "💘", title: "Swipen", text: "Wischt durch die Karten. Das erste Gericht, das alle mögen, gewinnt." },
-  { id: "duell", emoji: "⚔️", title: "Duell", text: "Immer zwei Gerichte gegeneinander – bis ein Sieger übrig ist." },
+  { id: "duell", emoji: "⚔️", title: "Duell", text: "Immer zwei Gerichte gegeneinander, bis ein Sieger übrig ist." },
   { id: "rad", emoji: "🎡", title: "Glücksrad", text: "Verteilt eure Lose, dann entscheidet das Rad." },
   { id: "loeffel", emoji: "🥄", title: "Löffel", text: "Fünf Löffel für eure Favoriten. Es gewinnt, was allen schmeckt." },
+  { id: "jagd", emoji: "🍽️", title: "Tellerjagd", text: "Teller fliegen vorbei. Schnapp dir, worauf du Lust hast, bevor er weg ist." },
+  { id: "zug", emoji: "🪢", title: "Tauziehen", text: "Zwei Gerichte, fünf Sekunden: Tippt so schnell ihr könnt für euren Favoriten." },
 ];
 
 export const DECK_SIZE = 6;
@@ -33,6 +35,13 @@ export const SPOON_OPTIONS = 6;
 export const TICKETS = 3;
 export const SPOONS = 5;
 export const SPOONS_PER_DISH = 3;
+/** Tellerjagd: Dauer, wie oft jedes Gericht vorbeifliegt, wie lange ein Teller sichtbar ist */
+export const JAGD_SECONDS = 20;
+export const JAGD_SHOWS = 4;
+export const JAGD_VISIBLE_MS = 1500;
+/** Tauziehen: Sekunden je Duell, mehr Taps pro Sekunde schafft niemand ehrlich */
+export const ZUG_SECONDS = 5;
+export const ZUG_MAX_TPS = 14;
 
 export type Score = Record<string, number>;
 
@@ -43,6 +52,8 @@ export type DecideState =
   | { phase: "duell"; pairs: [string, string][]; stage: number }
   | { phase: "lose"; options: string[] }
   | { phase: "loeffel"; options: string[] }
+  | { phase: "jagd"; options: string[] }
+  | { phase: "zug"; pairs: [string, string][]; stage: number }
   | { phase: "fertig"; reveal: Reveal };
 
 export type Reveal =
@@ -51,15 +62,21 @@ export type Reveal =
   | { kind: "einzig" }
   | { kind: "duell" }
   | { kind: "rad"; options: string[]; weights: number[] }
-  | { kind: "loeffel"; options: string[]; totals: number[]; mins: number[] };
+  | { kind: "loeffel"; options: string[]; totals: number[]; mins: number[] }
+  | { kind: "jagd"; options: string[]; totals: number[]; mins: number[] }
+  | { kind: "zug"; taps: number };
 
 export interface DecideSession {
   id: string;
   household_id: string;
   created_by: string | null;
   created_at: string;
-  date: string;
-  meal: Meal;
+  /** wann es das Gericht gibt; leer, bis der Sieger eingeplant ist */
+  date: string | null;
+  meal: Meal | null;
+  /** Vorauswahl, wenn die Runde aus dem Wochenplan kam */
+  suggested_date: string | null;
+  suggested_meal: Meal | null;
   game: Game;
   status: "lobby" | "playing" | "done" | "cancelled";
   round: number;
@@ -241,12 +258,14 @@ export function advance(game: Game, state: DecideState, submissions: unknown[], 
         survivors = shuffled(state.options, rand).sort((a, b) => (outs.get(a) ?? 0) - (outs.get(b) ?? 0)).slice(0, 2);
         if (survivors.length === 1) return { done: true, winner: survivors[0], state: { phase: "fertig", reveal: { kind: "einzig" } } };
       }
-      if (game === "duell") {
+      if (game === "duell" || game === "zug") {
         let size = 1;
         while (size * 2 <= Math.min(8, survivors.length)) size *= 2;
-        return { done: false, state: { phase: "duell", pairs: pairUp(shuffled(survivors, rand).slice(0, size)), stage: 0 } };
+        const pairs = pairUp(shuffled(survivors, rand).slice(0, size));
+        return { done: false, state: game === "zug" ? { phase: "zug", pairs, stage: 0 } : { phase: "duell", pairs, stage: 0 } };
       }
       if (game === "rad") return { done: false, state: { phase: "lose", options: survivors.slice(0, WHEEL_MAX) } };
+      if (game === "jagd") return { done: false, state: { phase: "jagd", options: survivors.slice(0, SPOON_OPTIONS) } };
       return { done: false, state: { phase: "loeffel", options: survivors.slice(0, SPOON_OPTIONS) } };
     }
 
@@ -280,6 +299,39 @@ export function advance(game: Game, state: DecideState, submissions: unknown[], 
       const mins = state.options.map((id) => (per.length ? Math.min(...per.map((p) => asInt(p[id], SPOONS_PER_DISH))) : 0));
       const winner = best(state.options, (id) => [mins[state.options.indexOf(id)], totals[state.options.indexOf(id)]], rand);
       return { done: true, winner, state: { phase: "fertig", reveal: { kind: "loeffel", options: state.options, totals, mins } } };
+    }
+
+    case "jagd": {
+      // Gefangene Teller je Gericht; mehr als es Auftritte gab, geht nicht
+      const per = submissions.map((s) => asRecord(asRecord(s).caught));
+      const totals = state.options.map((id) => per.reduce<number>((s, p) => s + asInt(p[id], JAGD_SHOWS), 0));
+      const mins = state.options.map((id) => (per.length ? Math.min(...per.map((p) => asInt(p[id], JAGD_SHOWS))) : 0));
+      const winner = best(state.options, (id) => [mins[state.options.indexOf(id)], totals[state.options.indexOf(id)]], rand);
+      return { done: true, winner, state: { phase: "fertig", reveal: { kind: "jagd", options: state.options, totals, mins } } };
+    }
+
+    case "zug": {
+      // Je Duell zieht jede Person mit ihren Taps an einer Seite; die Summe entscheidet
+      const cap = ZUG_SECONDS * ZUG_MAX_TPS;
+      const taps = submissions.map((s) => {
+        const list = asRecord(s).taps;
+        return Array.isArray(list) ? list : [];
+      });
+      let all = 0;
+      const winners = state.pairs.map(([a, b], i) => {
+        let left = 0;
+        let right = 0;
+        for (const t of taps) {
+          const pair = Array.isArray(t[i]) ? (t[i] as unknown[]) : [];
+          left += asInt(pair[0], cap);
+          right += asInt(pair[1], cap);
+        }
+        all += left + right;
+        if (left !== right) return left > right ? a : b;
+        return rand() < 0.5 ? a : b;
+      });
+      if (winners.length === 1) return { done: true, winner: winners[0], state: { phase: "fertig", reveal: { kind: "zug", taps: all } } };
+      return { done: false, state: { phase: "zug", pairs: pairUp(winners), stage: state.stage + 1 } };
     }
 
     case "fertig":
@@ -316,6 +368,10 @@ export function phaseTitle(state: DecideState, players: number): { title: string
       return { title: "Lose verteilen", text: `Du hast ${TICKETS} Lose. Mehr Lose, mehr Platz auf dem Rad.` };
     case "loeffel":
       return { title: "Löffel verteilen", text: `${SPOONS} Löffel, höchstens ${SPOONS_PER_DISH} pro Gericht. Es gewinnt, was allen schmeckt.` };
+    case "jagd":
+      return { title: "Tellerjagd", text: `${JAGD_SECONDS} Sekunden. Tippe die Teller an, auf die du Lust hast.` };
+    case "zug":
+      return { title: STAGE_LABEL(state.pairs.length), text: `Je ${ZUG_SECONDS} Sekunden: Tippe so schnell du kannst auf dein Gericht.` };
     case "fertig":
       return { title: "Entschieden", text: "" };
   }
