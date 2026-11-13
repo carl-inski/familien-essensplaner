@@ -16,7 +16,7 @@ const WHEEL_COLORS = ["#e4572e", "#f3a712", "#4c9f70", "#2b78d4", "#9b5de5", "#e
 /** Zeigt die Spannungs-Animation und ruft danach onDone */
 export function RevealShow({ reveal, winner, get, onDone }: { reveal: Reveal; winner: string; get: Lookup; onDone: () => void }) {
   const reduce = useReducedMotion();
-  const instant = reduce || (reveal.kind !== "rad" && reveal.kind !== "loeffel");
+  const instant = reduce || (reveal.kind !== "rad" && reveal.kind !== "loeffel" && reveal.kind !== "jagd");
 
   useEffect(() => {
     if (!instant) return;
@@ -25,7 +25,8 @@ export function RevealShow({ reveal, winner, get, onDone }: { reveal: Reveal; wi
   }, [instant, reduce, onDone]);
 
   if (reveal.kind === "rad" && !reduce) return <Wheel options={reveal.options} weights={reveal.weights} winner={winner} get={get} onDone={onDone} />;
-  if (reveal.kind === "loeffel" && !reduce) return <Bars options={reveal.options} totals={reveal.totals} mins={reveal.mins} winner={winner} get={get} onDone={onDone} />;
+  if ((reveal.kind === "loeffel" || reveal.kind === "jagd") && !reduce)
+    return <Bars options={reveal.options} totals={reveal.totals} mins={reveal.mins} unit={reveal.kind === "jagd" ? "🍽️" : "🥄"} winner={winner} get={get} onDone={onDone} />;
   if (reduce) return null;
   return (
     <div className="flex flex-col items-center gap-3 py-16" role="status">
@@ -97,7 +98,7 @@ function labelAt(deg: number) {
   return { x: x.toFixed(2), y: y.toFixed(2) };
 }
 
-function Bars({ options, totals, mins, winner, get, onDone }: { options: string[]; totals: number[]; mins: number[]; winner: string; get: Lookup; onDone: () => void }) {
+function Bars({ options, totals, mins, unit, winner, get, onDone }: { options: string[]; totals: number[]; mins: number[]; unit: string; winner: string; get: Lookup; onDone: () => void }) {
   const max = Math.max(1, ...totals);
   const [shown, setShown] = useState(false);
 
@@ -111,14 +112,14 @@ function Bars({ options, totals, mins, winner, get, onDone }: { options: string[
   }, [onDone]);
 
   return (
-    <div className="flex flex-col gap-2.5" role="status" aria-label="Die Löffel werden gezählt">
+    <div className="flex flex-col gap-2.5" role="status" aria-label="Die Stimmen werden gezählt">
       {options.map((id, i) => {
         const won = shown && id === winner;
         return (
           <div key={id}>
             <div className="t-footnote mb-1 flex justify-between gap-2">
               <span className="truncate font-medium" style={{ color: won ? "var(--accent)" : undefined }}>{won ? "🏆 " : ""}{get(id)?.title ?? "?"}</span>
-              <span className="shrink-0 tabular-nums" style={{ color: "var(--label-2)" }}>{totals[i]} 🥄{mins[i] === 0 ? " · nicht von allen" : ""}</span>
+              <span className="shrink-0 tabular-nums" style={{ color: "var(--label-2)" }}>{totals[i]} {unit}{mins[i] === 0 ? " · nicht von allen" : ""}</span>
             </div>
             <div className="h-3 overflow-hidden rounded-full" style={{ background: "var(--fill)" }}>
               <motion.div
@@ -178,6 +179,10 @@ export function revealLine(reveal: Reveal, players: number): string {
     case "rad":
       return "Das Rad hat entschieden.";
     case "loeffel":
-      return players > 1 ? "Die meisten Löffel – und von allen welche." : "Dein Favorit.";
+      return players > 1 ? "Die meisten Löffel, und von allen welche." : "Dein Favorit.";
+    case "jagd":
+      return players > 1 ? "Alle haben danach geschnappt." : "Am häufigsten geschnappt.";
+    case "zug":
+      return players > 1 ? `Gewonnen mit ${reveal.taps} Taps aus der ganzen Familie.` : `Gewonnen mit ${reveal.taps} Taps.`;
   }
 }

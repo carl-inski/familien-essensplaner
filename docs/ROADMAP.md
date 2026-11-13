@@ -7,7 +7,7 @@ Reihenfolge nach [gnocchi-startup-bericht.md](gnocchi-startup-bericht.md): erst 
 | Wer isst mit, Familie intern, Standardwoche | vorhanden | behalten |
 | Mehrere Familien, Einladungscode | gebaut | behalten |
 | Rezepte, Ordner, Tags, Import Link/Foto | vorhanden | behalten |
-| Abstimmspiele | gebaut | behalten, kein fünftes Spiel |
+| Abstimmspiele | gebaut, nach Nutzerfeedback überarbeitet | eine offene Runde je Familie, Zeitpunkt erst nach dem Spiel; dazu Tellerjagd und Tauziehen als echte Reaktionsspiele |
 | Einkauf passt sich an Planänderung an | **Schritt 1**, gebaut | Käufe je Gericht und Zutat (`ep_purchases`, `lib/shopping.ts`) |
 | Gemeinsames Abhaken, Rückgängig, Offline-Status | **Schritt 1**, gebaut | |
 | „Heute auswärts“, Verschieben mit Vorschau | **Schritt 2**, gebaut | eine Karte „Was ändert sich?“ für Mensch und KI (`lib/plan-change.ts`, `ep_plan_move`) |

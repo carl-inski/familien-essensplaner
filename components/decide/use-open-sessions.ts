@@ -6,8 +6,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import type { DecideSession } from "@/lib/decide";
 
-/** Vergessene Runden verschwinden nach drei Stunden von selbst aus der Liste */
-const MAX_AGE_MS = 3 * 60 * 60 * 1000;
+/** Vergessene Runden (zwei Stunden ohne Bewegung) zählen nicht mehr – wie in ep_decide_create */
+const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export function useOpenSessions(): DecideSession[] {
   const { sb } = useApp();
@@ -18,7 +18,7 @@ export function useOpenSessions(): DecideSession[] {
       .from("ep_decide_sessions")
       .select("*")
       .in("status", ["lobby", "playing"])
-      .gte("created_at", new Date(Date.now() - MAX_AGE_MS).toISOString())
+      .gte("updated_at", new Date(Date.now() - MAX_AGE_MS).toISOString())
       .order("created_at", { ascending: false });
     return (data ?? []) as DecideSession[];
   }, [sb]);

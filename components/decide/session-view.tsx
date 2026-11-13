@@ -3,17 +3,18 @@
 // Eine Runde von der Lobby bis zum Sieger.
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
 import { DetailLink } from "@/components/detail-nav";
 import { IconCalendar, IconCheck } from "@/components/icons";
 import { PageHeader } from "@/components/nav";
 import { useToast } from "@/components/toast";
-import { Avatar, Empty, RecipeImage } from "@/components/ui";
+import { Avatar, Empty, RecipeImage, Segmented } from "@/components/ui";
 import { GAMES, phaseTitle, type DecidePlayer, type DecideSession, type DecideState } from "@/lib/decide";
-import { WEEKDAY_LONG, formatDateDE, weekdayIndex } from "@/lib/dates";
-import { MEAL_LABEL } from "@/lib/meals";
-import type { Meal, Member } from "@/lib/types";
+import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
+import { haptic } from "@/lib/haptics";
+import { MEALS, MEAL_LABEL } from "@/lib/meals";
+import type { Meal, MealPlanEntry, Member } from "@/lib/types";
 import { GameBoard } from "./games";
 import { Confetti, RevealShow, revealLine } from "./reveal";
 import { useDecide } from "./use-decide";
@@ -49,7 +50,7 @@ export function SessionView({ id }: { id: string }) {
   const game = GAMES.find((g) => g.id === session.game)!;
   const playing = players.map((p) => ({ player: p, member: members.find((m) => m.id === p.member_id) })).filter((x): x is { player: DecidePlayer; member: Member } => !!x.member);
   const fail = (e: { message: string } | null) => e && toast({ text: e.message, tone: "error" });
-  const subtitle = slotLabel(session.date, session.meal, today);
+  const subtitle = session.date && session.meal ? slotLabel(session.date, session.meal, today) : "Was gibt’s?";
 
   return (
     <>
@@ -226,11 +227,71 @@ function Result({ session, players }: { session: DecideSession; players: number 
       ) : (
         <p className="t-headline">Das Rezept gibt es nicht mehr.</p>
       )}
-      <p className="t-sub flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: "var(--green-soft)", color: "var(--green)" }}>
-        <IconCalendar size={16} /> Steht im Wochenplan: {slotLabel(session.date, session.meal, today)}
-      </p>
-      <Link href={session.date >= today ? `/woche?ab=${session.date}` : "/woche"} className="btn btn-primary pressable w-full">Zum Wochenplan</Link>
-      <Link href={`/entscheiden?datum=${session.date}&mahlzeit=${session.meal}`} className="btn btn-gray pressable w-full">Nicht überzeugt? Nochmal spielen</Link>
+      {session.date && session.meal ? (
+        <>
+          <p className="t-sub flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: "var(--green-soft)", color: "var(--green)" }}>
+            <IconCalendar size={16} /> Steht im Wochenplan: {slotLabel(session.date, session.meal, today)}
+          </p>
+          <Link href={session.date >= today ? `/woche?ab=${session.date}` : "/woche"} className="btn btn-primary pressable w-full">Zum Wochenplan</Link>
+        </>
+      ) : (
+        winner && <ScheduleWinner session={session} />
+      )}
+      <Link href="/entscheiden" className="btn btn-gray pressable w-full">Nicht überzeugt? Nochmal spielen</Link>
+    </div>
+  );
+}
+
+/** Erst nach der Entscheidung: Wann gibt es das? Vorgewählt ist der Wunsch aus dem Wochenplan, sonst der nächste freie Abend. */
+function ScheduleWinner({ session }: { session: DecideSession }) {
+  const { sb, today, recipesById } = useApp();
+  const toast = useToast();
+  const [plan, setPlan] = useState<MealPlanEntry[] | null>(null);
+  const [picked, setPicked] = useState<{ date: string; meal: Meal } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const days = Array.from({ length: 8 }, (_, i) => addDays(today, i));
+
+  useEffect(() => {
+    let alive = true;
+    sb.from("ep_meal_plan").select("*").gte("date", today).lte("date", addDays(today, 7))
+      .then(({ data }) => alive && setPlan((data ?? []) as MealPlanEntry[]));
+    return () => {
+      alive = false;
+    };
+  }, [sb, today]);
+
+  const taken = (date: string, meal: Meal) => plan?.find((p) => p.date === date && p.meal === meal && (p.recipe_id || p.leftover_of));
+  const suggested = session.suggested_date && session.suggested_date >= today ? { date: session.suggested_date, meal: session.suggested_meal ?? ("abend" as Meal) } : null;
+  const firstFree = { date: days.find((d) => !taken(d, "abend")) ?? today, meal: "abend" as Meal };
+  const slot = picked ?? suggested ?? firstFree;
+  const there = taken(slot.date, slot.meal);
+  const thereTitle = there ? (there.recipe_id ? recipesById.get(there.recipe_id)?.title ?? "ein Gericht" : "Reste") : null;
+
+  async function save() {
+    setBusy(true);
+    const { error } = await sb.rpc("ep_decide_schedule", { p_session: session.id, p_date: slot.date, p_meal: slot.meal });
+    setBusy(false);
+    if (error) return toast({ text: error.message, tone: "error" });
+    haptic("success");
+  }
+
+  return (
+    <div className="card w-full px-4 py-4 text-left">
+      <p className="t-headline">Wann gibt’s das?</p>
+      <div className="scroll-x -mx-4 mt-3 flex gap-2 px-4" role="radiogroup" aria-label="Tag">
+        {days.map((d) => (
+          <button key={d} role="radio" aria-checked={slot.date === d} className="chip pressable shrink-0" data-on={slot.date === d} onClick={() => setPicked({ date: d, meal: slot.meal })}>
+            {d === today ? "Heute" : d === addDays(today, 1) ? "Morgen" : `${WEEKDAY_SHORT[weekdayIndex(d)]} ${formatDateDE(d, { day: "numeric", month: "numeric" })}`}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2">
+        <Segmented<Meal> label="Mahlzeit" value={slot.meal} onChange={(meal) => setPicked({ date: slot.date, meal })} options={MEALS.map((m) => ({ value: m, label: MEAL_LABEL[m] }))} />
+      </div>
+      <p className="t-footnote mt-2" style={{ color: "var(--label-2)" }}>{thereTitle ? `Dort steht schon ${thereTitle}, das wird ersetzt.` : "Dort ist noch nichts geplant."}</p>
+      <button className="btn btn-primary pressable mt-3 w-full" disabled={busy || plan === null} onClick={save}>
+        {busy ? "Plant ein …" : "In den Wochenplan"}
+      </button>
     </div>
   );
 }
