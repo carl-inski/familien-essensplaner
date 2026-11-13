@@ -17,12 +17,12 @@ Native App zur Web-App im übergeordneten Ordner. Gleiche Datenbank (Supabase), 
 - Kein Supabase Secret Key in der App. Der Publishable Key in `Services/SupabaseClient.swift` ist öffentlich.
 
 ## Bauen und prüfen
-- Xcode liegt unter `/Applications/Xcode.app`, ist aber **nicht** per `xcode-select` aktiviert. Befehle mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` aufrufen (die Skripte und `.mcp.json` tun das schon).
+- Xcode 27.2 unter `/Applications/Xcode.app`, systemweit aktiv (`xcode-select`). Simulator: iOS 27.2, Standardgerät „iPhone 18 Pro".
 - Nach Änderungen an `project.yml`: `scripts/bootstrap.sh`.
 - Logik testen (geht auch ohne Xcode): `scripts/test-core.sh`. Web-Seite: `npm test` im Hauptordner.
 - App bauen, testen, im Simulator starten: über die MCP-Werkzeuge von **MobileBuildMCP** (Sentry), nicht mit rohem `xcodebuild`.
 - SwiftUI-Previews ansehen, Fehler lesen, Apple-Doku suchen: über den **xcode**-MCP (`xcrun mcpbridge`, Xcode muss offen sein).
-- Ansehen und antippen in der Claude-Desktop-App: iOS-Simulator-Werkzeug (`attach`, dann `screenshot`, `tap`).
+- Ansehen und antippen in der Claude-Desktop-App: iOS-Simulator-Werkzeug (`attach` zuerst, dann bauen, `launch` mit der gebauten `.app`, `screenshot`, `tap`).
 - Jede sichtbare Änderung endet mit einem Screenshot aus dem Simulator.
 
 ## Vor dem App Store
