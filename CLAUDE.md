@@ -8,3 +8,4 @@ Lies zuerst [AGENTS.md](AGENTS.md) (Next.js-Hinweise) und [README.md](README.md)
 - **Vor jedem Commit:** `npm run lint`, `npm test`, `npx next build`.
 - **Datenbank:** Das Supabase-Projekt ist produktiv und mit anderen Apps geteilt. Migrationen nur additiv, erst in einer zurückgerollten Transaktion durchspielen. Alle Objekte tragen das Präfix `ep_`.
 - Änderungen an Familien, Käufen oder Bezahlung prüft ein Mensch, bevor sie live gehen.
+- **iPhone-App (SwiftUI):** liegt in `ios/`, eigene Regeln in [ios/CLAUDE.md](ios/CLAUDE.md). Logik dort (`ios/Packages/GnocchiCore`) muss genauso rechnen wie `lib/*.ts`.
