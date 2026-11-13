@@ -42,6 +42,30 @@ export const JAGD_VISIBLE_MS = 1500;
 /** Tauziehen: Sekunden je Duell, mehr Taps pro Sekunde schafft niemand ehrlich */
 export const ZUG_SECONDS = 5;
 export const ZUG_MAX_TPS = 14;
+/**
+ * Tauziehen läuft auf allen Handys im selben Takt, gemessen an der Serverzeit, zu der die
+ * Duelle ausgelost wurden: Vorlauf (Seite lädt), dann je Duell Countdown, ziehen, Pause.
+ */
+export const ZUG_LEAD_MS = 1500;
+export const ZUG_COUNT_MS = 3000;
+export const ZUG_PAUSE_MS = 1500;
+const ZUG_DUEL_MS = ZUG_COUNT_MS + ZUG_SECONDS * 1000 + ZUG_PAUSE_MS;
+
+export type ZugStep = { done: true } | { done: false; duel: number; phase: "wait" | "count" | "pull" | "pause"; msLeft: number };
+
+/** Wo im gemeinsamen Ablauf steht man, `elapsedMs` nach dem Auslosen? */
+export function zugTimeline(elapsedMs: number, duels: number): ZugStep {
+  if (elapsedMs < ZUG_LEAD_MS) return { done: false, duel: 0, phase: "wait", msLeft: ZUG_LEAD_MS - elapsedMs };
+  const t = elapsedMs - ZUG_LEAD_MS;
+  const duel = Math.floor(t / ZUG_DUEL_MS);
+  if (duel >= duels) return { done: true };
+  const within = t - duel * ZUG_DUEL_MS;
+  if (within < ZUG_COUNT_MS) return { done: false, duel, phase: "count", msLeft: ZUG_COUNT_MS - within };
+  if (within < ZUG_COUNT_MS + ZUG_SECONDS * 1000) return { done: false, duel, phase: "pull", msLeft: ZUG_COUNT_MS + ZUG_SECONDS * 1000 - within };
+  return { done: false, duel, phase: "pause", msLeft: ZUG_DUEL_MS - within };
+}
+
+export const zugDuration = (duels: number) => ZUG_LEAD_MS + duels * ZUG_DUEL_MS;
 
 export type Score = Record<string, number>;
 
@@ -71,6 +95,8 @@ export interface DecideSession {
   household_id: string;
   created_by: string | null;
   created_at: string;
+  /** Serverzeit der letzten Änderung – beim Tauziehen der gemeinsame Startpunkt */
+  updated_at: string;
   /** wann es das Gericht gibt; leer, bis der Sieger eingeplant ist */
   date: string | null;
   meal: Meal | null;
