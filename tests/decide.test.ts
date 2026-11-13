@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DECK_SIZE, SIEVE_SIZE, advance, initialState, pickCandidates, rng, roundSubmissions, shuffled, type DecideState, type Game } from "../lib/decide";
+import { DECK_SIZE, SIEVE_SIZE, advance, initialState, pickCandidates, rng, roundSubmissions, shuffled, zugDuration, zugTimeline, type DecideState, type Game } from "../lib/decide";
 import type { CookStats } from "../lib/types";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `r${i + 1}`);
@@ -318,5 +318,31 @@ describe("Tauziehen", () => {
     const state: DecideState = { phase: "zug", pairs: [["a", "b"]], stage: 0 };
     const one = advance("zug", state, [{ taps: [] }], ["a", "b"], 42, 1);
     expect(advance("zug", state, [{ taps: [] }], ["a", "b"], 42, 1)).toEqual(one);
+  });
+});
+
+describe("Tauziehen: gemeinsamer Takt", () => {
+  // Vorlauf 1,5 s, je Duell 3 s Countdown, 5 s ziehen, 1,5 s Pause
+  it("alle Handys sind zur selben Serverzeit im selben Abschnitt", () => {
+    expect(zugTimeline(0, 2)).toEqual({ done: false, duel: 0, phase: "wait", msLeft: 1500 });
+    expect(zugTimeline(1500, 2)).toEqual({ done: false, duel: 0, phase: "count", msLeft: 3000 });
+    expect(zugTimeline(4500, 2)).toEqual({ done: false, duel: 0, phase: "pull", msLeft: 5000 });
+    expect(zugTimeline(9400, 2)).toEqual({ done: false, duel: 0, phase: "pull", msLeft: 100 });
+    expect(zugTimeline(9500, 2)).toEqual({ done: false, duel: 0, phase: "pause", msLeft: 1500 });
+    expect(zugTimeline(11000, 2)).toEqual({ done: false, duel: 1, phase: "count", msLeft: 3000 });
+    expect(zugTimeline(14000, 2)).toEqual({ done: false, duel: 1, phase: "pull", msLeft: 5000 });
+  });
+
+  it("nach dem letzten Duell ist Schluss – auch wer zu spät kommt, gibt sofort ab", () => {
+    expect(zugTimeline(1500 + 2 * 9500, 2)).toMatchObject({ done: true });
+    expect(zugTimeline(999999, 1)).toMatchObject({ done: true });
+  });
+
+  it("vor dem Start (Uhr leicht vor) wird gewartet", () => {
+    expect(zugTimeline(-800, 3)).toEqual({ done: false, duel: 0, phase: "wait", msLeft: 2300 });
+  });
+
+  it("Gesamtdauer passt zur Zahl der Duelle", () => {
+    expect(zugDuration(4)).toBe(1500 + 4 * 9500);
   });
 });

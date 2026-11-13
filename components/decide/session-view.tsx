@@ -82,7 +82,7 @@ export function SessionView({ id }: { id: string }) {
                 {!done && <p className="t-sub mt-1" style={{ color: "var(--label-2)" }}>{head.text}</p>}
               </div>
               {!done ? (
-                <GameBoard key={session.round} state={state} get={get} onSubmit={async (payload) => fail(await decide.submit(payload))} />
+                <GameBoard key={session.round} state={state} get={get} onSubmit={async (payload) => fail(await decide.submit(payload))} live={{ sessionId: session.id, startedAt: session.updated_at }} />
               ) : (
                 <Waiting
                   playing={playing}

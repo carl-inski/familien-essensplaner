@@ -7,7 +7,8 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, use
 import { useEffect, useRef, useState } from "react";
 import { IconCheck, IconClock, IconClose, IconMinus, IconPlus } from "@/components/icons";
 import { DIET_LABEL, DietIcon, RecipeImage } from "@/components/ui";
-import { JAGD_SECONDS, JAGD_SHOWS, JAGD_VISIBLE_MS, SPOONS, SPOONS_PER_DISH, TICKETS, ZUG_MAX_TPS, ZUG_SECONDS, type DecideState } from "@/lib/decide";
+import { JAGD_SECONDS, JAGD_SHOWS, JAGD_VISIBLE_MS, SPOONS, SPOONS_PER_DISH, TICKETS, type DecideState } from "@/lib/decide";
+import { LiveTug } from "./live-tug";
 import { haptic } from "@/lib/haptics";
 import type { Recipe } from "@/lib/types";
 
@@ -31,7 +32,7 @@ function Picture({ recipe, className }: { recipe: Recipe | undefined; className:
   return <RecipeImage recipe={recipe ?? { title: "?", image_url: null, diet: null }} className={className} rounded={0} />;
 }
 
-export function GameBoard({ state, get, onSubmit }: { state: DecideState; get: Lookup; onSubmit: Submit }) {
+export function GameBoard({ state, get, onSubmit, live }: { state: DecideState; get: Lookup; onSubmit: Submit; live?: { sessionId: string; startedAt: string } }) {
   switch (state.phase) {
     case "deck":
       return <SwipeDeck key={state.deckNo} deck={state.deck} get={get} onSubmit={onSubmit} />;
@@ -48,7 +49,7 @@ export function GameBoard({ state, get, onSubmit }: { state: DecideState; get: L
     case "jagd":
       return <PlateHunt options={state.options} get={get} onSubmit={onSubmit} />;
     case "zug":
-      return <TugOfWar key={state.stage} pairs={state.pairs} get={get} onSubmit={onSubmit} />;
+      return live ? <LiveTug key={state.stage} pairs={state.pairs} get={get} onSubmit={onSubmit} sessionId={live.sessionId} startedAt={live.startedAt} /> : null;
     case "fertig":
       return null;
   }
@@ -564,119 +565,6 @@ function PlateHunt({ options, get, onSubmit }: { options: string[]; get: Lookup;
         )}
       </div>
       <p className="t-sub text-center tabular-nums" aria-live="polite">{total} Teller geschnappt</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tauziehen: zwei Gerichte, fünf Sekunden, so schnell tippen wie möglich
-// ---------------------------------------------------------------------------
-
-function TugOfWar({ pairs, get, onSubmit }: { pairs: [string, string][]; get: Lookup; onSubmit: Submit }) {
-  const reduce = useReducedMotion();
-  const [index, setIndex] = useState(0);
-  const [phase, setPhase] = useState<"count" | "pull" | "pause">("count");
-  const [left, setLeft] = useState(0);
-  const [right, setRight] = useState(0);
-  const [results, setResults] = useState<[number, number][]>([]);
-  const [remaining, setRemaining] = useState(ZUG_SECONDS);
-  const cap = ZUG_SECONDS * ZUG_MAX_TPS;
-  const pair = pairs[index];
-
-  useEffect(() => {
-    if (phase !== "pull") return;
-    const start = performance.now();
-    const t = setInterval(() => {
-      const r = ZUG_SECONDS - (performance.now() - start) / 1000;
-      setRemaining(Math.max(0, r));
-      if (r <= 0) setPhase("pause");
-    }, 80);
-    return () => clearInterval(t);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "pause") return;
-    haptic("success");
-    const all = [...results, [left, right] as [number, number]];
-    const t = setTimeout(() => {
-      if (all.length === pairs.length) return onSubmit({ taps: all });
-      setResults(all);
-      setLeft(0);
-      setRight(0);
-      setRemaining(ZUG_SECONDS);
-      setIndex(index + 1);
-      setPhase("count");
-    }, 1100);
-    return () => clearTimeout(t);
-    // nur beim Wechsel in die Pause
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
-  if (!pair) return <p className="t-headline py-16 text-center" style={{ color: "var(--label-2)" }}>Abgegeben!</p>;
-
-  // Seil: -1 ganz links, +1 ganz rechts
-  const balance = left + right === 0 ? 0 : (right - left) / Math.max(10, left + right);
-  const pull = (side: "l" | "r") => {
-    if (phase !== "pull") return;
-    if (side === "l") setLeft((n) => Math.min(cap, n + 1));
-    else setRight((n) => Math.min(cap, n + 1));
-    haptic("light");
-  };
-
-  return (
-    <div className="mx-auto flex w-full max-w-md flex-col gap-3">
-      {pairs.length > 1 && <p className="t-footnote text-center tabular-nums" style={{ color: "var(--label-2)" }}>Duell {index + 1} von {pairs.length}</p>}
-      {phase === "count" ? (
-        <>
-          <div className="grid grid-cols-2 gap-3 text-center">
-            {pair.map((id) => <p key={id} className="t-headline line-clamp-2">{titleOf(get, id)}</p>)}
-          </div>
-          <Countdown onGo={() => setPhase("pull")} />
-        </>
-      ) : (
-        <>
-          <TimeBar total={ZUG_SECONDS} left={phase === "pause" ? 0 : remaining} />
-          {/* Seil mit Knoten: wandert zur Seite, auf die du mehr tippst */}
-          <div className="relative h-8" aria-hidden>
-            <div className="absolute top-1/2 right-0 left-0 h-1.5 -translate-y-1/2 rounded-full" style={{ background: "repeating-linear-gradient(90deg, #b88a55 0 10px, #9c7142 10px 14px)" }} />
-            <div className="absolute top-0 left-1/2 h-8 w-0.5 -translate-x-1/2" style={{ background: "var(--label-3)" }} />
-            <motion.div
-              className="absolute top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ background: "var(--accent)", boxShadow: "0 0 0 3px var(--surface)" }}
-              animate={{ left: `${50 + balance * 42}%` }}
-              transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {pair.map((id, side) => {
-              const n = side === 0 ? left : right;
-              return (
-                // Kein Motion-Tap hier: der fängt schnelle Folgetipps ab. Rückmeldung per CSS (:active)
-                <button
-                  key={id}
-                  className="card flex touch-manipulation flex-col overflow-hidden text-left transition-transform duration-75 select-none active:scale-[0.96]"
-                  style={{ opacity: phase === "pause" ? 0.6 : 1 }}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    pull(side === 0 ? "l" : "r");
-                  }}
-                  aria-label={`Für ${titleOf(get, id)} ziehen`}
-                  disabled={phase !== "pull"}
-                >
-                  <Picture recipe={get(id)} className="aspect-[4/3] w-full text-3xl" />
-                  <span className="flex flex-col gap-0.5 p-2.5">
-                    <span className="t-sub line-clamp-2 min-h-[2.5em] leading-tight font-semibold">{titleOf(get, id)}</span>
-                    <span className="text-2xl font-extrabold tabular-nums" style={{ color: "var(--accent)" }}>{n}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="t-sub text-center" style={{ color: "var(--label-2)" }} aria-live="polite">
-            {phase === "pause" ? "Gesichert. Gleich geht es weiter." : "Tippen, tippen, tippen!"}
-          </p>
-        </>
-      )}
     </div>
   );
 }
