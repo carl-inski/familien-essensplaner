@@ -27,7 +27,8 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
-  const isPublic = PUBLIC_PREFIXES.some((p) => path.startsWith(p));
+  // Die Startseite ist öffentlich; angemeldet leitet sie selbst in die Woche weiter
+  const isPublic = path === "/" || PUBLIC_PREFIXES.some((p) => path.startsWith(p));
 
   if (!data?.claims && !isPublic) {
     if (path.startsWith("/api/ai/")) return NextResponse.json({ error: "Bitte melde dich an.", code: "unauthorized" }, { status: 401 });
