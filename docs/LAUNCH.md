@@ -16,13 +16,13 @@ Zahlen zu Tarifen und Limits vor dem Start in den Dashboards prüfen – sie än
 | Health-Check | `GET /api/health` | Für Uptime-Monitor; 503, wenn Supabase nicht antwortet. |
 | Lasttest | `scripts/loadtest.k6.js` | bis 1.500 virtuelle Nutzer, nur lesend. |
 
-**Stand 20.11.2026:** Realtime- und Index-Migration sind in Produktion eingespielt und live geprüft: Änderung in der Datenbank → private Nachricht an genau eine Familie → Einkaufsliste lädt einmal nach; ein Konto einer anderen Familie kann das Thema nicht lesen (RLS). Die Konto-Löschen-Migration ist nur in einer zurückgerollten Transaktion getestet und **noch nicht eingespielt**.
+**Stand 20.11.2026:** Realtime- und Index-Migration sind in Produktion eingespielt und live geprüft: Änderung in der Datenbank → private Nachricht an genau eine Familie → Einkaufsliste lädt einmal nach; ein Konto einer anderen Familie kann das Thema nicht lesen (RLS). Die Konto-Löschen-Migration ist nach Prüfung ebenfalls eingespielt (nur für angemeldete Nutzer aufrufbar).
 
 ## Reihenfolge beim Ausrollen
 
 1. ~~Next.js auf 16.4.6 heben~~ erledigt (16.4.3 hatte GHSA-mfr8-8qww-v76h und GHSA-vc7v-qv4w-wrv8; `npm audit` jetzt 0).
 2. Konto-Löschen-Migration von einem Menschen prüfen lassen.
-3. ~~Realtime- und Index-Migration einspielen~~ erledigt. Nach Prüfung `20261119102000_konto_loeschen.sql` einspielen – vorher zeigt „Konto löschen“ einen Fehler.
+3. ~~Realtime- und Index-Migration einspielen~~ erledigt. Konto-Löschen-Migration geprüft und eingespielt.
 4. Web deployen, in zwei Browsern prüfen: Haken im Einkauf erscheint beim anderen.
 5. iPhone-Build mit neuer Realtime- und Login-Pflicht für den Linkabruf verteilen (alte Builds bekommen beim Linkimport 401 und werden nicht mehr live aktualisiert, laden aber weiter per Fokus/8-s-Abfrage).
 6. Nach einigen Wochen, wenn keine alten App-Versionen mehr laufen: Tabellen aus der Publikation `supabase_realtime` nehmen (eigene Migration).
