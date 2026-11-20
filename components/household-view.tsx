@@ -96,6 +96,19 @@ export function HouseholdView({ inSheet = false }: { inSheet?: boolean }) {
     enterFamily();
   }
 
+  async function deleteAccount() {
+    if (!confirm(
+      "Konto endgültig löschen? Dein Login und deine E-Mail-Adresse werden entfernt. " +
+      "Familien, in denen sonst niemand mehr ein Konto hat, werden mit allen Rezepten und Plänen gelöscht. " +
+      "Das lässt sich nicht rückgängig machen.",
+    )) return;
+    if (prompt("Zum Bestätigen bitte LÖSCHEN eingeben") !== "LÖSCHEN") return;
+    const { error } = await sb.rpc("ep_delete_my_account");
+    if (error) return toast({ text: error.message, tone: "error" });
+    await sb.auth.signOut();
+    router.replace("/login");
+  }
+
   return (
     <>
       <div className={inSheet ? "[&>section:first-child]:mt-0" : "page-medium lg:columns-2 lg:gap-8 min-[96rem]:columns-3 [&>section]:break-inside-avoid lg:[&>section]:mt-0 lg:[&>section]:pt-6"}>
@@ -273,6 +286,12 @@ export function HouseholdView({ inSheet = false }: { inSheet?: boolean }) {
             }}
           >
             <IconLogout size={20} /> <span className="t-sub">Abmelden</span>
+          </button>
+        </Section>
+
+        <Section footer="Löscht dein Konto. Familien, in denen noch andere ein Konto haben, bleiben bestehen.">
+          <button className="row card pressable" style={{ color: "var(--red)" }} onClick={deleteAccount}>
+            <span className="t-sub">Konto löschen</span>
           </button>
         </Section>
       </div>

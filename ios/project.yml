@@ -29,6 +29,20 @@ targets:
     platform: iOS
     sources:
       - path: Gnocchi
+        excludes:
+          - Resources/Info.plist
+      - path: IngredientEmojis
+        type: folder
+        buildPhase: resources
+      - path: ../lib/dish-photos.json
+        buildPhase: resources
+      - path: ../lib/cookbook-catalog.json
+        buildPhase: resources
+      - path: ../data/rezeptsammlung.md
+        buildPhase: resources
+      - path: ../public/images/rezepte
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: GnocchiCore
       - package: Supabase
@@ -38,6 +52,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.gnocchi.ios
         PRODUCT_NAME: Gnocchi
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Gnocchi/Resources/Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: Gnocchi
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait

@@ -12,7 +12,8 @@ Native App zur Web-App im übergeordneten Ordner. Gleiche Datenbank (Supabase), 
 - **Gleichlauf mit der Web-App ist Pflicht** für alles, was auf mehreren Geräten zusammen gerechnet wird (Zufall mit Seed, Spielregeln, Takt). Erwartungswerte dafür direkt aus dem TypeScript-Code erzeugen (`npx tsx`), nicht von Hand ausrechnen. Beispiel: `Tests/GnocchiCoreTests/ParityTests.swift`.
 - **Änderung an einer Regel:** zuerst in `../lib/*.ts` mit Test, dann hier nachziehen, dann beide Testläufe.
 - SwiftUI mit Observation (`@Observable`), keine Combine-Neuentwicklung. Swift 6, strikte Nebenläufigkeit. Ab iOS 17; iOS-26-APIs (Liquid Glass) nur hinter `if #available(iOS 26, *)`.
-- Texte auf Deutsch, Ton wie in der Web-App. Gestaltung nach dem Skill `apple-design`.
+- Texte auf Deutsch, Ton wie in der Web-App. Gestaltung nach dem Skill `apple-design` und nach [../docs/DESIGN.md](../docs/DESIGN.md): Bausteine aus `Gnocchi/Design/` verwenden, keine eigenen Farben oder Radien in Views.
+- Kein `UINavigationBar.appearance()` beim Start: Das setzt die Akzentfarbe aus dem Asset-Katalog auf Blau zurück.
 - Datenbank nie aus der App heraus verändern (kein DDL). Neue Tabellen/Funktionen als Migration in `../supabase/migrations/`, wie in `../CLAUDE.md` beschrieben.
 - Kein Supabase Secret Key in der App. Der Publishable Key in `Services/SupabaseClient.swift` ist öffentlich.
 
@@ -22,10 +23,12 @@ Native App zur Web-App im übergeordneten Ordner. Gleiche Datenbank (Supabase), 
 - Logik testen (geht auch ohne Xcode): `scripts/test-core.sh`. Web-Seite: `npm test` im Hauptordner.
 - App bauen, testen, im Simulator starten: über die MCP-Werkzeuge von **MobileBuildMCP** (Sentry), nicht mit rohem `xcodebuild`.
 - SwiftUI-Previews ansehen, Fehler lesen, Apple-Doku suchen: über den **xcode**-MCP (`xcrun mcpbridge`, Xcode muss offen sein).
+- Ohne Konto ansehen: Startargument `--demo-household` (Beispielfamilie), `--demo-onboarding` (Familie anlegen), `--demo-welcome` (Onboarding).
 - Ansehen und antippen in der Claude-Desktop-App: iOS-Simulator-Werkzeug (`attach` zuerst, dann bauen, `launch` mit der gebauten `.app`, `screenshot`, `tap`).
 - Jede sichtbare Änderung endet mit einem Screenshot aus dem Simulator.
 
 ## Vor dem App Store
+- In Supabase Auth unter URL Configuration die Rücksprungadressen `gnocchi://auth/confirm` und `gnocchi://auth/recovery` freigeben. Registrierung und Passwort-Reset verwenden PKCE. Der E-Mail-Link wird auf dem iPhone geöffnet, auf dem die Anfrage gestartet wurde.
 - Bundle-ID `app.gnocchi.ios` durch eine eigene ersetzen, Entwicklerteam in `project.yml` eintragen.
 - App-Icon (1024×1024) in `Gnocchi/Resources/Assets.xcassets/AppIcon.appiconset`.
 - Konto in der App löschen können (Apple-Regel 5.1.1), Datenschutzerklärung, Testkonto für die Prüfer.

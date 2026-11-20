@@ -65,7 +65,7 @@ export function LandingDemo() {
   const spring = reduce ? { duration: 0 } : { type: "spring" as const, bounce: 0.15, duration: 0.45 };
 
   return (
-    <div className="rounded-[22px] bg-surface p-4 sm:p-5" style={{ boxShadow: "var(--lift)" }}>
+    <div className="lp-card p-4 sm:p-5">
       <p className="text-[0.8125rem] font-semibold text-label-2">Probiert es aus: Mittwoch, 17:30 Uhr</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         <Toggle on={out} onClick={() => { setOut(!out); if (out) setGuests(false); }}>Heute essen wir auswärts</Toggle>

@@ -13,11 +13,11 @@ export function effectiveStatus(member: Member, date: string, meal: Meal, attend
   return { status: def ?? "da", guests: 0, explicit: false };
 }
 
-export function eaters(members: Member[], attendance: Attendance[], date: string, meal: Meal): number {
-  let n = 0;
+export function eaters(members: Member[], attendance: Attendance[], date: string, meal: Meal, familyGuests?: number | null): number {
+  let n = familyGuests ?? 0;
   for (const m of members) {
     const s = effectiveStatus(m, date, meal, attendance);
-    if (s.status === "da") n += 1 + s.guests;
+    if (s.status === "da") n += 1 + (familyGuests == null ? s.guests : 0);
   }
   return n;
 }
@@ -29,10 +29,10 @@ export function presentMembers(members: Member[], attendance: Attendance[], date
 /** Portionen, für die ein Slot kocht: Esser des Slots + Esser aller Reste-Slots, die darauf verweisen. */
 export function servingsFor(entry: MealPlanEntry, plan: MealPlanEntry[], members: Member[], attendance: Attendance[]): number {
   if (entry.servings_override) return entry.servings_override;
-  let total = eaters(members, attendance, entry.date, entry.meal);
+  let total = eaters(members, attendance, entry.date, entry.meal, entry.family_guests);
   for (const other of plan) {
     if (other.leftover_of === entry.id && other.status !== "ausgefallen") {
-      total += eaters(members, attendance, other.date, other.meal);
+      total += eaters(members, attendance, other.date, other.meal, other.family_guests);
     }
   }
   return total;

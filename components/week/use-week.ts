@@ -5,7 +5,11 @@ import { useApp } from "@/components/app-data";
 import { daysFrom } from "@/lib/dates";
 import type { Attendance, AttendanceStatus, MealPlanEntry, Meal } from "@/lib/types";
 
+import { useHouseholdChanges, type LiveTable } from "@/components/use-household-changes";
+
 export { MEALS } from "@/lib/meals";
+
+const WEEK_TABLES: LiveTable[] = ["ep_attendance", "ep_meal_plan"];
 
 /** Sieben Tage ab `start` (Planansicht beginnt mit heute) */
 export function useWeek(start: string) {
@@ -87,20 +91,13 @@ export function useWeek(start: string) {
     };
   }, [fetchWeek, apply]);
 
-  // Realtime: Änderungen anderer erscheinen ohne Reload
+  // Realtime: Änderungen anderer erscheinen ohne Reload (ein Kanal je Familie)
+  useHouseholdChanges(WEEK_TABLES, () => void load());
   useEffect(() => {
-    const channel = sb
-      .channel(`ep-week-${from}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_attendance" }, () => void load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_meal_plan" }, () => void load())
-      .subscribe();
     const onFocus = () => void load();
     window.addEventListener("focus", onFocus);
-    return () => {
-      void sb.removeChannel(channel);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [sb, from, load]);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load]);
 
   const setStatus = useCallback(
     async (memberId: string, date: string, meal: Meal, status: AttendanceStatus, guests = 0) => {

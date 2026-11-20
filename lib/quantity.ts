@@ -70,10 +70,13 @@ function parseNumber(token: string): number | null {
   const mixed = t.match(/^(\d+)([½¼¾⅓⅔⅛])$/);
   if (mixed) return Number(mixed[1]) + FRACTIONS[mixed[2]];
   const frac = t.match(/^(\d+)\/(\d+)$/);
-  if (frac) return Number(frac[1]) / Number(frac[2]);
+  if (frac) return Number(frac[2]) ? Number(frac[1]) / Number(frac[2]) : null;
   const n = Number(t.replace(",", "."));
   return Number.isFinite(n) ? n : null;
 }
+
+const NUM = "(?:\\d+\\/\\d+|\\d+(?:[.,]\\d+)?[½¼¾⅓⅔⅛]?|[½¼¾⅓⅔⅛])";
+const RANGE_SEPARATOR = "(?:\\s*[–-]\\s*|\\s+(?:bis|to)\\s+)";
 
 /**
  * Liest Menge und Einheit aus einem Freitext wie "1,5 EL", "2–3 EL", "7g", "½ Kopf",
@@ -82,8 +85,8 @@ function parseNumber(token: string): number | null {
 export function parseAmount(text: string | null | undefined): ParsedAmount {
   if (!text) return { amount: null, unit: null };
   const s = text.trim();
-  const num = "(\\d+(?:[.,]\\d+)?[½¼¾⅓⅔⅛]?|\\d+\\/\\d+|[½¼¾⅓⅔⅛])";
-  const re = new RegExp(`^${num}(?:\\s*[–-]\\s*${num})?\\s*([A-Za-zÄÖÜäöüß.]+)?`);
+  const num = `(${NUM})`;
+  const re = new RegExp(`^${num}(?:${RANGE_SEPARATOR}${num})?\\s*([A-Za-zÄÖÜäöüß.]+)?`, "i");
   const m = s.match(re);
   if (!m) return { amount: null, unit: null };
   const amount = parseNumber(m[2] ?? m[1]);
@@ -194,15 +197,17 @@ export function scaledAmountText(amountText: string | null, amount: number | nul
   return `${formatted} ${afterUnit}`.trim();
 }
 
-const NUM = "(?:\\d+(?:[.,]\\d+)?[½¼¾⅓⅔⅛]?|\\d+\\/\\d+|[½¼¾⅓⅔⅛])";
-const LINE_RE = new RegExp(`^(${NUM}(?:\\s*[–-]\\s*${NUM})?)\\s*(?:([A-Za-zÄÖÜäöüß]+\\.?)(?=\\s|$))?\\s*(.*)$`);
+const LINE_RE = new RegExp(`^(${NUM}(?:${RANGE_SEPARATOR}${NUM})?)\\s*(?:([A-Za-zÄÖÜäöüß]+\\.?)(?=\\s|$))?\\s*(.*)$`, "i");
 
 /**
  * Trennt eine Zutatenzeile („200 g Mehl“, „2 große Zwiebeln“, „1 Prise Salz“)
  * in Mengentext und Name. Ohne erkennbare Menge bleibt alles im Namen.
  */
 export function splitIngredientLine(line: string): { amount_text: string | null; name: string } {
-  const s = line.replace(/\s+/g, " ").replace(/^(?:ca\.|etwa|circa)\s*/i, "").trim();
+  const cleaned = line.replace(/\s+/g, " ").trim();
+  const vague = cleaned.match(/^(etwas)\s+(.+)$/i);
+  if (vague) return { amount_text: vague[1], name: vague[2] };
+  const s = cleaned.replace(/^(?:ca\.|\b(?:etwa|circa)\b)\s*/i, "");
   const m = s.match(LINE_RE);
   if (!m) return { amount_text: null, name: s };
   const [, num, word, rest] = m;

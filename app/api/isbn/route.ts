@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseWithBearer } from "@/lib/supabase/server";
 
 // ISBN-Abfrage: Open Library, Fallback Google Books (Briefing 4.6)
 
@@ -58,6 +59,13 @@ async function google(isbn: string): Promise<BookInfo | null> {
 }
 
 export async function GET(request: NextRequest) {
+  const authorization = request.headers.get("authorization");
+  if (authorization !== null) {
+    const token = authorization.match(/^Bearer ([^\s,]+)$/i)?.[1];
+    if (!token || !(await supabaseWithBearer(token).auth.getUser(token)).data.user) {
+      return NextResponse.json({ error: "Bitte melde dich an." }, { status: 401 });
+    }
+  }
   const isbn = (request.nextUrl.searchParams.get("isbn") ?? "").replace(/[^0-9Xx]/g, "").toUpperCase();
   if (!/^(\d{9}[\dX]|\d{13})$/.test(isbn)) {
     return NextResponse.json({ error: "Bitte eine gültige ISBN-10 oder ISBN-13 eingeben." }, { status: 400 });

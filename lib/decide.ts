@@ -164,7 +164,7 @@ export interface CandidateRecipe {
 
 /**
  * Wählt die Gerichte für eine Runde: bevorzugt, was die Vorschlagsregeln erlauben
- * (nicht gerade erst gekocht, nicht schon geplant, Fleischregel) und lange nicht
+ * (nicht gerade erst gekocht, nicht schon geplant) und lange nicht
  * auf dem Tisch war – aber mit Zufall, damit jede Runde anders aussieht. Reicht das
  * nicht, wird mit den übrigen Rezepten aufgefüllt.
  */
@@ -172,7 +172,6 @@ export function pickCandidates(
   recipes: CandidateRecipe[],
   stats: Map<string, CookStats>,
   planned: PlannedDish[],
-  date: string,
   today: string,
   seed: number,
   opts: { count: number; folderId?: string | null; tag?: string | null },
@@ -183,7 +182,7 @@ export function pickCandidates(
   if (opts.tag) pool = pool.filter((r) => r.tags.includes(opts.tag!));
   // Ohne Ordner/Tag: Kuchen und Snacks sind kein Essen für den Plan
   const meals = opts.folderId || opts.tag ? pool : pool.filter(isDinnerCandidate);
-  const allowed = suggestionCandidates(meals, stats, planned, date, today) as CandidateRecipe[];
+  const allowed = suggestionCandidates(meals, stats, planned, today);
 
   const picked: string[] = [];
   const bag = allowed.map((r) => ({ id: r.id, w: weight(r, stats.get(r.id), today) }));

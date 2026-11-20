@@ -7,9 +7,9 @@ import { toTokenUsage } from "@/lib/ai/run";
 
 // Verbindungstest aus dem Haushalt: ein winziger Aufruf, Kosten < 0,01 Cent.
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const ctx = await aiGuard();
+    const ctx = await aiGuard(request);
     const started = Date.now();
     const result = await generateText({
       model: aiModel(ctx.cfg, "text", () => "Hallo, die KI ist bereit."),

@@ -21,7 +21,7 @@ Eine mobile-first Web-App (PWA), mit der eine fünfköpfige Familie ihr Essen f�
 Ein Haushalt mit 5 Mitgliedern: **Paul, Anton, Carl, Vroni, Christian**.
 
 - Carl ist Hauptnutzer und Admin (Architekturstudent, sportlich). Er erholt sich von einer Stressfraktur, darum sind Kalzium, Vitamin D und Protein relevant (Nährstoff-Fokus in Vorschlägen und Nährwerten).
-- Vorlieben im Haushalt: One-Pot-Gerichte (Jamie Oliver „ONE“), Hähnchen, Pasta, Asiatisch, Wraps, Lachs. Regel für Vorschläge: **höchstens 1 Fleischgericht pro 3 Gerichte** (Fisch zählt nicht als Fleisch).
+- Vorlieben im Haushalt: One-Pot-Gerichte (Jamie Oliver „ONE“), Hähnchen, Pasta, Asiatisch, Wraps, Lachs.
 - Sprache der UI: Deutsch. Zeitzone: Europe/Berlin. Woche: Montag bis Sonntag, ISO-Kalenderwoche.
 
 ## 3. Tech-Stack
@@ -49,9 +49,9 @@ Ein Haushalt mit 5 Mitgliedern: **Paul, Anton, Carl, Vroni, Christian**.
 
 ### 4.3 Essensplan
 - In jeden Slot ein Rezept einplanen (Suche in der Sammlung, Liste „Lange nicht gegessen“, Kochbuch-Ansicht) oder als „Reste von <Slot>“ markieren.
-- Button „Vorschlag“ füllt einen freien Slot regelbasiert (MVP ohne KI): nicht in den letzten 14 Tagen gekocht, Fleischregel aus Abschnitt 2, bevorzugt lange nicht oder nie gekochte Rezepte und Rezepte aus eigenen Kochbüchern.
+- Button „Vorschlag“ füllt einen freien Slot regelbasiert (MVP ohne KI): nicht in den letzten 14 Tagen gekocht, bevorzugt lange nicht oder nie gekochte Rezepte und Rezepte aus eigenen Kochbüchern.
 - Jeder Slot hat einen Status `geplant` → `gekocht` / `ausgefallen` (siehe 4.7).
-- **Abnahme:** Ein Rezept lässt sich in < 3 Tipps einplanen und wieder entfernen. Die Fleischregel wird bei Vorschlägen nie verletzt; beim manuellen Einplanen erscheint nur ein Hinweis. Vorgeschlagene Rezepte aus eigenen Büchern tragen das Label „aus deinem Regal“.
+- **Abnahme:** Ein Rezept lässt sich in < 3 Tipps einplanen und wieder entfernen. Vorgeschlagene Rezepte aus eigenen Büchern tragen das Label „aus deinem Regal“.
 
 ### 4.4 Kochdienst
 - Pro Slot eine kochende Person (optional eine zweite). Auswählbar sind nur Personen, die in diesem Slot `da` sind.
@@ -176,7 +176,7 @@ https://api.getbring.com/rest/bringrecipes/deeplink?url=<URL-encodierte öffentl
 |---|---|---|
 | Rezept aus Foto/Screenshot | 1–3 Bilder (Kochbuchseite, Screenshot) → `RecipeDraft`; optional Buch + Seite vorauswählen | Foto einer typischen Kochbuchseite ergibt Titel, ≥ 90 % der Zutaten mit Mengen und alle Schritte korrekt; Nutzer kann vor dem Speichern editieren |
 | Rezept aus URL | URL → Seite serverseitig laden; vorhandenes JSON-LD bevorzugen, sonst LLM-Extraktion → `RecipeDraft` | Für eine Seite mit schema.org-Recipe wird ohne LLM-Aufruf importiert |
-| Schlaue Wochenvorschläge | Anwesenheit der Woche, Fleischregel, `recipe_cook_stats`, Saison (Monat), Budget, Nährstoff-Fokus (Kalzium / Vit. D / Protein), Ablehnungsgründe → 3–7 Vorschläge mit kurzer Begründung, aus Sammlung + „aus deinem Regal“ + max. 2 neue | Regeln (Fleisch, 14 Tage) werden serverseitig nachgeprüft, Verstöße verworfen; jeder Vorschlag hat Begründung |
+| Schlaue Wochenvorschläge | Anwesenheit der Woche, `recipe_cook_stats`, Saison (Monat), Budget, Nährstoff-Fokus (Kalzium / Vit. D / Protein), Ablehnungsgründe → 3–7 Vorschläge mit kurzer Begründung, aus Sammlung + „aus deinem Regal“ + max. 2 neue | Regeln (z. B. 14-Tage-Sperre) werden serverseitig nachgeprüft, Verstöße verworfen; jeder Vorschlag hat Begründung |
 | „Was koche ich damit?“ | Chat-artiges Eingabefeld mit Resten/Vorrat → 3 Ideen (Sammlung zuerst, dann Bücher, dann neu) | Antwort in < 10 s, Ideen direkt einplanbar |
 | Varianten | Rezept + Wunsch („vegetarisch“, „schneller“, „One-Pot“, „Airfryer“) → neuer `RecipeDraft` mit Verweis auf Original | Variante wird als eigenes Rezept mit `variant_of` gespeichert |
 | Umrechnen | Portionen/Einheiten (Tasse, oz, lb, Becher → g/ml); deterministische Tabelle zuerst, LLM nur für Unbekanntes | „1 cup flour“ → „125 g Mehl“ |
@@ -279,7 +279,7 @@ Indizes: GIN auf `recipes.search`, `recipes.tags`, `recipes.categories`; `pg_trg
 ## 11. Lieferumfang
 
 - Repo mit Next.js-App, Supabase-Migrations (SQL inkl. RLS-Policies, View, Trigger, Indizes), Seed-Skript, das `rezeptsammlung.md` importiert, die 5 Mitglieder und die 15 Kochbücher anlegt und die 4 Verknüpfungen aus 4.6 setzt.
-- Unit-Tests für Markdown-Parser (Round-Trip), Portionsskalierung (Beispiele aus Abschnitt 7), Vorschlagsregeln (Fleisch, 14 Tage) und Kochhistorie (gekocht / rückgängig).
+- Unit-Tests für Markdown-Parser (Round-Trip), Portionsskalierung (Beispiele aus Abschnitt 7), Vorschlagsregeln (14-Tage-Sperre) und Kochhistorie (gekocht / rückgängig).
 - `.env.example` mit allen Variablen (Supabase, `LLM_*`, `AI_*`, `SUGGESTIONS_TOKEN`).
 - README: lokales Setup, Env-Variablen, Deployment auf Vercel, Supabase-Projekt verbinden, KI-Anbieter wechseln.
 

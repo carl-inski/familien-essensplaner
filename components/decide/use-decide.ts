@@ -68,7 +68,8 @@ export function useDecide(id: string) {
       .from("ep_decide_sessions")
       .update({ status: "playing", round: 0, state: initialState(session.game, session.candidates) })
       .eq("id", id)
-      .eq("status", "lobby");
+      .eq("status", "lobby")
+      .eq("seed", session.seed);
     await load();
     return error;
   }, [sb, id, session, load]);

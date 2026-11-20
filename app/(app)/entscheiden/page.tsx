@@ -43,7 +43,7 @@ function Start() {
   const params = useSearchParams();
   const router = useRouter();
   const toast = useToast();
-  const { sb, recipes, recipesById, folders, stats, today } = useApp();
+  const { sb, recipes, folders, stats, today } = useApp();
   const open = useOpenSessions();
   const running = open[0] ?? null;
   const [plan, setPlan] = useState<MealPlanEntry[] | null>(null);
@@ -72,12 +72,10 @@ function Start() {
   async function start() {
     setBusy(true);
     const seed = newSeed();
-    // Der Tag steht noch nicht fest: Regeln (nicht gerade gekocht, schon geplant, Fleisch) für heute anwenden
-    const target = suggested?.date ?? today;
     const planned: PlannedDish[] = (plan ?? [])
       .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !(suggested && p.date === suggested.date && p.meal === suggested.meal))
-      .map((p) => ({ date: p.date, recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null }));
-    const candidates = pickCandidates(recipes, stats, planned, target, today, seed, { count: candidateCount(game), folderId });
+      .map((p) => ({ date: p.date, recipe_id: p.recipe_id }));
+    const candidates = pickCandidates(recipes, stats, planned, today, seed, { count: candidateCount(game), folderId });
     if (candidates.length < 2) {
       setBusy(false);
       return toast({ text: folderId ? "In diesem Ordner sind zu wenige Rezepte zum Spielen." : "Zum Spielen braucht es mindestens zwei Rezepte in der Sammlung.", tone: "warning" });

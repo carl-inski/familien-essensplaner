@@ -28,6 +28,7 @@ interface ObjectCall<S extends z.ZodType> {
   /** Eingabe für den Cache-Schlüssel; ohne Angabe kein Cache */
   cacheInput?: unknown;
   cacheDays?: number;
+  timeoutMs?: number;
   mock?: MockReply;
 }
 
@@ -38,6 +39,7 @@ interface ObjectCall<S extends z.ZodType> {
 export async function aiObject<S extends z.ZodType>(call: ObjectCall<S>): Promise<{ data: z.infer<S>; cached: boolean }> {
   const { ctx, feature, kind = "text" } = call;
   const model = ctx.cfg.models[kind];
+  const abortSignal = call.timeoutMs ? AbortSignal.timeout(call.timeoutMs) : undefined;
   const key = call.cacheInput !== undefined ? cacheKey(feature, ctx.householdId, call.cacheInput) : null;
   if (key) {
     const hit = await cacheGet<z.infer<S>>(ctx, key);
@@ -55,6 +57,7 @@ export async function aiObject<S extends z.ZodType>(call: ObjectCall<S>): Promis
       output: Output.object({ schema: call.schema }),
       providerOptions: aiProviderOptions(ctx.cfg, call.effort),
       maxRetries: 1,
+      abortSignal,
     });
 
   let result;
