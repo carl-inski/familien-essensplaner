@@ -37,6 +37,8 @@ export interface RecipeDraft {
   extra_meta: { lines: MetaLine[] };
   /** Bild-URL aus einem Import (Webseite), sonst nicht gesetzt */
   image_url?: string | null;
+  /** Local preview of a social cover, uploaded only when saving. */
+  image_data?: { data: string; mediaType: string };
 }
 
 const KNOWN_HEAD = ["Untertitel", "Quelle", "Kochbuch", "Kategorie", "Zeit", "Portionen", "Menge", "Tags"];

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "xcode": {
+      "type": "stdio",
+      "command": "xcrun",
+      "args": ["mcpbridge"],
+      "env": { "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer" }
+    },
+    "MobileBuildMCP": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mobilebuildmcp@2.7.1", "mcp"],
+      "env": { "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer" }
+    }
+  }
+}

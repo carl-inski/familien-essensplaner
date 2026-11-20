@@ -18,7 +18,7 @@ import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, isoWeekString, week
 import { stashDraft } from "@/lib/draft-handoff";
 import { matchCookbook } from "@/lib/recipe-draft";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
-import { checkBatch, meatRuleHint, type PlannedDish } from "@/lib/suggest";
+import { checkBatch, type PlannedDish } from "@/lib/suggest";
 import type { Cookbook, MealPlanEntry } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 import { haptic } from "@/lib/haptics";
@@ -141,11 +141,6 @@ function PlanCard({ input, respond }: { input: unknown; respond: Respond }) {
 
   const current = around?.find((p) => p.date === data.datum && p.meal === data.mahlzeit);
   const currentTitle = current?.recipe_id && current.recipe_id !== recipe.id ? recipesById.get(current.recipe_id)?.title : null;
-  const planned = (around ?? [])
-    .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !(p.date === data.datum && p.meal === data.mahlzeit))
-    .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null }));
-  const hint = around ? meatRuleHint(planned, slotKey(data.datum, data.mahlzeit), recipe.diet) : null;
-
   return (
     <Shell
       icon={<IconCalendar size={16} />}
@@ -171,7 +166,6 @@ function PlanCard({ input, respond }: { input: unknown; respond: Respond }) {
       <p className="t-sub" style={{ color: "var(--label-2)" }}>{dayText(data.datum)} · {MEAL_LABEL[data.mahlzeit]}essen</p>
       {data.begruendung && <p className="t-footnote mt-1" style={{ color: "var(--label-2)" }}>{data.begruendung}</p>}
       {currentTitle && <p className="t-footnote mt-1" style={{ color: "var(--orange, var(--accent))" }}>Ersetzt „{currentTitle}“</p>}
-      {hint && <p className="t-footnote mt-1" style={{ color: "var(--red)" }}>⚠︎ {hint}</p>}
     </Shell>
   );
 }
@@ -213,11 +207,11 @@ function BatchPlanCard({ input, respond }: { input: unknown; respond: Respond })
     () =>
       (around ?? [])
         .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !rows.some((r) => r.datum === p.date && r.mahlzeit === p.meal))
-        .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null })),
-    [around, rows, recipesById],
+        .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id })),
+    [around, rows],
   );
-  const check = (list: typeof valid) => checkBatch(list.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id, diet: r.recipe!.diet })), planned, stats, today);
-  const initial = useMemo(() => checkBatch(valid.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id, diet: r.recipe!.diet })), planned, stats, today), [valid, planned, stats, today]);
+  const check = (list: typeof valid) => checkBatch(list.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id })), planned, stats, today);
+  const initial = useMemo(() => checkBatch(valid.map((r) => ({ slot: r.slot, recipe_id: r.rezept_id })), planned, stats, today), [valid, planned, stats, today]);
   // Vorauswahl: alles ohne Problem; danach entscheidet der Nutzer
   const chosen = useMemo(() => selected ?? new Set(initial.filter((p) => !p.problem).map((p) => p.slot)), [selected, initial]);
   const live = check(valid.filter((r) => chosen.has(r.slot)));

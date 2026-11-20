@@ -67,6 +67,18 @@ export function changeProblem(change: PlanChange, plan: MealPlanEntry[], today: 
   if (sameSlot(change.from, change.to)) return "Das Gericht steht schon dort.";
   const target = at(plan, change.to);
   if (target && (source.leftover_of === target.id || target.leftover_of === source.id)) return "Ein Gericht und seine Reste lassen sich nicht tauschen.";
+  if (source.status === "ausgefallen") return "Das Gericht ist als ausgefallen markiert.";
+  const adjusted = applyChange(change, plan, []).plan;
+  const changedIds = new Set(adjusted.filter((p) => sameSlot(p, change.from) || sameSlot(p, change.to)).map((p) => p.id));
+  for (const child of adjusted) {
+    if (!child.leftover_of || child.status === "ausgefallen" ||
+        (!changedIds.has(child.id) && !changedIds.has(child.leftover_of))) continue;
+    const origin = adjusted.find((p) => p.id === child.leftover_of);
+    if (origin && (!origin.recipe_id || origin.leftover_of || origin.status === "ausgefallen" ||
+        slotKey(origin.date, origin.meal) >= slotKey(child.date, child.meal) || daysBetween(origin.date, child.date) > 10)) {
+      return "Das Ursprungsgericht muss vor den Resten und höchstens zehn Tage zurück liegen.";
+    }
+  }
   return null;
 }
 

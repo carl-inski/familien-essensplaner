@@ -20,6 +20,8 @@ describe("Mengen-Parsing", () => {
     expect(parseAmount("1,5 EL")).toEqual({ amount: 1.5, unit: "EL" });
     expect(parseAmount("1–1,2 l")).toEqual({ amount: 1.2, unit: "l" });
     expect(parseAmount("½ Kopf")).toEqual({ amount: 0.5, unit: "Kopf" });
+    expect(parseAmount("1/2 Bund")).toEqual({ amount: 0.5, unit: "Bund" });
+    expect(parseAmount("1/0 Bund")).toEqual({ amount: null, unit: null });
     expect(parseAmount("2 Zehen")).toEqual({ amount: 2, unit: "Zehen" });
     expect(parseAmount("2 Packungen")).toEqual({ amount: 2, unit: "Pck." });
     expect(parseAmount("4 mittelgroße")).toEqual({ amount: 4, unit: null });

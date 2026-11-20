@@ -14,9 +14,9 @@ import { useIsDesktop } from "@/components/use-media";
 import { SlotSheet, type Slot } from "@/components/week/slot-sheet";
 import { MEALS, useWeek } from "@/components/week/use-week";
 import { WEEKDAY_LONG, WEEKDAY_SHORT, addDays, formatDateDE, parseISODate, isoWeekString, startLabel, weekdayIndex } from "@/lib/dates";
-import { MEAL_LABEL, slotKey } from "@/lib/meals";
+import { ALL_MEALS, MEAL_LABEL, configuredMeals, slotKey } from "@/lib/meals";
 import { eaters, effectiveStatus } from "@/lib/planning";
-import { isDinnerCandidate, meatRuleHint, pickSuggestion, type PlannedDish } from "@/lib/suggest";
+import { isMealCandidate, pickSuggestion, type PlannedDish } from "@/lib/suggest";
 import type { Meal, Recipe } from "@/lib/types";
 import { inBackground } from "@/lib/background";
 import { haptic } from "@/lib/haptics";
@@ -71,25 +71,22 @@ function Week() {
     return () => window.removeEventListener("keydown", onKey);
   }, [start, today, router]);
 
-  // Für die Fleischregel zählt die Reihenfolge der Gerichte: Mo mittag, Mo abend, Di mittag, …
   const plannedDishes = (exclude?: Slot): PlannedDish[] =>
     plan
       .filter((p) => p.recipe_id && p.status !== "ausgefallen" && !(exclude && p.date === exclude.date && p.meal === exclude.meal))
-      .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id, diet: recipesById.get(p.recipe_id!)?.diet ?? null }));
+      .map((p) => ({ date: slotKey(p.date, p.meal), recipe_id: p.recipe_id }));
 
   async function planRecipe(slot: Slot, recipe: Recipe) {
-    const hint = meatRuleHint(plannedDishes(slot), slotKey(slot.date, slot.meal), recipe.diet);
     const { error } = await upsertSlot(slot.date, slot.meal, { recipe_id: recipe.id, leftover_of: null, status: "geplant" });
     if (error) toast({ text: error.message, tone: "error" });
-    else if (hint) toast({ text: hint, tone: "warning" });
     else haptic("medium");
   }
 
   async function suggest(slot: Slot, avoid: string[] = []) {
-    const pool = recipes.filter((r) => !avoid.includes(r.id) && isDinnerCandidate(r));
-    const pick = pickSuggestion(pool, stats, plannedDishes(slot), slotKey(slot.date, slot.meal), today);
+    const pool = recipes.filter((r) => !avoid.includes(r.id) && isMealCandidate(r, slot.meal));
+    const pick = pickSuggestion(pool, stats, plannedDishes(slot), today);
     if (!pick) {
-      toast({ text: "Kein passender Vorschlag – alles kürzlich gekocht oder die Fleischregel greift." });
+      toast({ text: "Kein passender Vorschlag für diese Mahlzeit." });
       return;
     }
     const recipe = recipesById.get(pick.id)!;
@@ -114,7 +111,13 @@ function Week() {
     });
   }
 
-  const plannedCount = plan.filter((p) => MEALS.includes(p.meal) && (p.recipe_id || p.leftover_of)).length;
+  const mealsByDate = new Map(dates.map((date) => {
+    const active = new Set([...MEALS, ...configuredMeals(date, plan, attendance)]);
+    return [date, ALL_MEALS.filter((meal) => active.has(meal))] as const;
+  }));
+  const hasOptionalMeals = [...mealsByDate.values()].some((meals) => meals.length > MEALS.length);
+  const activeCount = [...mealsByDate.values()].reduce((sum, meals) => sum + meals.length, 0);
+  const plannedCount = plan.filter((p) => dates.includes(p.date) && p.status !== "ausgefallen" && (p.recipe_id || p.leftover_of)).length;
   const slotLabel = (s: Slot) => `${WEEKDAY_LONG[weekdayIndex(s.date)]} ${MEAL_LABEL[s.meal]}`;
 
   return (
@@ -131,7 +134,7 @@ function Week() {
               {start === today
                 ? `${formatDateDE(dates[0], { day: "numeric", month: "long" })} – ${formatDateDE(dates[6], { day: "numeric", month: "long" })}`
                 : `bis ${WEEKDAY_LONG[weekdayIndex(dates[6])]}, ${formatDateDE(dates[6], { day: "numeric", month: "long" })}`}{" "}
-              · {plannedCount}/{dates.length * MEALS.length} geplant
+              · {plannedCount}/{activeCount} geplant
             </span>
           </>
         }
@@ -152,7 +155,7 @@ function Week() {
       {desktop ? (
         // Computer: die sieben Tage nebeneinander; Mittag und Abend liegen über alle Tage auf einer Linie (Subgrid)
         <div className="page-wide mt-6 overflow-x-auto pb-2">
-          <motion.div key={start} {...enter} className="grid grid-cols-[repeat(7,minmax(8.25rem,1fr))] gap-1.5" style={{ gridTemplateRows: "auto auto auto" }}>
+          <motion.div key={start} {...enter} className="grid grid-cols-[repeat(7,minmax(8.25rem,1fr))] gap-1.5" style={{ gridTemplateRows: hasOptionalMeals ? undefined : "auto auto auto" }}>
             {!week.loaded
               ? dates.map((d) => <div key={d} className="skeleton row-span-3 h-[30rem]" />)
               : dates.map((date) => dayColumn(date))}
@@ -208,7 +211,7 @@ function Week() {
           </h2>
           {isToday && <span className="badge" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>Heute</span>}
         </header>
-        {MEALS.map((meal, i) => slotBlock(date, meal, i > 0))}
+        {mealsByDate.get(date)?.map((meal, i) => slotBlock(date, meal, i > 0))}
       </article>
     );
   }
@@ -216,7 +219,7 @@ function Week() {
   function slotInfo(date: string, meal: Meal) {
     const slot: Slot = { date, meal };
     const entry = plan.find((p) => p.date === date && p.meal === meal) ?? null;
-    const count = eaters(members, attendance, date, meal);
+    const count = eaters(members, attendance, date, meal, entry?.family_guests);
     const recipe = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
     const source = entry?.leftover_of ? plan.find((p) => p.id === entry.leftover_of) : null;
     const sourceRecipe = source?.recipe_id ? recipesById.get(source.recipe_id) : null;
@@ -346,7 +349,9 @@ function Week() {
     return (
       <article
         key={date}
-        className="board-lane row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid"
+        className={hasOptionalMeals
+          ? "board-lane flex min-w-0 flex-col"
+          : "board-lane row-span-3 grid min-w-0 grid-cols-[minmax(0,1fr)] grid-rows-subgrid"}
         data-today={isToday}
         data-past={isPast && !isToday}
         aria-label={`${WEEKDAY_LONG[idx]}, ${formatDateDE(date)}`}
@@ -356,7 +361,7 @@ function Week() {
           {isToday && <span className="sr-only">Heute</span>}
           <span className="board-date tabular-nums" data-today={isToday}>{parseISODate(date).getUTCDate()}</span>
         </header>
-        {MEALS.map((meal) => slotCell(date, meal))}
+        {mealsByDate.get(date)?.map((meal) => slotCell(date, meal))}
       </article>
     );
   }

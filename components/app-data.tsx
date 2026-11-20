@@ -10,6 +10,7 @@ import { todayBerlin } from "@/lib/dates";
 import { cookStatsFromHistory } from "@/lib/history";
 import { supabase } from "@/lib/supabase/client";
 import { Onboarding } from "./onboarding";
+import { subscribeHousehold } from "./use-household-changes";
 import type { Cookbook, CookingHistoryEntry, CookStats, Household, Member, Membership, Recipe, RecipeFolder } from "@/lib/types";
 
 interface AppData {
@@ -139,16 +140,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [sb, router, reloadMembers, reloadRecipes, reloadCookbooks, reloadHistory, reloadFolders]);
 
   // Kochhistorie live halten (Änderungen von anderen Geräten)
+  const liveHousehold = state.phase === "ready" ? state.household.id : null;
   useEffect(() => {
-    if (state.phase !== "ready") return;
-    const channel = sb
-      .channel("ep-history")
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_cooking_history" }, () => void reloadHistory())
-      .subscribe();
+    if (!liveHousehold) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = subscribeHousehold(sb, liveHousehold, [], (table) => {
+      if ((table && table !== "ep_cooking_history") || timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        void reloadHistory();
+      }, 250);
+    });
     return () => {
-      void sb.removeChannel(channel);
+      if (timer) clearTimeout(timer);
+      stop();
     };
-  }, [sb, state.phase, reloadHistory]);
+  }, [sb, liveHousehold, reloadHistory]);
 
   const value = useMemo<AppData | null>(() => {
     if (state.phase !== "ready") return null;

@@ -13,7 +13,7 @@ import { useShopping } from "@/components/shopping/use-shopping";
 import { useToast } from "@/components/toast";
 import { WEEKDAY_SHORT, addDays, formatDateDE, weekdayIndex } from "@/lib/dates";
 import { haptic } from "@/lib/haptics";
-import { MEALS, MEAL_LABEL } from "@/lib/meals";
+import { ALL_MEALS, MEAL_LABEL } from "@/lib/meals";
 import { changeProblem, nextFreeSlot, previewChange, slotName, type ChangePreview, type PlanChange, type SlotRef } from "@/lib/plan-change";
 import type { MealPlanEntry } from "@/lib/types";
 
@@ -98,9 +98,9 @@ function Body({ intent, onDone }: { intent: ChangeIntent; onDone: () => void }) 
     onDone();
   }
 
-  // Ziele: die nächsten acht Tage, beide Mahlzeiten – ohne die Mahlzeit selbst
+  // Ziele: die nächsten acht Tage, alle Mahlzeiten – ohne die Mahlzeit selbst
   const targets: SlotRef[] = Array.from({ length: 8 }, (_, i) => addDays(today, i))
-    .flatMap((date) => MEALS.map((meal) => ({ date, meal })))
+    .flatMap((date) => ALL_MEALS.map((meal) => ({ date, meal })))
     .filter((s) => !(s.date === from.date && s.meal === from.meal));
   const dishAt = (s: SlotRef): MealPlanEntry | undefined => plan.find((p) => p.date === s.date && p.meal === s.meal && (p.recipe_id || p.leftover_of));
   const days = [...new Set(targets.map((t) => t.date))];

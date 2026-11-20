@@ -3,9 +3,10 @@
 
 import { z } from "zod";
 import { RecipeExtractSchema } from "./schemas";
+import { ALL_MEALS } from "../meals";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Datum YYYY-MM-DD");
-const meal = z.enum(["mittag", "abend"]).describe("mittag oder abend");
+const meal = z.enum(ALL_MEALS).describe("fruehstueck, mittag, abend oder snack");
 
 export const EinplanenInput = z.object({
   datum: date,

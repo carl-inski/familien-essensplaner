@@ -4,10 +4,10 @@ import { z } from "zod";
 import { WEEKDAY_LONG, addDays, weekdayIndex } from "@/lib/dates";
 import { cookStatsFromHistory } from "@/lib/history";
 import { matchByIngredients } from "@/lib/leftovers";
-import { MEALS, MEAL_LABEL, slotKey } from "@/lib/meals";
+import { ALL_MEALS, MEALS, MEAL_LABEL, configuredMeals, slotKey } from "@/lib/meals";
 import { buildShoppingList, effectiveStatus, needsShopping, presentMembers } from "@/lib/planning";
-import { rankedCandidates, type PlannedDish } from "@/lib/suggest";
-import type { Attendance, Cookbook, CookingHistoryEntry, Meal, MealPlanEntry, Member, Recipe } from "@/lib/types";
+import { isMealCandidate, rankedCandidates, type PlannedDish } from "@/lib/suggest";
+import type { Attendance, Cookbook, CookingHistoryEntry, MealPlanEntry, Member, Recipe } from "@/lib/types";
 import { AnwesenheitInput, BuchInput, EinplanenInput, EntwurfInput, GerichteEntfernenInput, PlanAendernInput, MehrereEinplanenInput, NotizInput } from "./assistant-schemas";
 import type { AiContext } from "./guard";
 
@@ -115,7 +115,7 @@ export function assistantTools(ctx: AiContext, today: string) {
     }),
 
     woche_lesen: tool({
-      description: "Liest Plan und Anwesenheit für mehrere Tage (Mittag und Abend): Gericht, Koch, wer da ist und wer nicht.",
+      description: "Liest Plan und Anwesenheit für mehrere Tage mit Mittag, Abend und den zusätzlich geplanten Mahlzeiten.",
       inputSchema: z.object({
         von: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Startdatum, Standard heute"),
         tage: z.number().int().min(1).max(14).nullable().describe("Standard 7"),
@@ -132,7 +132,8 @@ export function assistantTools(ctx: AiContext, today: string) {
         const attendance = (a.data ?? []) as Attendance[];
         const days: unknown[] = [];
         for (let d = from; d <= to; d = addDays(d, 1)) {
-          for (const meal of MEALS) {
+          const active = new Set([...MEALS, ...configuredMeals(d, plan, attendance)]);
+          for (const meal of ALL_MEALS.filter((m) => active.has(m))) {
             const e = plan.find((x) => x.date === d && x.meal === meal);
             const r = e?.recipe_id ? recipes.find((x) => x.id === e.recipe_id) : null;
             const present = members.filter((m) => effectiveStatus(m, d, meal, attendance).status === "da");
@@ -202,18 +203,18 @@ export function assistantTools(ctx: AiContext, today: string) {
 
     vorschlaege_finden: tool({
       description:
-        "Findet für offene Mahlzeiten eines Zeitraums passende Rezepte aus der Sammlung. Die Hausregeln (Fleischregel, 14-Tage-Sperre, keine Snacks am Abend) sind schon angewendet. Danach mit mehrere_einplanen vorschlagen.",
+        "Findet für offene Mahlzeiten eines Zeitraums passende Rezepte aus der Sammlung. Die Regeln (14-Tage-Sperre, keine Snacks am Abend) sind schon angewendet. Danach mit mehrere_einplanen vorschlagen.",
       inputSchema: z.object({
         von: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Standard heute"),
         bis: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().describe("Standard Sonntag dieser Woche bzw. 6 Tage nach von"),
-        mahlzeiten: z.array(z.enum(["mittag", "abend"])).nullable().describe("Standard beide"),
+        mahlzeiten: z.array(z.enum(ALL_MEALS)).nullable().describe("Standard Mittag und Abend"),
         max_minuten: z.number().int().nullable(),
         ernaehrung: z.enum(["vegetarisch", "fisch", "fleisch"]).nullable(),
       }),
       execute: async (q) => {
         const from = q.von ?? today;
         const to = q.bis ?? addDays(from, 6);
-        const meals = (q.mahlzeiten?.length ? q.mahlzeiten : MEALS) as Meal[];
+        const meals = q.mahlzeiten?.length ? q.mahlzeiten : MEALS;
         const { members, recipes } = await load();
         const st = await stats();
         const [p, a, rej] = await Promise.all([
@@ -227,11 +228,12 @@ export function assistantTools(ctx: AiContext, today: string) {
         const exclude = new Set(rejected.map((r) => r.recipe_id).filter((x): x is string => !!x));
         const planned: PlannedDish[] = plan
           .filter((e) => e.recipe_id && e.status !== "ausgefallen")
-          .map((e) => ({ date: slotKey(e.date, e.meal), recipe_id: e.recipe_id, diet: recipes.find((r) => r.id === e.recipe_id)?.diet ?? null }));
+          .map((e) => ({ date: slotKey(e.date, e.meal), recipe_id: e.recipe_id }));
         let pool = recipes.filter((r) => (r.ep_recipe_ingredients?.length ?? 0) > 0 || r.cookbook_id);
         if (q.max_minuten) pool = pool.filter((r) => r.time_min !== null && r.time_min <= q.max_minuten!);
         if (q.ernaehrung) pool = pool.filter((r) => r.diet === q.ernaehrung);
 
+        const pools = new Map(meals.map((meal) => [meal, meal === "mittag" ? pool : pool.filter((recipe) => isMealCandidate(recipe, meal))]));
         const slots = [];
         for (let d = from; d <= to; d = addDays(d, 1)) {
           for (const meal of meals) {
@@ -239,7 +241,7 @@ export function assistantTools(ctx: AiContext, today: string) {
             if (entry?.recipe_id || entry?.leftover_of || entry?.status === "ausgefallen") continue;
             const present = presentMembers(members, attendance, d, meal);
             if (!present.length) continue;
-            const candidates = rankedCandidates(pool, st, planned, slotKey(d, meal), today, { dinner: meal === "abend", exclude });
+            const candidates = rankedCandidates(pools.get(meal) ?? [], st, planned, today, { exclude });
             slots.push({
               tag: dayLabel(d),
               datum: d,

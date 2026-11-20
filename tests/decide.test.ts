@@ -39,17 +39,17 @@ describe("Kandidaten", () => {
   const recipes = ids(30).map((id) => recipe(id));
 
   it("zieht die gewünschte Zahl ohne Doppelte, mit gleichem Seed gleich", () => {
-    const a = pickCandidates(recipes, new Map(), [], today, today, 3, { count: 12 });
+    const a = pickCandidates(recipes, new Map(), [], today, 3, { count: 12 });
     expect(a).toHaveLength(12);
     expect(new Set(a).size).toBe(12);
-    expect(pickCandidates(recipes, new Map(), [], today, today, 3, { count: 12 })).toEqual(a);
-    expect(pickCandidates(recipes, new Map(), [], today, today, 4, { count: 12 })).not.toEqual(a);
+    expect(pickCandidates(recipes, new Map(), [], today, 3, { count: 12 })).toEqual(a);
+    expect(pickCandidates(recipes, new Map(), [], today, 4, { count: 12 })).not.toEqual(a);
   });
 
   it("lässt gerade Gekochtes und schon Geplantes weg, solange genug anderes da ist", () => {
     const stats = new Map<string, CookStats>([["r1", { recipe_id: "r1", last_cooked_on: "2026-11-09", times_cooked: 1, days_since: 2 }]]);
     const planned = [{ date: "2026-11-12", recipe_id: "r2", diet: "vegetarisch" as const }];
-    const picked = pickCandidates(recipes, stats, planned, today, today, 1, { count: 18 });
+    const picked = pickCandidates(recipes, stats, planned, today, 1, { count: 18 });
     expect(picked).not.toContain("r1");
     expect(picked).not.toContain("r2");
   });
@@ -57,13 +57,13 @@ describe("Kandidaten", () => {
   it("füllt mit gesperrten Rezepten auf, wenn die Sammlung klein ist", () => {
     const small = ids(3).map((id) => recipe(id));
     const stats = new Map<string, CookStats>(small.map((r) => [r.id, { recipe_id: r.id, last_cooked_on: "2026-11-10", times_cooked: 1, days_since: 1 }]));
-    expect(pickCandidates(small, stats, [], today, today, 1, { count: 12 }).sort()).toEqual(["r1", "r2", "r3"]);
+    expect(pickCandidates(small, stats, [], today, 1, { count: 12 }).sort()).toEqual(["r1", "r2", "r3"]);
   });
 
   it("bleibt im gewählten Ordner und nimmt dort auch Kuchen", () => {
     const mixed = [recipe("a", { folder_id: "f1", tags: ["kuchen"] }), recipe("b", { folder_id: "f1" }), recipe("c"), recipe("d", { tags: ["kuchen"] })];
-    expect(pickCandidates(mixed, new Map(), [], today, today, 1, { count: 12, folderId: "f1" }).sort()).toEqual(["a", "b"]);
-    expect(pickCandidates(mixed, new Map(), [], today, today, 1, { count: 12 }).sort()).toEqual(["b", "c"]);
+    expect(pickCandidates(mixed, new Map(), [], today, 1, { count: 12, folderId: "f1" }).sort()).toEqual(["a", "b"]);
+    expect(pickCandidates(mixed, new Map(), [], today, 1, { count: 12 }).sort()).toEqual(["b", "c"]);
   });
 });
 

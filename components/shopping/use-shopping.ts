@@ -5,9 +5,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/app-data";
+import { useHouseholdChanges, type LiveTable } from "@/components/use-household-changes";
 import { addDays } from "@/lib/dates";
 import { STOCK_DAYS, type NewPurchase, type Purchase } from "@/lib/shopping";
 import type { Attendance, MealPlanEntry } from "@/lib/types";
+
+const SHOPPING_TABLES: LiveTable[] = ["ep_meal_plan", "ep_attendance", "ep_shopping_extra", "ep_purchases", "ep_pantry"];
 
 /** So weit voraus zeigt die Liste geplante Gerichte */
 export const HORIZON_DAYS = 42;
@@ -124,14 +127,6 @@ export function useShopping() {
   useEffect(() => {
     let alive = true;
     fetchAll().then((d) => alive && apply(d));
-    const channel = sb
-      // eigener Name je Nutzung: Liste, Planänderung und KI-Karte können gleichzeitig offen sein
-      .channel(`ep-shopping-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_meal_plan" }, () => void reload())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_attendance" }, () => void reload())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_shopping_extra" }, () => void reload())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_purchases" }, () => void reload())
-      .subscribe();
     // Zurück in der App oder wieder Netz: Wartendes nachholen, dann frisch laden
     const onFocus = () => void (queue.current.length ? flush() : reload());
     window.addEventListener("focus", onFocus);
@@ -139,12 +134,14 @@ export function useShopping() {
     const retry = setInterval(() => queue.current.length && void flush(), 8000);
     return () => {
       alive = false;
-      void sb.removeChannel(channel);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onFocus);
       clearInterval(retry);
     };
-  }, [sb, fetchAll, apply, reload, flush]);
+  }, [fetchAll, apply, reload, flush]);
+
+  // Live: ein Kanal je Familie, gebündelt (ein Einkauf mit vielen Haken lädt einmal nach)
+  useHouseholdChanges(SHOPPING_TABLES, () => void reload());
 
   return { plan, attendance, extras, purchases, sync, loaded, reload, setExtras, buy, undo };
 }

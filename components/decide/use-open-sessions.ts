@@ -4,13 +4,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "@/components/app-data";
+import { subscribeHousehold } from "@/components/use-household-changes";
 import type { DecideSession } from "@/lib/decide";
 
 /** Vergessene Runden (zwei Stunden ohne Bewegung) zählen nicht mehr – wie in ep_decide_create */
 const MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
 export function useOpenSessions(): DecideSession[] {
-  const { sb } = useApp();
+  const { sb, household } = useApp();
   const [sessions, setSessions] = useState<DecideSession[]>([]);
 
   const fetchOpen = useCallback(async () => {
@@ -27,23 +28,21 @@ export function useOpenSessions(): DecideSession[] {
     let cancelled = false;
     const load = () => fetchOpen().then((list) => !cancelled && setSessions(list));
     void load();
-    // eigener Kanalname je Nutzung: die Liste und der Hinweis oben hören beide zu
-    const channel = sb
-      .channel(`ep-decide-open-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ep_decide_sessions" }, () => void load())
-      .subscribe();
+    const stop = subscribeHousehold(sb, household.id, [], (table) => {
+      if (!table || table === "ep_decide_sessions") void load();
+    });
     const onFocus = () => document.visibilityState === "visible" && void load();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     const poll = setInterval(onFocus, 20000);
     return () => {
       cancelled = true;
-      void sb.removeChannel(channel);
+      stop();
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
       clearInterval(poll);
     };
-  }, [sb, fetchOpen]);
+  }, [sb, household.id, fetchOpen]);
 
   return sessions;
 }

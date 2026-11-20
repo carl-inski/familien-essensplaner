@@ -1,0 +1,206 @@
+[
+  {
+    "title": "Die echte italienische Küche",
+    "isbn": null,
+    "authors": [
+      "Franco Benussi",
+      "Reinhardt Hess",
+      "Sabine Sälzer"
+    ],
+    "publisher": "Gräfe und Unzer",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/die-echte-italienische-kueche.jpg",
+    "quelle": null,
+    "hinweis": "Cover: Gräfe und Unzer, Ausgabe 2025. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "Amazon-Katalogbild zur DNB-Ausgabe 2025 (978-3-8338-9924-9), ISBN nicht gespeichert"
+  },
+  {
+    "title": "Jerusalem",
+    "isbn": "978-3-8310-2333-2",
+    "authors": [
+      "Yotam Ottolenghi",
+      "Sami Tamimi"
+    ],
+    "publisher": "Dorling Kindersley",
+    "year": 2013,
+    "coverUrl": "/images/kochbuecher/jerusalem.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Cover zur ISBN 978-3-8310-2333-2, lesehits.de"
+  },
+  {
+    "title": "Schlau kochen",
+    "isbn": "978-3-86528-608-6",
+    "authors": [
+      "Sigrid Krekel",
+      "Angela Francisca Endress"
+    ],
+    "publisher": "Umschau",
+    "year": 2009,
+    "coverUrl": "/images/kochbuecher/schlau-kochen.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Amazon-Produktbild zur ISBN 978-3-86528-608-6"
+  },
+  {
+    "title": "Das neue bayrische Kochbuch",
+    "isbn": null,
+    "authors": [
+      "Alfons Schuhbeck"
+    ],
+    "publisher": "Zabert Sandmann",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/das-neue-bayrische-kochbuch.jpg",
+    "quelle": null,
+    "hinweis": "Cover: Zabert Sandmann, jüngste Ausgabe 2001. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "Amazon-Produktbild der Ausgabe Zabert Sandmann; DNB-Jahr 2001, ISBN nicht gespeichert"
+  },
+  {
+    "title": "Leon Fast Food Vegetarisch",
+    "isbn": "978-3-8321-9476-5",
+    "authors": [
+      "Jane Baxter",
+      "Henry Dimbleby"
+    ],
+    "publisher": "DuMont",
+    "year": 2014,
+    "coverUrl": "/images/kochbuecher/leon-fast-food-vegetarisch.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Cover des DuMont Verlags zur ISBN 978-3-8321-9476-5"
+  },
+  {
+    "title": "Das große Buch vom Backen und Bauen",
+    "isbn": null,
+    "authors": [
+      "Ruth Kreider-Stempfle",
+      "Bettina Frensemeier"
+    ],
+    "publisher": "Gerstenberg",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/backen-und-bauen.jpg",
+    "quelle": null,
+    "hinweis": "Cover: Gerstenberg, Ausgabe 2022. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "Amazon-Katalogbild zur DNB-Ausgabe 2022 (978-3-8369-6198-1), ISBN nicht gespeichert"
+  },
+  {
+    "title": "Harry's Bar Kochbuch",
+    "isbn": "978-3-89910-010-5",
+    "authors": [
+      "Arrigo Cipriani"
+    ],
+    "publisher": "Collection Rolf Heyne",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/harrys-bar.jpg",
+    "quelle": "ISBN-Verzeichnis und Buchhandel (Collection Rolf Heyne)",
+    "hinweis": null,
+    "coverQuelle": "Amazon-Produktbild zur ISBN 978-3-89910-010-5"
+  },
+  {
+    "title": "Meine Klassiker",
+    "isbn": "978-3-8338-2126-4",
+    "authors": [
+      "Alfons Schuhbeck"
+    ],
+    "publisher": "Gräfe und Unzer",
+    "year": 2010,
+    "coverUrl": "/images/kochbuecher/meine-klassiker.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "medimops-Cover zur ISBN 978-3-8338-2126-4"
+  },
+  {
+    "title": "Bayrisches Kochbuch",
+    "isbn": null,
+    "authors": [
+      "Maria Hofmann",
+      "Helmut Lydtin"
+    ],
+    "publisher": null,
+    "year": null,
+    "coverUrl": "/images/kochbuecher/bayerisches-kochbuch.jpg",
+    "quelle": null,
+    "hinweis": "Cover der langen Standardausgabe (Verlagsseite). DNB nennt 2026 den Verlag Friedrich Pustet. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "bayerisches-kochbuch.de; DNB-Ausgabe 2026, ISBN nicht gespeichert"
+  },
+  {
+    "title": "Licence to Cook",
+    "isbn": null,
+    "authors": [
+      "Sam Stern",
+      "Susan Stern"
+    ],
+    "publisher": "Oetinger",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/licence-to-cook.jpg",
+    "quelle": null,
+    "hinweis": "Cover: Oetinger, Ausgabe 2014. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "Amazon-Produktbild der deutschen Oetinger-Ausgabe; DNB-Jahr 2014, ISBN nicht gespeichert"
+  },
+  {
+    "title": "Anniks göttliche Desserts",
+    "isbn": "978-3-8310-1965-6",
+    "authors": [
+      "Annik Wecker"
+    ],
+    "publisher": "Dorling Kindersley",
+    "year": 2011,
+    "coverUrl": "/images/kochbuecher/anniks-goettliche-desserts.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Amazon-Produktbild zur ISBN 978-3-8310-1965-6"
+  },
+  {
+    "title": "Ottolenghi Test Kitchen",
+    "isbn": null,
+    "authors": [
+      "Yotam Ottolenghi",
+      "Noor Murad"
+    ],
+    "publisher": "Dorling Kindersley",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/ottolenghi-test-kitchen.jpg",
+    "quelle": null,
+    "hinweis": "Cover: deutsche Ausgabe „OTK – Extra Good Things“, DK 2022, nicht Shelf Love von 2021. ISBN bleibt leer, bis der Band bestätigt ist.",
+    "coverQuelle": "Cover zur DNB-Ausgabe 2022 (978-3-8310-4596-9), lesehits.de, ISBN nicht gespeichert"
+  },
+  {
+    "title": "Ottolenghi Simple",
+    "isbn": null,
+    "authors": [
+      "Yotam Ottolenghi"
+    ],
+    "publisher": "Dorling Kindersley",
+    "year": null,
+    "coverUrl": "/images/kochbuecher/ottolenghi-simple.jpg",
+    "quelle": null,
+    "hinweis": "Cover: deutsche Ausgabe „Ottolenghi Simple“, DK 2023, nicht „Simple Too“ von 2026. ISBN bleibt leer, bis die Ausgabe bestätigt ist.",
+    "coverQuelle": "Amazon-Katalogbild zur DNB-Ausgabe 2023 (978-3-8310-4863-2), ISBN nicht gespeichert"
+  },
+  {
+    "title": "ONE",
+    "isbn": "978-3-8310-4579-2",
+    "authors": [
+      "Jamie Oliver"
+    ],
+    "publisher": "Dorling Kindersley",
+    "year": 2022,
+    "coverUrl": "/images/kochbuecher/jamie-oliver-one.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Cover zur ISBN 978-3-8310-4579-2, lesehits.de"
+  },
+  {
+    "title": "Das neue Grand Tour Kochbuch",
+    "isbn": "978-3-95726-080-2",
+    "authors": [
+      "Hannah Grant"
+    ],
+    "publisher": "Covadonga",
+    "year": 2023,
+    "coverUrl": "/images/kochbuecher/grand-tour.jpg",
+    "quelle": "Deutsche Nationalbibliografie",
+    "hinweis": null,
+    "coverQuelle": "Cover zur ISBN 978-3-95726-080-2, lesehits.de"
+  }
+]

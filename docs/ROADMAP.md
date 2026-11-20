@@ -13,7 +13,7 @@ Reihenfolge nach [gnocchi-startup-bericht.md](gnocchi-startup-bericht.md): erst 
 | „Heute auswärts“, Verschieben mit Vorschau | **Schritt 2**, gebaut | eine Karte „Was ändert sich?“ für Mensch und KI (`lib/plan-change.ts`, `ep_plan_move`) |
 | KI: Plan per Text ändern | **Schritt 2**, gebaut, mit echtem Modell ungetestet | Werkzeug `plan_aendern`, dieselbe Vorschau; offen: Testset mit 30–50 Fällen, sobald ein KI-Schlüssel eingerichtet ist |
 | Vorrat | **Schritt 3**, gebaut | „Noch da“ auf der Liste, Vorrat von Hand unter Haushalt, zählt beim Einkauf mit; Scanner, Ablaufdaten, Bon-Import später |
-| Launch-Fundament | Schritt 4, **Landingpage gebaut** | offen: echte Fotos (eigene, nicht die Beispielbilder), Impressum und Datenschutz, Onboarding „drei Gerichte“, Messung, eigenes Supabase-Projekt |
+| Launch-Fundament | Schritt 4, **Landingpage, Impressum/Datenschutz, Konto löschen, Realtime je Familie gebaut** | Checkliste in [LAUNCH.md](LAUNCH.md); offen: echte Fotos, Onboarding „drei Gerichte“, Messung, eigenes Supabase-Projekt |
 | Wrapped | Schritt 5 | drei belegte Fakten nach vier Wochen |
 | Kostentracker | später | Bon-Foto-Test nur bei beobachtetem Bedarf |
 | Freunde / Events | später | einzelner Gast-Link |

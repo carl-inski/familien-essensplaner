@@ -1,43 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { addingViolatesMeatRule, isDinnerCandidate, meatRuleHint, pickSuggestion, suggestionCandidates, violatesMeatRule } from "../lib/suggest";
+import { isDinnerCandidate, isMealCandidate, pickSuggestion, suggestionCandidates } from "../lib/suggest";
 import type { CookStats, Diet } from "../lib/types";
 import { cookStatsFromHistory } from "../lib/history";
+import { slotKey } from "../lib/meals";
 
 const today = "2026-10-23";
 const r = (id: string, diet: Diet, cookbook_id: string | null = null) => ({ id, diet, cookbook_id });
 
-describe("Fleischregel", () => {
-  it("erkennt mehr als 1 Fleischgericht in 3 Gerichten", () => {
-    expect(violatesMeatRule([
-      { date: "2026-10-26", diet: "fleisch" },
-      { date: "2026-10-27", diet: "vegetarisch" },
-      { date: "2026-10-28", diet: "fleisch" },
-    ])).toBe(true);
-    expect(violatesMeatRule([
-      { date: "2026-10-26", diet: "fleisch" },
-      { date: "2026-10-27", diet: "fisch" },
-      { date: "2026-10-28", diet: "vegetarisch" },
-      { date: "2026-10-29", diet: "fleisch" },
-    ])).toBe(false);
-  });
-
-  it("Vorschläge verletzen die Regel nie", () => {
-    const recipes = [r("m1", "fleisch"), r("m2", "fleisch"), r("v1", "vegetarisch"), r("f1", "fisch")];
-    const planned = [{ date: "2026-10-26", diet: "fleisch" as Diet, recipe_id: "x" }];
-    // Dienstag liegt im selben 3er-Fenster wie Montag → kein Fleisch
-    const ids = suggestionCandidates(recipes, new Map(), planned, "2026-10-27", today).map((c) => c.id);
-    expect(ids).toEqual(["v1", "f1"]);
-    for (let i = 0; i < 50; i++) {
-      const pick = pickSuggestion(recipes, new Map(), planned, "2026-10-27", today)!;
-      expect(addingViolatesMeatRule(planned, { date: "2026-10-27", diet: pick.diet })).toBe(false);
-    }
-  });
-
-  it("gibt beim manuellen Einplanen nur einen Hinweis", () => {
-    const planned = [{ date: "2026-10-26", diet: "fleisch" as Diet, recipe_id: "x" }];
-    expect(meatRuleHint(planned, "2026-10-27", "fleisch")).toMatch(/Fleischgericht/);
-    expect(meatRuleHint(planned, "2026-10-27", "fisch")).toBeNull();
-  });
+it("schlägt ein Fleischgericht auch nach einer Fleischmahlzeit am selben Tag vor", () => {
+  const planned = [{ date: slotKey("2026-10-26", "mittag"), diet: "fleisch" as const, recipe_id: "geplant" }];
+  const recipes = [r("geplant", "fleisch"), r("neu", "fleisch")];
+  expect(pickSuggestion(recipes, new Map(), planned, today, () => 0)?.id).toBe("neu");
 });
 
 describe("14-Tage-Sperre und Gewichtung", () => {
@@ -49,14 +22,14 @@ describe("14-Tage-Sperre und Gewichtung", () => {
 
   it("schlägt in den letzten 14 Tagen Gekochtes nie vor", () => {
     const recipes = [r("recent", "vegetarisch"), r("old", "vegetarisch"), r("never", "vegetarisch"), r("edge", "vegetarisch")];
-    const ids = suggestionCandidates(recipes, stats, [], "2026-10-26", today).map((c) => c.id);
+    const ids = suggestionCandidates(recipes, stats, [], today).map((c) => c.id);
     expect(ids).not.toContain("recent");
     expect(ids).toEqual(["old", "never", "edge"]);
-    for (let i = 0; i < 100; i++) expect(pickSuggestion(recipes, stats, [], "2026-10-26", today)?.id).not.toBe("recent");
+    for (let i = 0; i < 100; i++) expect(pickSuggestion(recipes, stats, [], today)?.id).not.toBe("recent");
   });
 
   it("schlägt nichts doppelt in derselben Woche vor", () => {
-    const ids = suggestionCandidates([r("a", "vegetarisch"), r("b", "fisch")], new Map(), [{ date: "2026-10-26", diet: "vegetarisch", recipe_id: "a" }], "2026-10-27", today).map((c) => c.id);
+    const ids = suggestionCandidates([r("a", "vegetarisch"), r("b", "fisch")], new Map(), [{ date: "2026-10-26", recipe_id: "a" }], today).map((c) => c.id);
     expect(ids).toEqual(["b"]);
   });
 });
@@ -83,20 +56,18 @@ describe("Abendessen-Kandidaten", () => {
   });
 });
 
+it("schlägt für Frühstück und Snacks passend markierte Rezepte vor", () => {
+  const breakfast = { tags: ["Frühstück"], categories: [] };
+  const snack = { tags: [], categories: ["Snack"] };
+  const dinner = { tags: [], categories: ["Pasta"] };
+  expect([breakfast, snack, dinner].filter((recipe) => isMealCandidate(recipe, "fruehstueck"))).toEqual([breakfast]);
+  expect([breakfast, snack, dinner].filter((recipe) => isMealCandidate(recipe, "snack"))).toEqual([snack]);
+});
+
 describe("Mittag und Abend", () => {
   it("ordnet Slots als Mo mittag < Mo abend < Di mittag", async () => {
     const { slotKey } = await import("../lib/meals");
     expect(slotKey("2026-10-26", "mittag") < slotKey("2026-10-26", "abend")).toBe(true);
     expect(slotKey("2026-10-26", "abend") < slotKey("2026-10-27", "mittag")).toBe(true);
-  });
-
-  it("Fleischregel gilt über Mittag und Abend hinweg", async () => {
-    const { slotKey } = await import("../lib/meals");
-    const planned = [{ date: slotKey("2026-10-26", "mittag"), diet: "fleisch" as Diet, recipe_id: "x" }];
-    // Mo abend liegt direkt nach Mo mittag → kein zweites Fleischgericht
-    expect(addingViolatesMeatRule(planned, { date: slotKey("2026-10-26", "abend"), diet: "fleisch" })).toBe(true);
-    // Di abend: dazwischen ein vegetarisches Mo abend + Di mittag → Fenster Mo abend, Di mittag, Di abend ok
-    const more = [...planned, { date: slotKey("2026-10-26", "abend"), diet: "vegetarisch" as Diet, recipe_id: "y" }, { date: slotKey("2026-10-27", "mittag"), diet: "fisch" as Diet, recipe_id: "z" }];
-    expect(addingViolatesMeatRule(more, { date: slotKey("2026-10-27", "abend"), diet: "fleisch" })).toBe(false);
   });
 });

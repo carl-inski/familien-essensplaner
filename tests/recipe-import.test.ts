@@ -16,6 +16,8 @@ describe("splitIngredientLine", () => {
     ["½ Bund Petersilie", "½ Bund", "Petersilie"],
     ["1 Pck. Backpulver", "1 Pck.", "Backpulver"],
     ["ca. 500 ml Brühe", "500 ml", "Brühe"],
+    ["etwas Speiseöl zum Ausbacken", "etwas", "Speiseöl zum Ausbacken"],
+    ["Etwa 500 g Reis", "500 g", "Reis"],
   ])("%s", (line, amount, name) => {
     expect(splitIngredientLine(line)).toEqual({ amount_text: amount, name });
   });

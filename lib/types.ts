@@ -1,5 +1,5 @@
 export type Diet = "fleisch" | "fisch" | "vegetarisch";
-export type Meal = "fruehstueck" | "mittag" | "abend";
+export type Meal = "fruehstueck" | "mittag" | "abend" | "snack";
 export type AttendanceStatus = "da" | "weg";
 export type PlanStatus = "geplant" | "gekocht" | "ausgefallen";
 
@@ -123,6 +123,7 @@ export interface Attendance {
 
 export interface MealPlanEntry {
   id: string;
+  family_guests?: number | null;
   household_id: string;
   date: string;
   meal: Meal;

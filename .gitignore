@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Beispiel-Env darf ins Repo
 !.env.example
+
+# Supabase CLI
+supabase/.temp/

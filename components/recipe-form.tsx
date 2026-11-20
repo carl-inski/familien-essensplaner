@@ -47,6 +47,7 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
   const [confirmed, setConfirmed] = useState(recipe?.cookbook_link_confirmed ?? !draftBook);
   const [tip, setTip] = useState(recipe?.tip ?? d?.tip ?? "");
   const [nutrition, setNutrition] = useState(((recipe?.nutrition ?? d?.nutrition) as { text?: string } | null)?.text ?? "");
+  const [cover, setCover] = useState(d?.image_data);
   const [imageUrl, setImageUrl] = useState(recipe?.image_url ?? d?.image_url ?? "");
   const [ings, setIngs] = useState<IngRow[]>(
     recipe
@@ -65,6 +66,14 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
     return copy;
   }
 
+  async function storePhoto(jpeg: Blob) {
+    const path = `${household.id}/${crypto.randomUUID()}.jpg`;
+    const bucket = sb.storage.from("ep-images");
+    const { error } = await bucket.upload(path, jpeg, { contentType: "image/jpeg", upsert: false });
+    if (error) throw new Error(error.message);
+    return bucket.getPublicUrl(path).data.publicUrl;
+  }
+
   async function upload(file: File) {
     setUploading(true);
     const jpeg = await photoForUpload(file);
@@ -72,16 +81,34 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
       setUploading(false);
       return toast({ text: "Dieses Bildformat kann der Browser nicht lesen. Bitte als JPG oder PNG wählen.", tone: "error" });
     }
-    const path = `${household.id}/${crypto.randomUUID()}.jpg`;
-    const { error } = await sb.storage.from("ep-images").upload(path, jpeg, { contentType: "image/jpeg", upsert: false });
-    setUploading(false);
-    if (error) return toast({ text: `Upload fehlgeschlagen: ${error.message}`, tone: "error" });
-    setImageUrl(sb.storage.from("ep-images").getPublicUrl(path).data.publicUrl);
+    try {
+      setImageUrl(await storePhoto(jpeg));
+      setCover(undefined);
+    } catch {
+      toast({ text: "Das Foto konnte nicht hochgeladen werden. Bitte erneut versuchen.", tone: "error" });
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
+    if (saving || uploading) return;
     if (!title.trim()) return toast({ text: "Bitte einen Titel eingeben", tone: "error" });
     setSaving(true);
+    let savedImageUrl = imageUrl;
+    if (cover) {
+      try {
+        const bytes = Uint8Array.from(atob(cover.data), (character) => character.charCodeAt(0));
+        const jpeg = await photoForUpload(new File([bytes], "rezept-vorschau", { type: cover.mediaType }));
+        if (!jpeg) throw new Error("Invalid cover");
+        savedImageUrl = await storePhoto(jpeg);
+        setImageUrl(savedImageUrl);
+        setCover(undefined);
+      } catch {
+        setSaving(false);
+        return toast({ text: "Das Vorschaubild konnte nicht gespeichert werden. Du kannst es entfernen und das Rezept erneut sichern.", tone: "error" });
+      }
+    }
     const cats = categories.split("/").map((c) => c.trim()).filter(Boolean);
     const servingsNum = servings.trim() ? Number.parseInt(servings, 10) : null;
     const nutritionObj = nutrition.trim() ? parseNutrition(nutrition.trim()) : null;
@@ -104,7 +131,7 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
       cookbook_id: cookbookId || null,
       cookbook_page: cookbookId && page.trim() ? Number.parseInt(page, 10) : null,
       cookbook_link_confirmed: cookbookId ? confirmed : true,
-      image_url: imageUrl || null,
+      image_url: savedImageUrl || null,
     };
     const res = recipe
       ? await sb.from("ep_recipes").update(row).eq("id", recipe.id).select("id").single()
@@ -135,7 +162,7 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
       <PageHeader
         title={recipe ? "Bearbeiten" : "Neues Rezept"}
         back={{ href: recipe ? `/rezepte/${recipe.id}` : "/rezepte", label: recipe ? "Rezept" : "Rezepte" }}
-        trailing={<button className="btn-plain t-sub pressable font-semibold" disabled={saving} onClick={save}>{saving ? "Speichert …" : "Sichern"}</button>}
+        trailing={<button className="btn-plain t-sub pressable font-semibold" disabled={saving || uploading} onClick={save}>{saving ? "Speichert …" : "Sichern"}</button>}
       />
       <div className="page lg:[&>*]:max-w-3xl">
         {intro}
@@ -144,14 +171,15 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
         )}
         <Section title="Foto">
           <div className="flex items-center gap-3">
-            <RecipeImage recipe={{ title: title || "?", image_url: imageUrl || null, diet }} className="h-20 w-20 text-2xl" rounded={14} />
+            <RecipeImage recipe={{ title: title || "?", image_url: cover ? `data:${cover.mediaType};base64,${cover.data}` : imageUrl || null, diet }} className="h-20 w-20 text-2xl" rounded={14} />
             <label className="btn btn-gray pressable">
-              <IconCamera size={18} /> {uploading ? "Lädt …" : imageUrl ? "Ersetzen" : "Foto wählen"}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+              <IconCamera size={18} /> {uploading ? "Lädt …" : imageUrl || cover ? "Ersetzen" : "Foto wählen"}
+              <input type="file" accept="image/*" disabled={saving || uploading} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
             </label>
-            {imageUrl && <button className="btn-plain t-sub pressable" onClick={() => setImageUrl("")}>Entfernen</button>}
+            {(imageUrl || cover) && <button type="button" className="btn-plain t-sub pressable" disabled={saving || uploading} onClick={() => { setCover(undefined); setImageUrl(""); }}>Entfernen</button>}
           </div>
-          {!imageUrl && dishPhoto(title) && (
+          {cover && <p className="t-footnote mt-2" style={{ color: "var(--label-2)" }}>Vorschaubild aus dem Beitrag.</p>}
+          {!imageUrl && !cover && dishPhoto(title) && (
             <p className="t-footnote mt-2" style={{ color: "var(--label-2)" }}>Beispielbild aus frei lizenzierter Quelle. Ein eigenes Foto ersetzt es.</p>
           )}
         </Section>
@@ -244,7 +272,7 @@ export function RecipeForm({ recipe, draft, notice, intro }: { recipe?: Recipe; 
           </div>
         </Section>
 
-        <button className="btn btn-primary pressable mt-8 w-full" disabled={saving} onClick={save}>{saving ? "Speichert …" : "Rezept sichern"}</button>
+        <button className="btn btn-primary pressable mt-8 w-full" disabled={saving || uploading} onClick={save}>{saving ? "Speichert …" : "Rezept sichern"}</button>
       </div>
     </>
   );

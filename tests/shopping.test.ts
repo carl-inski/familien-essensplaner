@@ -130,20 +130,16 @@ describe("Einkauf sortiert und Vorrat", () => {
 describe("Wochenvorschläge prüfen", () => {
   const today = "2026-10-24";
   const stats = new Map<string, CookStats>([["alt", { recipe_id: "alt", last_cooked_on: "2026-10-20", times_cooked: 1, days_since: 4 }]]);
-  it("markiert Fleisch-Häufung, Sperre und Doppelte im Stapel", () => {
-    const res = checkBatch(
-      [
-        { slot: "2026-10-26#2", recipe_id: "f1", diet: "fleisch" },
-        { slot: "2026-10-27#2", recipe_id: "f2", diet: "fleisch" },
-        { slot: "2026-10-28#2", recipe_id: "alt", diet: "vegetarisch" },
-        { slot: "2026-10-29#2", recipe_id: "v1", diet: "vegetarisch" },
-        { slot: "2026-10-30#2", recipe_id: "v1", diet: "vegetarisch" },
-      ],
-      [],
-      stats,
-      today,
-    );
-    expect(res.map((r) => r.problem && r.problem.split(" ")[0])).toEqual([null, "Zu", "Vor", null, "Steht"]);
+  it("lässt aufeinanderfolgende Fleischgerichte zu und markiert Sperren und Duplikate", () => {
+    const batch = [
+      { slot: "2026-10-26#2", recipe_id: "f1", diet: "fleisch" },
+      { slot: "2026-10-27#2", recipe_id: "f2", diet: "fleisch" },
+      { slot: "2026-10-28#2", recipe_id: "alt", diet: "vegetarisch" },
+      { slot: "2026-10-29#2", recipe_id: "v1", diet: "vegetarisch" },
+      { slot: "2026-10-30#2", recipe_id: "v1", diet: "vegetarisch" },
+    ];
+    const res = checkBatch(batch, [], stats, today);
+    expect(res.map((r) => r.problem && r.problem.split(" ")[0])).toEqual([null, null, "Vor", null, "Steht"]);
   });
   it("Kandidaten: keine Snacks abends, länger nicht gekocht zuerst", () => {
     const rs = [
@@ -151,7 +147,7 @@ describe("Wochenvorschläge prüfen", () => {
       { id: "neu", diet: "vegetarisch" as const, cookbook_id: null, tags: [], categories: [] },
       { id: "alt", diet: "vegetarisch" as const, cookbook_id: null, tags: [], categories: [] },
     ];
-    expect(rankedCandidates(rs, stats, [], "2026-10-26#2", today, { dinner: true }).map((r) => r.id)).toEqual(["neu"]);
+    expect(rankedCandidates(rs, stats, [], today, { dinner: true }).map((r) => r.id)).toEqual(["neu"]);
   });
 });
 

@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseServer, supabaseWithBearer } from "@/lib/supabase/server";
 import type { Member } from "@/lib/types";
 import { readAiConfig, type AiConfig } from "./config";
 import { estimateCostEur, limitMessage, type TokenUsage } from "./cost";
@@ -31,9 +31,14 @@ export interface UsageSummary {
 }
 
 /** Session, Haushaltsmitglied und Konfiguration – ohne Limitprüfung */
-export async function aiSession(): Promise<AiContext> {
-  const sb = await supabaseServer();
-  const { data: auth } = await sb.auth.getUser();
+export async function aiSession(request?: Request): Promise<AiContext> {
+  const authorization = request?.headers.get("authorization");
+  const token = authorization?.match(/^Bearer ([^\s,]+)$/i)?.[1];
+  if (authorization !== null && authorization !== undefined && !token) {
+    throw new AiError("Bitte melde dich an.", 401, "unauthorized");
+  }
+  const sb = token ? supabaseWithBearer(token) : await supabaseServer();
+  const { data: auth } = await sb.auth.getUser(token);
   if (!auth.user) throw new AiError("Bitte melde dich an.", 401, "unauthorized");
   const { data } = await sb.from("ep_members").select("*").eq("user_id", auth.user.id).limit(1);
   const member = (data as Member[] | null)?.[0];
@@ -54,8 +59,8 @@ export async function usageSummary(ctx: AiContext): Promise<UsageSummary> {
 }
 
 /** Für jede KI-Route: angemeldet, eingerichtet, Limits nicht überschritten */
-export async function aiGuard(): Promise<AiContext> {
-  const ctx = await aiSession();
+export async function aiGuard(request?: Request): Promise<AiContext> {
+  const ctx = await aiSession(request);
   if (!ctx.cfg.enabled) throw new AiError(`KI noch nicht eingerichtet. ${ctx.cfg.reason ?? ""}`.trim(), 503, "not-configured");
   const u = await usageSummary(ctx);
   const msg = limitMessage({ callsToday: u.my_calls_today, costMonthEur: u.month_cost_eur }, ctx.cfg.limits);

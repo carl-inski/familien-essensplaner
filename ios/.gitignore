@@ -1,0 +1,9 @@
+# Erzeugt aus project.yml (scripts/bootstrap.sh)
+Gnocchi.xcodeproj/
+# Xcode und Swift Package Manager
+DerivedData/
+xcuserdata/
+*.xcuserstate
+Packages/*/.build/
+Packages/*/.swiftpm/
+.build/

@@ -179,6 +179,12 @@ function Login() {
             <button type="button" className="btn-plain pressable" onClick={() => switchMode("anmelden")}>Zurück zum Anmelden</button>
           )}
         </p>
+        {mode === "neu" && (
+          <p className="t-caption text-center" style={{ color: "var(--label-3)" }}>
+            Mit dem Konto stimmst du der <a href="/datenschutz" className="underline">Datenschutzerklärung</a> zu.
+            {" "}<a href="/impressum" className="underline">Impressum</a>
+          </p>
+        )}
       </form>
     </main>
   );

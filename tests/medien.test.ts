@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseRecipeCollection } from "../lib/markdown";
-import { CATALOG_BOOKS, DISH_PHOTOS, dishPhoto } from "../lib/medien";
+import { CATALOG_BOOKS, DISH_PHOTOS, dishCredit, dishPhoto } from "../lib/medien";
 
 describe("Beispielbilder und Kochbücher", () => {
   const recipes = parseRecipeCollection(readFileSync(join(__dirname, "..", "data", "rezeptsammlung.md"), "utf8"));
@@ -16,6 +16,12 @@ describe("Beispielbilder und Kochbücher", () => {
       expect(existsSync(join(__dirname, "..", "public", photo!.src!))).toBe(true);
     }
     expect(dishPhoto("Shakshuka mit Kichererbsen & Kokosmilch")?.src).toBe("/images/rezepte/shakshuka.jpg");
+  });
+
+  it("behält die Bildquelle nach einer Umbenennung und verwendet sie nicht für private Fotos", () => {
+    const photo = dishPhoto("Tomaten-Gnocchi");
+    expect(dishCredit("Gnocchi mit Burrata", photo!.src)).toEqual(photo);
+    expect(dishCredit("Tomaten-Gnocchi", "https://example.com/privat.jpg")).toBeNull();
   });
 
   it("erfindet keine ISBN und lässt unsichere Bücher leer", () => {
