@@ -1,89 +1,108 @@
 import GnocchiCore
 import SwiftUI
 
-private struct KnusprHandoff: View {
+/// Offene Posten nacheinander im Shop suchen und in den Warenkorb legen. REWE und Knuspr
+/// erlauben fremden Apps keinen Warenkorb-Zugriff; die Suche pro Posten klappt immer.
+private struct DeliveryHandoff: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var inCart: Set<Int> = []
     @State private var copied = false
     @State private var openFailed = false
+    let shop: Delivery.Shop
     let lines: [String]
 
     var body: some View {
-        let prompt = Knuspr.prompt(lines: lines)
         List {
-            Section {
-                Text(lines.count == 1 ? "1 offener Posten für deinen Warenkorb" : "\(lines.count) offene Posten für deinen Warenkorb")
-                Button("In Claude öffnen", systemImage: "arrow.up.right") { open(.claude, prompt: prompt) }
-                Button("In ChatGPT öffnen", systemImage: "arrow.up.right") { open(.chatGPT, prompt: prompt) }
-                Button(copied ? "Auftrag kopiert" : "Auftrag kopieren", systemImage: copied ? "checkmark" : "document.on.document") {
-                    UIPasteboard.general.string = prompt
-                    copied = true
+            if shop == .knuspr {
+                Section {
+                    Button("Alles per Claude", systemImage: "sparkles") { openAssistant(.claude) }
+                    Button("Alles per ChatGPT", systemImage: "sparkles") { openAssistant(.chatGPT) }
+                    Button(copied ? "Auftrag kopiert" : "Auftrag kopieren", systemImage: copied ? "checkmark" : "document.on.document") {
+                        UIPasteboard.general.string = Knuspr.prompt(lines: lines)
+                        copied = true
+                    }
+                } header: {
+                    Text("Schneller mit KI")
+                } footer: {
+                    Text("Mit dem Knuspr-Konnektor in Claude oder ChatGPT legt die KI alle Posten in deinen Warenkorb. Einmalig dort „Knuspr“ verbinden.")
                 }
-            } footer: {
-                Text("Verbinde Knuspr zuerst in Claude oder ChatGPT. Den Warenkorb prüfst du anschließend bei Knuspr, wo du auch die Bestellung abschließt.")
             }
-            Section("Offene Posten") {
-                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in Text(line) }
+            Section {
+                ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                    row(index: index, line: line)
+                }
+            } header: {
+                Text("\(inCart.count) von \(lines.count) im Warenkorb")
+            } footer: {
+                Text("Tippe einen Posten an: Die \(shop.name)-Suche öffnet sich, du legst das passende Produkt in den Warenkorb. Bestellt und bezahlt wird bei \(shop.name).")
+            }
+            Section {
+                Button("Zum \(shop.name)-Warenkorb", systemImage: "cart") { open(shop.home) }
             }
         }
-        .navigationTitle("Knuspr")
+        .navigationTitle(shop.name)
         .gnScreen()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("Schließen") { dismiss() } }
         }
-        .alert("Der Assistent konnte nicht geöffnet werden.", isPresented: $openFailed) {
+        .alert("\(shop.name) konnte nicht geöffnet werden.", isPresented: $openFailed) {
             Button("OK", role: .cancel) {}
         }
     }
 
-    private func open(_ assistant: Knuspr.Assistant, prompt: String) {
-        guard let url = Knuspr.link(for: assistant, prompt: prompt) else {
+    private func row(index: Int, line: String) -> some View {
+        let done = inCart.contains(index)
+        let term = Delivery.searchTerm(line)
+        return HStack(spacing: 12) {
+            Button {
+                toggle(index)
+            } label: {
+                Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(done ? Theme.accent : Theme.inkSecondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(done ? "\(line): aus dem Warenkorb nehmen" : "\(line): als im Warenkorb markieren")
+            Button {
+                inCart.insert(index)
+                if let url = Delivery.searchURL(shop, name: line) { open(url) } else { openFailed = true }
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(line)
+                            .strikethrough(done)
+                            .foregroundStyle(done ? Theme.inkSecondary : .primary)
+                        if term != line {
+                            Text("Suche: \(term)").font(.caption).foregroundStyle(Theme.inkSecondary)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "arrow.up.right").font(.footnote).foregroundStyle(Theme.inkSecondary)
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Öffnet die \(shop.name)-Suche")
+        }
+    }
+
+    private func toggle(_ index: Int) {
+        if inCart.contains(index) { inCart.remove(index) } else { inCart.insert(index) }
+    }
+
+    private func openAssistant(_ assistant: Knuspr.Assistant) {
+        guard let url = Knuspr.link(for: assistant, prompt: Knuspr.prompt(lines: lines)) else {
             openFailed = true
             return
         }
+        open(url)
+    }
+
+    private func open(_ url: URL) {
         openURL(url) { accepted in
             if !accepted { openFailed = true }
-        }
-    }
-}
-
-private struct ReweHandoff: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
-    @State private var copied = false
-    @State private var openFailed = false
-    let lines: [String]
-
-    var body: some View {
-        List {
-            Section {
-                Button(copied ? "Liste kopiert" : "Liste kopieren", systemImage: copied ? "checkmark" : "document.on.document") {
-                    UIPasteboard.general.string = lines.joined(separator: "\n")
-                    copied = true
-                    AccessibilityNotification.Announcement("Einkaufsliste kopiert").post()
-                }
-                Button("REWE Onlineshop öffnen", systemImage: "arrow.up.right") {
-                    guard let url = URL(string: "https://www.rewe.de/shop") else { return }
-                    openURL(url) { accepted in
-                        if !accepted { openFailed = true }
-                    }
-                }
-            } footer: {
-                Text("Kopiere die offenen Posten als Merkliste. Suche die Produkte im REWE-Shop und lege sie dort in den Warenkorb.")
-            }
-            Section("Offene Posten") {
-                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in Text(line) }
-            }
-        }
-        .navigationTitle("REWE")
-        .gnScreen()
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Schließen") { dismiss() } }
-        }
-        .alert("Der REWE Onlineshop konnte nicht geöffnet werden.", isPresented: $openFailed) {
-            Button("OK", role: .cancel) {}
         }
     }
 }
@@ -102,14 +121,14 @@ private struct DeliveryServicesSheet: View {
         ScrollView {
             VStack(spacing: 10) {
                 NavigationLink {
-                    KnusprHandoff(lines: exportLines)
+                    DeliveryHandoff(shop: .knuspr, lines: exportLines)
                 } label: {
-                    serviceLabel("knuspr.de", detail: "Einkaufsliste an deinen Assistenten übergeben", logo: "DeliveryKnuspr", background: 0xFFECD5, ink: 0x542B0D)
+                    serviceLabel("knuspr.de", detail: "Posten suchen und in den Warenkorb legen", logo: "DeliveryKnuspr", background: 0xFFECD5, ink: 0x542B0D)
                 }
                 NavigationLink {
-                    ReweHandoff(lines: exportLines)
+                    DeliveryHandoff(shop: .rewe, lines: exportLines)
                 } label: {
-                    serviceLabel("REWE", detail: "Liste kopieren und im Onlineshop einkaufen", logo: "DeliveryRewe", background: 0xFDE9EB, ink: 0x731323)
+                    serviceLabel("REWE", detail: "Posten suchen und in den Warenkorb legen", logo: "DeliveryRewe", background: 0xFDE9EB, ink: 0x731323)
                 }
                 Button {
                     shareWithBring()
