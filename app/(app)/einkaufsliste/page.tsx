@@ -18,7 +18,8 @@ import { useToast } from "@/components/toast";
 import { Empty, Section } from "@/components/ui";
 import { aisleFor } from "@/lib/aisles";
 import { bringDeeplink, shoppingPublicUrl } from "@/lib/bring";
-import { knusprLinks, knusprPrompt } from "@/lib/knuspr";
+import { knusprPrompt } from "@/lib/knuspr";
+import { DeliverySheetBody } from "@/components/shopping/delivery-sheet";
 import { WEEKDAY_SHORT, formatDateDE, formatStampDE, isoWeekString, weekdayIndex } from "@/lib/dates";
 import { MEAL_LABEL, slotKey } from "@/lib/meals";
 import { pantryEntriesFor, pantryEntriesToAdd, pantryLabel } from "@/lib/pantry";
@@ -303,10 +304,10 @@ export default function ShoppingPage() {
             className="btn btn-brand pressable"
             style={{ background: "#ff7400", color: "#fff" }}
             disabled={!total}
-            aria-label="Bei Knuspr bestellen"
+            aria-label="Bei REWE oder Knuspr liefern lassen"
             onClick={() => setKnusprOpen(true)}
           >
-            <KnusprLogo size={22} /> Knuspr
+            <KnusprLogo size={22} /> Liefern
           </button>
           <button
             className="btn btn-gray btn-brand pressable"
@@ -551,16 +552,13 @@ export default function ShoppingPage() {
         </div>
       </Sheet>
 
-      <Sheet open={knusprOpen} onClose={() => setKnusprOpen(false)} title="Bei Knuspr bestellen">
-        <p className="t-sub" style={{ color: "var(--label-2)" }}>
-          Die KI legt die {uncheckedItems.length + uncheckedExtras.length} offenen Posten in deinen Knuspr-Warenkorb. Bestellen und Liefertermin wählst du danach selbst in der Knuspr-App.
-        </p>
-        <div className="mt-5 flex flex-col gap-2">
-          <a className="btn btn-primary pressable" href={knusprLinks(knuspr).claude} target="_blank" rel="noopener" onClick={() => setKnusprOpen(false)}>In Claude öffnen</a>
-          <a className="btn btn-gray pressable" href={knusprLinks(knuspr).chatgpt} target="_blank" rel="noopener" onClick={() => setKnusprOpen(false)}>In ChatGPT öffnen</a>
-          <button
-            className="btn-plain t-sub pressable mt-1 font-semibold"
-            onClick={async () => {
+      <Sheet open={knusprOpen} onClose={() => setKnusprOpen(false)} title="Liefern lassen">
+        {knusprOpen && (
+          <DeliverySheetBody
+            items={exportItems.map((i, n) => ({ key: `${n}:${i.text}`, text: i.text, name: i.name }))}
+            version={version}
+            knusprPrompt={knuspr}
+            onCopyPrompt={async () => {
               try {
                 await navigator.clipboard.writeText(knuspr);
                 toast({ text: "Auftrag kopiert – in Claude oder ChatGPT einfügen" });
@@ -568,13 +566,8 @@ export default function ShoppingPage() {
                 toast({ text: "Kopieren nicht möglich", tone: "error" });
               }
             }}
-          >
-            Auftrag kopieren
-          </button>
-        </div>
-        <p className="t-footnote mt-4" style={{ color: "var(--label-2)" }}>
-          Einmalig nötig: in Claude unter Einstellungen → Konnektoren bzw. in ChatGPT unter Apps „Knuspr“ hinzufügen und mit deinem Knuspr-Konto anmelden.
-        </p>
+          />
+        )}
       </Sheet>
     </>
   );

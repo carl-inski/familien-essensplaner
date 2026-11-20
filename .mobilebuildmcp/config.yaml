@@ -1,0 +1,7 @@
+schemaVersion: 1
+sessionDefaults:
+  projectPath: /Users/carl/Developer/Claude Code/familien-essensplaner/ios/Gnocchi.xcodeproj
+  scheme: Gnocchi
+  simulatorName: iPhone 18 Pro
+  simulatorId: EB5CA054-C46E-4967-BF0B-63215D88FA01
+  simulatorPlatform: iOS Simulator

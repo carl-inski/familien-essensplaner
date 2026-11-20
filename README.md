@@ -84,6 +84,10 @@ curl -X POST "$SITE/api/rezepte?modus=neu" \
   --data-binary @rezept.md
 ```
 
+## Lieferdienste (REWE, Knuspr)
+
+Weder REWE noch Knuspr lassen fremde Apps den Warenkorb füllen (Stand 11/2026: REWE ohne öffentliche Schnittstelle; Knuspr hat einen offiziellen MCP-Server mit OAuth, aber nur für freigegebene Clients wie Claude und ChatGPT). Darum öffnet „Liefern“ in Web und App pro offenem Posten die Produktsuche des Shops (`lib/delivery.ts`, Swift: `GnocchiCore/Delivery.swift`, gleiche Tests). Der Suchbegriff lässt Menge, Einheit, Klammern und Alternativen weg („480 g Hähnchenschenkel (ohne Haut)“ → „Hähnchenschenkel“). Ein Haken merkt sich, was schon im Warenkorb liegt. Bei Knuspr gibt es zusätzlich den Weg über Claude oder ChatGPT mit dem Knuspr-Konnektor (`lib/knuspr.ts`). Für einen echten Warenkorb-Knopf braucht es eine Partnerschaft mit REWE bzw. eine Client-Freigabe von Knuspr.
+
 ## Bring!
 
 Kein inoffizieller Client: Die App öffnet `https://api.getbring.com/rest/bringrecipes/deeplink?url=<öffentliche Seite>&source=web`. Bring! liest dort das JSON-LD (`recipeIngredient` mit bereits skalierten Mengen, beim Wocheneinkauf `recipeYield = "1"`).
